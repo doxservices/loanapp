@@ -1,0 +1,520 @@
+
+/* --- Login/Index Page Styles --- */
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+body {
+  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+
+.container {
+  display: flex;
+  width: 100%;
+  max-width: 1200px;
+  min-height: 700px;
+  background: #fff;
+  border-radius: 20px;
+  overflow: hidden;
+  box-shadow: 0 15px 50px rgba(0,0,0,0.15);
+}
+
+.hero-section {
+  flex: 1;
+  background: linear-gradient(to right, #1a2a6c, #2a4cb3, #3a6ee0);
+  color: #fff;
+  padding: 60px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  position: relative;
+  overflow: hidden;
+}
+.hero-section::before,
+.hero-section::after {
+  content: "";
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.1);
+}
+.hero-section::before { top: -50px; right: -50px; width: 300px; height: 300px; }
+.hero-section::after  { bottom: -80px; left: -80px; width: 250px; height: 250px; }
+
+.logo { margin-bottom: 24px; }
+.brand-mark { height: 56px; width: auto; display: block; }
+
+.hero-content h1 {
+  font-size: 42px;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 20px;
+  max-width: 80%;
+}
+.hero-content p {
+  font-size: 18px;
+  line-height: 1.6;
+  opacity: 0.9;
+  max-width: 85%;
+  margin-bottom: 30px;
+}
+
+.features { margin-top: 40px; }
+.feature { display: flex; align-items: center; margin-bottom: 25px; }
+.feature i {
+  font-size: 20px;
+  background: rgba(255,255,255,0.2);
+  width: 40px; height: 40px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin-right: 15px;
+}
+.feature div h3 { font-size: 18px; margin-bottom: 5px; }
+.feature div p  { font-size: 15px; opacity: 0.85; margin: 0; }
+
+.login-section { flex: 1; padding: 60px 50px; display: flex; flex-direction: column; justify-content: center; }
+.login-header { margin-bottom: 40px; }
+.login-header h2 { font-size: 32px; color: #1a2a6c; margin-bottom: 10px; }
+.login-header p { color: #666; font-size: 16px; }
+
+.tabs { display: flex; border-bottom: 2px solid #eee; margin-bottom: 30px; }
+.tab { padding: 15px 25px; font-size: 16px; font-weight: 600; cursor: default; color: #2a4cb3; position: relative; }
+.tab.active::after { content: ""; position: absolute; bottom: -2px; left: 0; width: 100%; height: 3px; background: #2a4cb3; border-radius: 3px 3px 0 0; }
+
+.form-group { margin-bottom: 25px; }
+.form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #444; font-size: 15px; }
+.input-with-icon { position: relative; }
+.input-with-icon i { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #777; }
+.form-group input {
+  width: 100%; padding: 15px 15px 15px 45px; border: 2px solid #e1e5eb; border-radius: 10px; font-size: 16px;
+  transition: all .3s ease;
+}
+.form-group input:focus { outline: none; border-color: #2a4cb3; box-shadow: 0 0 0 3px rgba(42,76,179,0.1); }
+
+.phone-group { display: flex; gap: 10px; }
+.phone-group select, .phone-group input { padding: 15px; border: 2px solid #e1e5eb; border-radius: 10px; font-size: 16px; }
+.phone-group select { flex: 0 0 80px; }
+.phone-group input { flex: 1; }
+
+.options { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+.remember { display: flex; align-items: center; }
+.remember input { margin-right: 8px; }
+
+.forgot-password { color: #2a4cb3; text-decoration: none; font-weight: 600; font-size: 15px; }
+.forgot-password:hover { text-decoration: underline; }
+
+.btn {
+  width: 100%; padding: 16px; background: #2a4cb3; color: #fff; border: none; border-radius: 10px;
+  font-size: 17px; font-weight: 600; cursor: pointer; transition: all .3s ease; margin-bottom: 25px;
+}
+.btn:hover { background: #1a3a9c; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(42,76,179,0.3); }
+
+.btn-secondary { background: #f0f4f8; color: #2a4cb3; }
+.btn-secondary:hover { background: #e1e8f0; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(42,76,179,0.1); }
+
+.divider { text-align: center; position: relative; margin: 25px 0; }
+.divider::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: #eee; z-index: 1; }
+.divider span { display: inline-block; background: #fff; padding: 0 15px; position: relative; z-index: 2; color: #777; font-size: 14px; }
+
+.social-login { display: flex; gap: 15px; margin-bottom: 30px; }
+.social-btn { flex: 1; padding: 12px; border: 2px solid #e1e5eb; border-radius: 10px; background: #fff;
+  display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all .3s ease; }
+.social-btn:hover { border-color: #2a4cb3; background: #f8faff; }
+.social-btn i { font-size: 20px; margin-right: 10px; }
+.google i { color: #DB4437; } .facebook i { color: #4267B2; } .apple i { color: #000; }
+
+.signup-link { text-align: center; color: #666; font-size: 16px; }
+.signup-link a { color: #2a4cb3; text-decoration: none; font-weight: 600; }
+.signup-link a:hover { text-decoration: underline; }
+
+.security-info { display: flex; align-items: center; justify-content: center; margin-top: 20px; color: #666; font-size: 14px; }
+.security-info i { margin-right: 8px; color: #28a745; }
+
+.hidden { display: none !important; }
+
+@media (max-width: 900px) {
+  .container { flex-direction: column; min-height: auto; }
+  .hero-section { padding: 40px 20px; }
+  .hero-content h1 { font-size: 32px; max-width: 100%; }
+  .hero-content p { max-width: 100%; }
+  .login-section { padding: 40px 30px; }
+}
+
+@media (max-width: 480px) {
+  .phone-group { flex-direction: column; }
+  .social-login { flex-direction: column; }
+  .options { flex-direction: column; align-items: flex-start; gap: 15px; }
+}
+
+
+/* --- Existing Global App Styles (from uploaded styles.css) --- */
+/* Global styles for the loan system application */
+
+body {
+  font-family: system-ui, Arial, sans-serif;
+  margin: 20px auto;
+  max-width: 100%;
+  padding: 0 20px;
+  box-sizing: border-box;
+}
+
+h1 {
+  font-size: 24px;
+  margin-bottom: 16px;
+}
+
+.menu, .btn-group {
+  margin: 20px 0;
+}
+
+.btn, button {
+  display: inline-block;
+  margin: 4px;
+  padding: 10px 16px;
+  background-color: #0045ad;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.btn:hover, button:hover {
+  background-color: #00398a;
+}
+
+input, select, textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 12px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+select[multiple] {
+  height: 100px;
+}
+
+.list-item {
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+.list-item:hover {
+  background-color: #f5f5f5;
+}
+
+/* Styling for editable fields on the admin applications page */
+.field-row {
+  display: grid;
+  grid-template-columns: 2fr 3fr auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.field-row label {
+  margin-bottom: 0;
+}
+
+.flag-checkbox {
+  margin-left: 8px;
+}
+
+form label {
+  display: block;
+  margin-bottom: 6px;
+}
+
+form label input,
+form label select,
+form label textarea {
+  margin-top: 4px;
+}
+
+#terms-panel {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #ddd;
+  background-color: #fafafa;
+}
+
+.back-btn {
+  background-color: #666;
+  color: #fff;
+}
+
+.back-btn:hover {
+  background-color: #444;
+}
+
+/* Phone number group layout */
+.phone-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.phone-group select {
+  flex: 0 0 80px;
+}
+
+.phone-group input[type="text"] {
+  flex: 1;
+}
+}
+
+/* Admin page layout styles */
+.admin-container {
+  display: grid;
+  grid-template-columns: 1fr 2fr;
+  gap: 20px;
+}
+
+.left-panel {
+  background-color: #f7f8fa;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+}
+
+.left-panel h3 {
+  margin-top: 16px;
+  margin-bottom: 8px;
+}
+
+.right-panel {
+  background-color: #fff;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e6e6e6;
+}
+
+.promo-card {
+  margin-top: 12px;
+}
+
+.promo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.promo-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+
+.promo-list li:hover {
+  background-color: #f5f5f5;
+}
+
+.delete-btn {
+  color: #c0392b;
+  margin-left: 8px;
+  cursor: pointer;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.left-panel .functions {
+  margin-bottom: 12px;
+}
+
+/* Login page layout */
+.login-container {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.login-box {
+  background-color: #f7f8fa;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 16px;
+  width: 45%;
+}
+
+.error {
+  color: #c0392b;
+  margin-top: 8px;
+}
+
+/* Promotion table styling */
+.promo-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+.promo-table th,
+.promo-table td {
+  border: 1px solid #ddd;
+  padding: 8px;
+  text-align: left;
+}
+.promo-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+/* Top navigation bar for admin pages */
+.top-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #0045ad;
+  color: #fff;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+}
+.top-nav a {
+  color: #fff;
+  margin-left: 16px;
+  text-decoration: none;
+}
+.top-nav a:hover {
+  text-decoration: underline;
+}
+.nav-title {
+  font-weight: bold;
+  font-size: 18px;
+}
+
+/* Admin applications page layout */
+/* Layout for admin applications page: three columns (queue, form, messages) */
+.admin-apps-container {
+  display: grid;
+  grid-template-columns: 1fr 2fr 1fr;
+  gap: 20px;
+}
+
+/* Panels for the applications page */
+.queue-panel,
+.form-panel,
+.messages-panel {
+  background-color: #f7f8fa;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 16px;
+  height: fit-content;
+}
+.queue-panel {
+  overflow-y: auto;
+  max-height: 600px;
+  border-right: 2px solid #ddd;
+}
+.messages-panel {
+  overflow-y: auto;
+  max-height: 600px;
+  border-left: 2px solid #ddd;
+}
+
+/* Messages list styling */
+.messages-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+  max-height: 400px;
+  overflow-y: auto;
+}
+.messages-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+.messages-panel textarea {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-bottom: 8px;
+}
+
+/* Summary cards for admin applications */
+.summary-cards {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.summary-card {
+  background-color: #f7f8fa;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 12px;
+  flex: 1;
+  text-align: center;
+}
+.summary-card h4 {
+  margin: 0 0 4px 0;
+}
+.summary-card p {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+/* Applicant edit page attachments and messages styling */
+#existing-attachments p {
+  margin: 0 0 4px 0;
+}
+#messages-container { margin-top: 12px; }
+#messages-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px 0;
+}
+#messages-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid #eee;
+}
+
+/* Highlight flagged fields */
+.field-row.flagged { background-color: #ffe5e5; }
+
+/* Promo info card on applicant edit page */
+.promo-card-info {
+  background-color: #f7f8fa;
+  border: 1px solid #e6e6e6;
+  border-radius: 8px;
+  padding: 12px;
+}
+.promo-card-info h3 { margin: 0 0 8px 0; }
+
+/* Attachment items with remove button */
+.attachment-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.attachment-item a {
+  flex: 1;
+  text-decoration: none;
+  color: #0045ad;
+}
+.attachment-item .remove-attachment {
+  background-color: #c0392b;
+  color: #fff;
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 12px;
+}
+.attachment-item .remove-attachment:hover { background-color: #a93226; }

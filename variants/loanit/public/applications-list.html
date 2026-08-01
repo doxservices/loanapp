@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Loan Application System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    :root {
+      --primary: #1a2a6c;
+      --secondary: #2a4cb3;
+      --accent: #3a6ee0;
+      --light: #e3f2fd;
+      --dark: #0d1b3a;
+      --darker: #080f23;
+      --success: #27ae60;
+      --danger: #c0392b;
+      --warning: #f39c12;
+      --info: #3498db;
+      --dropdown-bg: #0d1b3a;
+      --table-border: rgba(255, 255, 255, 0.15);
+      --table-header: rgba(0, 0, 0, 0.3);
+    }
+    
+    body {
+      background: linear-gradient(135deg, var(--dark), var(--primary));
+      color: white;
+      min-height: 100vh;
+      padding: 15px;
+    }
+    
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      padding: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    header {
+      text-align: center;
+      padding: 15px 0;
+      margin-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .logo {
+      font-size: 32px;
+      margin-bottom: 8px;
+      color: var(--accent);
+    }
+    
+    h1 {
+      font-size: 28px;
+      margin-bottom: 5px;
+    }
+    
+    .subtitle {
+      color: #c3cfe2;
+      font-size: 16px;
+      margin-bottom: 20px;
+    }
+    
+    .navigation {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+    
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      text-decoration: none;
+      flex: 1;
+    }
+    
+    .btn i {
+      margin-right: 8px;
+    }
+    
+    .btn:hover {
+      background: var(--secondary);
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .filter-bar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 12px;
+      flex-wrap: wrap;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .filter-bar label {
+      color: #bbdefb;
+      font-weight: 500;
+      font-size: 14px;
+    }
+    
+    .filter-bar select, .filter-bar input {
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: var(--dropdown-bg);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 14px;
+      flex: 1;
+      min-width: 120px;
+    }
+    
+    /* Improved dropdown styling */
+    .filter-bar select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23bbdefb' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 16px;
+      padding-right: 40px;
+    }
+    
+    .status {
+      color: #bbdefb;
+      margin-left: auto;
+      font-size: 14px;
+      text-align: center;
+    }
+    
+    .table-container {
+      overflow: auto;
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--table-border);
+      margin-bottom: 20px;
+      max-height: 60vh;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    /* Enhanced table styling */
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+      min-width: 1000px;
+    }
+    
+    th, td {
+      padding: 14px 12px;
+      text-align: left;
+      border-right: 1px solid var(--table-border);
+      white-space: nowrap;
+    }
+    
+    th {
+      background: var(--table-header);
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+      font-size: 13px;
+      border-bottom: 2px solid var(--table-border);
+      color: #e3f2fd;
+    }
+    
+    th:last-child, td:last-child {
+      border-right: none;
+    }
+    
+    tr {
+      border-bottom: 1px solid var(--table-border);
+    }
+    
+    tr:last-child {
+      border-bottom: none;
+    }
+    
+    tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+    
+    .status-badge {
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 500;
+      display: inline-block;
+    }
+    
+    .status-approved {
+      background: rgba(39, 174, 96, 0.2);
+      color: #27ae60;
+      border: 1px solid rgba(39, 174, 96, 0.3);
+    }
+    
+    .status-pending {
+      background: rgba(243, 156, 18, 0.2);
+      color: #f39c12;
+      border: 1px solid rgba(243, 156, 18, 0.3);
+    }
+    
+    .status-rejected {
+      background: rgba(192, 57, 43, 0.2);
+      color: #c0392b;
+      border: 1px solid rgba(192, 57, 43, 0.3);
+    }
+    
+    /* Updated action buttons with new icon designs */
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
+      cursor: pointer;
+      margin-right: 6px;
+      transition: all 0.3s ease;
+    }
+    
+    .action-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+    
+    .action-btn.view:hover {
+      background: rgba(52, 152, 219, 0.3);
+      border-color: rgba(52, 152, 219, 0.5);
+    }
+    
+    .action-btn.edit:hover {
+      background: rgba(243, 156, 18, 0.3);
+      border-color: rgba(243, 156, 18, 0.5);
+    }
+    
+    .action-btn.delete:hover {
+      background: rgba(231, 76, 60, 0.3);
+      border-color: rgba(231, 76, 60, 0.5);
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 50px 15px;
+      color: #bbdefb;
+    }
+    
+    .empty-state i {
+      font-size: 48px;
+      margin-bottom: 15px;
+      color: var(--accent);
+      opacity: 0.7;
+    }
+    
+    .empty-state h3 {
+      font-size: 20px;
+      margin-bottom: 10px;
+      font-weight: 500;
+    }
+    
+    .empty-state p {
+      font-size: 15px;
+      opacity: 0.8;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 20px 0;
+      margin-top: 30px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: #bbdefb;
+      font-size: 14px;
+    }
+    
+    /* Scrollbar styling */
+    ::-webkit-scrollbar {
+      width: 10px;
+      height: 10px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 5px;
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+    
+    /* Mobile menu button */
+    .mobile-menu-btn {
+      display: none;
+      background: var(--accent);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-bottom: 15px;
+      width: 100%;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Responsive Design */
+    @media (max-width: 768px) {
+      body {
+        padding: 10px;
+      }
+      
+      .container {
+        padding: 15px;
+        border-radius: 12px;
+      }
+      
+      header {
+        padding: 10px 0;
+      }
+      
+      .logo {
+        font-size: 28px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .subtitle {
+        font-size: 14px;
+      }
+      
+      .navigation {
+        flex-direction: column;
+      }
+      
+      .btn {
+        width: 100%;
+        padding: 12px;
+      }
+      
+      .filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+      
+      .filter-bar select, .filter-bar input {
+        width: 100%;
+        min-width: auto;
+      }
+      
+      .status {
+        margin-left: 0;
+        text-align: center;
+        width: 100%;
+      }
+      
+      th, td {
+        padding: 10px 8px;
+        font-size: 13px;
+      }
+      
+      .action-btn {
+        width: 32px;
+        height: 32px;
+        margin-right: 4px;
+      }
+      
+      .empty-state {
+        padding: 30px 10px;
+      }
+      
+      .empty-state i {
+        font-size: 36px;
+      }
+      
+      footer {
+        padding: 15px 0;
+        font-size: 13px;
+      }
+      
+      .mobile-menu-btn {
+        display: flex;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .container {
+        padding: 12px;
+      }
+      
+      h1 {
+        font-size: 22px;
+      }
+      
+      .btn {
+        font-size: 14px;
+        padding: 10px;
+      }
+      
+      th, td {
+        padding: 8px 6px;
+        font-size: 12px;
+      }
+      
+      .status-badge {
+        font-size: 11px;
+        padding: 4px 8px;
+      }
+      
+      .action-btn {
+        width: 30px;
+        height: 30px;
+        margin-right: 3px;
+      }
+      
+      .action-btn i {
+        font-size: 12px;
+      }
+    }
+    
+    /* Special handling for very small screens */
+    @media (max-width: 360px) {
+      body {
+        padding: 8px;
+      }
+      
+      .container {
+        padding: 10px;
+      }
+      
+      h1 {
+        font-size: 20px;
+      }
+      
+      .btn {
+        font-size: 13px;
+      }
+      
+      .filter-bar {
+        padding: 10px;
+      }
+      
+      .filter-bar select, .filter-bar input {
+        padding: 8px;
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <button class="mobile-menu-btn">
+      <i class="fas fa-bars"></i> Menu
+    </button>
+    
+    <header>
+      <div class="logo">
+        <i class="fas fa-hand-holding-usd"></i>
+      </div>
+      <h1>Loan Application System</h1>
+      <p class="subtitle">Admin Applications Dashboard</p>
+    </header>
+    
+    <div class="navigation">
+      <a href="index.html" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Back to Application
+      </a>
+      <button id="refresh-btn" class="btn">
+        <i class="fas fa-sync-alt"></i> Refresh Applications
+      </button>
+    </div>
+    
+    <!-- Filter Bar -->
+    <div class="filter-bar">
+      <label for="limit">Show</label>
+      <select id="limit">
+        <option value="10">10</option>
+        <option value="25">25</option>
+        <option value="50" selected>50</option>
+        <option value="100">100</option>
+      </select>
+      
+      <label for="status-filter">Status</label>
+      <select id="status-filter">
+        <option value="all">All Statuses</option>
+        <option value="approved">Approved</option>
+        <option value="pending">Pending</option>
+        <option value="rejected">Rejected</option>
+      </select>
+      
+      <input type="text" id="search" placeholder="Search applications...">
+      
+      <span id="status" class="status">Click Refresh to load applications</span>
+    </div>
+    
+    <!-- Applications Table -->
+    <div class="table-container">
+      <table id="applications-table">
+        <thead>
+          <tr>
+            <th>App ID</th>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Parish</th>
+            <th>Term</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <!-- Table rows will be populated by JavaScript -->
+        </tbody>
+      </table>
+      
+      <div id="empty-state" class="empty-state">
+        <i class="fas fa-database"></i>
+        <h3>No Applications Loaded</h3>
+        <p>Click the Refresh button to load application data</p>
+      </div>
+    </div>
+    
+    <footer>
+      <p>Loan Application System &copy; 2025 | Dox Services</p>
+      <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
+    </footer>
+  </div>
+
+  <script>
+    // Sample data for demonstration
+    const sampleApplications = [
+      {
+        application_id: 'APP-00125',
+        first_name: 'John',
+        last_name: 'Smith',
+        email: 'john.smith@example.com',
+        phone_full: '(876) 123-4567',
+        address1: '123 Main Street',
+        address2: 'Kingston 10',
+        parish: 'Kingston',
+        term_months: '12',
+        loan_amount: '150,000',
+        status: 'pending',
+        created_at: '2025-08-18T10:30:00Z'
+      },
+      {
+        application_id: 'APP-00124',
+        first_name: 'Sarah',
+        last_name: 'Johnson',
+        email: 'sarahj@example.com',
+        phone_full: '(876) 234-5678',
+        address1: '45 Oak Avenue',
+        address2: '',
+        parish: 'St. Andrew',
+        term_months: '18',
+        loan_amount: '250,000',
+        status: 'approved',
+        created_at: '2025-08-17T14:22:00Z'
+      },
+      {
+        application_id: 'APP-00123',
+        first_name: 'Michael',
+        last_name: 'Brown',
+        email: 'm.brown@example.com',
+        phone_full: '(876) 345-6789',
+        address1: '78 Pine Road',
+        address2: 'Apartment 5B',
+        parish: 'St. Catherine',
+        term_months: '6',
+        loan_amount: '100,000',
+        status: 'pending',
+        created_at: '2025-08-16T09:15:00Z'
+      },
+      {
+        application_id: 'APP-00122',
+        first_name: 'Emily',
+        last_name: 'Davis',
+        email: 'emilyd@example.com',
+        phone_full: '(876) 456-7890',
+        address1: '22 Cherry Lane',
+        address2: '',
+        parish: 'Portland',
+        term_months: '12',
+        loan_amount: '75,000',
+        status: 'rejected',
+        created_at: '2025-08-15T16:45:00Z'
+      },
+      {
+        application_id: 'APP-00121',
+        first_name: 'Robert',
+        last_name: 'Wilson',
+        email: 'rwilson@example.com',
+        phone_full: '(876) 567-8901',
+        address1: '90 Maple Street',
+        address2: '',
+        parish: 'St. James',
+        term_months: '24',
+        loan_amount: '200,000',
+        status: 'approved',
+        created_at: '2025-08-14T11:20:00Z'
+      }
+    ];
+
+    // Function to escape HTML to prevent XSS
+    function esc(s) {
+      if (s == null) return '';
+      return s.toString()
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#39;');
+    }
+
+    // Function to format date
+    function fmtDate(v) {
+      if (!v) return '';
+      try {
+        return new Date(v).toLocaleString();
+      } catch {
+        return v;
+      }
+    }
+
+    // Function to fetch and display applications
+    function fetchApplications() {
+      const limit = document.getElementById('limit').value || 50;
+      const statusFilter = document.getElementById('status-filter').value;
+      const searchTerm = document.getElementById('search').value.toLowerCase();
+      const statusElement = document.getElementById('status');
+      const tableElement = document.getElementById('applications-table');
+      const emptyStateElement = document.getElementById('empty-state');
+      
+      statusElement.textContent = 'Loading...';
+      
+      // Simulate API call delay
+      setTimeout(() => {
+        // In a real application, you would fetch from your API
+        // For demo purposes, we'll use the sample data
+        let applications = sampleApplications;
+        
+        // Apply filters
+        if (statusFilter !== 'all') {
+          applications = applications.filter(app => app.status === statusFilter);
+        }
+        
+        if (searchTerm) {
+          applications = applications.filter(app => 
+            app.first_name.toLowerCase().includes(searchTerm) ||
+            app.last_name.toLowerCase().includes(searchTerm) ||
+            app.email.toLowerCase().includes(searchTerm) ||
+            app.application_id.toLowerCase().includes(searchTerm)
+          );
+        }
+        
+        // Apply limit
+        applications = applications.slice(0, limit);
+        
+        const tbody = document.getElementById('table-body');
+        tbody.innerHTML = '';
+        
+        if (applications.length === 0) {
+          tableElement.style.display = 'none';
+          emptyStateElement.style.display = 'block';
+          statusElement.textContent = 'No applications found';
+          return;
+        }
+        
+        tableElement.style.display = 'table';
+        emptyStateElement.style.display = 'none';
+        
+        for (const app of applications) {
+          const tr = document.createElement('tr');
+          
+          // Determine status badge class
+          let statusClass = 'status-pending';
+          if (app.status === 'approved') statusClass = 'status-approved';
+          if (app.status === 'rejected') statusClass = 'status-rejected';
+          
+          tr.innerHTML = `
+            <td>${esc(app.application_id)}</td>
+            <td>${esc(app.first_name)} ${esc(app.last_name)}</td>
+            <td>${esc(app.email)}</td>
+            <td>${esc(app.phone_full || '')}</td>
+            <td>${esc(app.address1)}${app.address2 ? '<br><span style="color: #bbdefb; font-size: 12px;">' + esc(app.address2) + '</span>' : ''}</td>
+            <td>${esc(app.parish || '')}</td>
+            <td>${esc(app.term_months ?? '')} months</td>
+            <td>JMD ${esc(app.loan_amount ?? '')}</td>
+            <td><span class="status-badge ${statusClass}">${esc(app.status)}</span></td>
+            <td>${fmtDate(app.created_at)}</td>
+            <td>
+              <button class="action-btn view" title="View" onclick="viewApplication('${esc(app.application_id)}')">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="action-btn edit" title="Edit" onclick="editApplication('${esc(app.application_id)}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="action-btn delete" title="Delete" onclick="deleteApplication('${esc(app.application_id)}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          `;
+          
+          tbody.appendChild(tr);
+        }
+        
+        statusElement.textContent = `Loaded ${applications.length} application(s)`;
+      }, 800);
+    }
+
+    // Function to view application details
+    function viewApplication(appId) {
+      alert(`Viewing application: ${appId}`);
+      // In a real application, you would navigate to a detail page or show a modal
+    }
+
+    // Function to edit application
+    function editApplication(appId) {
+      alert(`Editing application: ${appId}`);
+      // In a real application, you would navigate to an edit page or show a form
+    }
+
+    // Function to delete application
+    function deleteApplication(appId) {
+      if (confirm(`Are you sure you want to delete application ${appId}?`)) {
+        alert(`Application ${appId} deleted successfully.`);
+        // In a real application, you would make an API call to delete the application
+        fetchApplications(); // Refresh the list
+      }
+    }
+
+    // Set up event listeners when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      // Initially hide the table and show empty state
+      document.getElementById('applications-table').style.display = 'none';
+      document.getElementById('empty-state').style.display = 'block';
+      
+      // Set up refresh button
+      document.getElementById('refresh-btn').addEventListener('click', fetchApplications);
+      
+      // Set up filter change events
+      document.getElementById('limit').addEventListener('change', fetchApplications);
+      document.getElementById('status-filter').addEventListener('change', fetchApplications);
+      
+      // Set up search with debounce
+      let searchTimeout;
+      document.getElementById('search').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(fetchApplications, 300);
+      });
+      
+      // Mobile menu button functionality
+      document.querySelector('.mobile-menu-btn').addEventListener('click', function() {
+        alert('Mobile menu would open here. Could show additional navigation options.');
+      });
+    });
+  </script>
+</body>
+</html>

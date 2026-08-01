@@ -1,0 +1,6 @@
+node_modules/
+.env
+.env.*
+.chat-archive/
+variants/*/storage/
+variants/*/scripts/storage/

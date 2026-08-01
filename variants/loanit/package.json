@@ -1,0 +1,13 @@
+{
+  "name": "loan-system-mvp",
+  "version": "1.0.0",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "express": "^4.19.2",
+    "multer": "^2.2.0"
+  }
+}

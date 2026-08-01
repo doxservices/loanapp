@@ -1,0 +1,204 @@
+#!/bin/bash
+set -euo pipefail
+
+# Move to project root (the directory containing this script is scripts/)
+cd "$(dirname "$0")/.."
+
+echo "Running setup for loan-system-mvp..."
+
+# Install dependencies only if node_modules is missing. This keeps repeated setups fast.
+if [ ! -d node_modules ]; then
+  if [ -f package-lock.json ]; then
+    npm ci
+  else
+    npm install
+  fi
+fi
+
+# Ensure the storage directory exists
+mkdir -p storage/data
+
+# Seed default promotions if none exist. Five default promotions are added for demo purposes.
+promos_file="storage/data/promotions.json"
+if [ ! -f "$promos_file" ]; then
+  cat > "$promos_file" <<'JSON'
+[
+  {
+    "id": 1,
+    "name": "Starter 30",
+    "description": "Basic loan promotion",
+    "currency": "JMD",
+    "principal": 30000,
+    "monthlyInterestPct": 10,
+    "termMode": "selectable",
+    "fixedTermMonths": null,
+    "allowedTerms": [3, 6, 12],
+    "createdAt": "2025-08-16T00:00:00.000Z"
+  },
+  {
+    "id": 2,
+    "name": "Premium Promotion",
+    "description": "Higher value loan at lower rate",
+    "currency": "JMD",
+    "principal": 250000,
+    "monthlyInterestPct": 8,
+    "termMode": "selectable",
+    "fixedTermMonths": null,
+    "allowedTerms": [6, 12, 18],
+    "createdAt": "2025-08-16T00:00:00.000Z"
+  },
+  {
+    "id": 3,
+    "name": "Back to School 2025",
+    "description": "Special promotion for back‑to‑school expenses",
+    "currency": "JMD",
+    "principal": 50000,
+    "monthlyInterestPct": 12,
+    "termMode": "selectable",
+    "fixedTermMonths": null,
+    "allowedTerms": [3],
+    "createdAt": "2025-08-16T00:00:00.000Z"
+  },
+  {
+    "id": 4,
+    "name": "Payday Loan",
+    "description": "Short‑term payday loan",
+    "currency": "JMD",
+    "principal": 100000,
+    "monthlyInterestPct": 20,
+    "termMode": "fixed",
+    "fixedTermMonths": 1,
+    "allowedTerms": [],
+    "createdAt": "2025-08-16T00:00:00.000Z"
+  },
+  {
+    "id": 5,
+    "name": "Home Improvement Loan",
+    "description": "Finance your home improvements",
+    "currency": "JMD",
+    "principal": 150000,
+    "monthlyInterestPct": 9,
+    "termMode": "selectable",
+    "fixedTermMonths": null,
+    "allowedTerms": [6, 12, 18],
+    "createdAt": "2025-08-16T00:00:00.000Z"
+  }
+]
+JSON
+fi
+
+# Seed default applications if none exist. Includes a sample loan application for demonstration.
+apps_file="storage/data/applications.json"
+if [ ! -f "$apps_file" ]; then
+  cat > "$apps_file" <<'JSON'
+[
+  {
+    "id": 1,
+    "createdAt": "2025-08-16T01:00:00.000Z",
+    "promotionId": 1,
+    "selectedTermMonths": 12,
+    "promoSnapshot": {
+      "name": "Starter - 100k @ 10% monthly",
+      "currency": "JMD",
+      "principal": 100000,
+      "monthlyInterestPct": 10,
+      "termMode": "selectable",
+      "fixedTermMonths": null,
+      "allowedTerms": [3, 6, 12]
+    },
+    "applicant": {
+      "firstName": "Jane",
+      "lastName": "Doe",
+      "email": "jane@example.com",
+      "phone": "876-555-0101",
+      "trn": "234567890",
+      "addressLine1": "1 Main St",
+      "addressLine2": "Suite 2",
+      "parish": "Saint Catherine"
+    },
+    "status": "Pending Applicant",
+    "reason": "Need more info",
+    "reviewFlags": {
+      "email": true,
+      "trn": true
+    }
+  },
+  {
+    "id": 2,
+    "createdAt": "2025-08-16T15:27:49.906Z",
+    "promotionId": 5,
+    "selectedTermMonths": 6,
+    "applicant": {
+      "firstName": "Xavier",
+      "lastName": "Hemmings",
+      "email": "x_hemmings@yahoo.com",
+      "trn": "123456789",
+      "addressLine1": "Address 1",
+      "addressLine2": "My Address",
+      "parish": "Saint Catherine",
+      "phone": "1-876-1234567"
+    },
+    "status": "Pending Applicant",
+    "reason": "",
+    "reviewFlags": {
+      "phone": true,
+      "trn": true,
+      "addressLine1": true,
+      "addressLine2": true
+    },
+    "promoSnapshot": {
+      "name": "Home Improvement Loan",
+      "currency": "JMD",
+      "principal": 150000,
+      "monthlyInterestPct": 9,
+      "termMode": "selectable",
+      "fixedTermMonths": null,
+      "allowedTerms": [6, 12, 18]
+    }
+  }
+]
+JSON
+fi
+
+# Seed default users if none exist. Two simple users are provided for demonstration.
+users_file="storage/data/users.json"
+if [ ! -f "$users_file" ]; then
+  cat > "$users_file" <<'JSON'
+[
+  {
+    "id": 1,
+    "name": "Admin",
+    "email": "admin@example.com",
+    "role": "admin"
+  },
+  {
+    "id": 2,
+    "name": "User",
+    "email": "user@example.com",
+    "role": "applicant"
+  }
+]
+JSON
+fi
+
+# Seed default loans if none exist. Loans represent active lending agreements.
+loans_file="storage/data/loans.json"
+if [ ! -f "$loans_file" ]; then
+  cat > "$loans_file" <<'JSON'
+[
+  {
+    "id": 1,
+    "userId": 2,
+    "promotionId": 1,
+    "principal": 100000,
+    "interestRatePct": 10,
+    "termMonths": 6,
+    "status": "Active",
+    "createdAt": "2025-08-16T02:00:00.000Z"
+  }
+]
+JSON
+fi
+
+echo "Starting server..."
+npm run start
