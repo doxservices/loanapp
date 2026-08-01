@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="/analytics.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Standing Orders (Admin)</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px}
+    h1{margin:0 0 4px}
+    .muted{color:#666;font-size:12px}
+    .bar{display:flex;gap:8px;align-items:center;margin:12px 0}
+    button{padding:8px 10px;font-size:14px}
+    table{border-collapse:collapse;width:100%;font-size:13px}
+    th,td{border:1px solid #ddd;padding:6px 8px;vertical-align:top;text-align:left}
+    th{background:#f5f5f7;position:sticky;top:0;white-space:nowrap}
+    tr:hover td{background:#f8faff}
+    details{cursor:pointer}
+    pre{margin:6px 0 0;font-size:11px;background:#f7f7f9;padding:8px;border-radius:6px;max-width:480px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h1>Standing Order Submissions</h1>
+  <div class="muted">Records are stored locally on this machine only and are visible to the doxservices admin account only. Nothing is saved to GitHub.</div>
+  <div class="bar"><button id="refresh">Refresh</button><span id="status" class="muted"></span><a href="/admin-nav.html" style="margin-left:auto">← Admin navigation</a></div>
+  <div style="overflow:auto">
+    <table id="tbl">
+      <thead><tr>
+        <th>Submitted</th><th>Borrower</th><th>Contact</th><th>Loan Amount</th><th>Payment</th>
+        <th>Frequency</th><th>Start</th><th>Term (months)</th><th>Bank</th><th>Full record</th>
+      </tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script>
+    async function load() {
+      const status = document.getElementById('status');
+      status.textContent = 'Loading…';
+      try {
+        const res = await fetch('/standing-orders');
+        const json = await res.json();
+        if (!json.ok) { status.textContent = 'Error: ' + (json.error || res.status); return; }
+        const tbody = document.querySelector('#tbl tbody');
+        tbody.innerHTML = '';
+        for (const r of json.rows) {
+          const tr = document.createElement('tr');
+          const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+          tr.innerHTML = `
+            <td>${esc((r.submittedAt || '').replace('T',' ').slice(0,19))}</td>
+            <td>${esc(r.borrowerName)}</td>
+            <td>${esc(r.contactNo)}</td>
+            <td>${esc(r.loanAmount)}</td>
+            <td>${esc(r.paymentAmount)}</td>
+            <td>${esc(r.repaymentFrequency)}</td>
+            <td>${esc(r.startDate)}</td>
+            <td>${esc(r.totalMonths)}</td>
+            <td>${esc(r.borrowerBank)}</td>
+            <td><details><summary>view</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>`;
+          tbody.appendChild(tr);
+        }
+        status.textContent = json.rows.length + ' record(s)';
+      } catch (e) { status.textContent = 'Request failed'; }
+    }
+    document.getElementById('refresh').addEventListener('click', load);
+    load();
+  </script>
+</body>
+</html>

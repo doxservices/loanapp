@@ -1,7 +1,6 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-  <script src="/analytics.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Loan It Financing Ltd. - Standing Order Authorization</title>
@@ -1137,27 +1136,7 @@
     function printIfValid() {
       formatMoneyFields();
       if (!validateRequiredFields()) return;
-      recordSubmission();
       window.print();
-    }
-
-    // On completion, send the form data to the local server where it is stored
-    // for admin viewing only (never on GitHub). Fire-and-forget: never blocks printing.
-    function recordSubmission() {
-      try {
-        const ids = ['loanAmount','borrowerName','trn','contactNo','borrowerBank','borrowerBranch',
-          'borrowerAccountName','borrowerAccountNo','contractDate','paymentAmount','repaymentFrequency',
-          'startDate','bankAddressee','bankAddress1','bankAddress2','bankTown','bankParish','bankCountry',
-          'termYears','termMonths','totalMonths'];
-        const data = {};
-        ids.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
-        fetch('/standing-orders', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-          keepalive: true
-        }).catch(() => {});
-      } catch (e) { /* recording must never block the print flow */ }
     }
 
     function setDefaultDates() {

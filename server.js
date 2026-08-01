@@ -4,6 +4,8 @@ const express = require('express');
 const { Pool } = require('pg');
 const crypto = require('crypto');
 const { URL } = require('url');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 app.disable('x-powered-by');
@@ -31,6 +33,53 @@ function requireApiKey(req, res, next) {
   return res.status(401).json({ ok: false, error: 'Unauthorized' });
 }
 
+// ---- Admin lock: HTTP Basic auth for the doxservices account ----
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a)), bb = Buffer.from(String(b));
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+function adminAuth(req, res, next) {
+  const user = process.env.ADMIN_USER || 'doxservices';
+  const pass = process.env.ADMIN_PASSWORD;
+  if (!pass) return res.status(503).json({ ok: false, error: 'ADMIN_PASSWORD not set in .env' });
+  const hdr = req.get('authorization') || '';
+  if (hdr.startsWith('Basic ')) {
+    const [u, ...p] = Buffer.from(hdr.slice(6), 'base64').toString().split(':');
+    if (safeEqual(u, user) && safeEqual(p.join(':'), pass)) return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Loanapp admin (doxservices)"');
+  return res.status(401).send('Authentication required');
+}
+// Admin-only surfaces (pages + data endpoints)
+app.use(['/admin.html', '/admin-applications.html', '/admin-nav.html',
+         '/admin-standing-orders.html', '/applications-list.html'], adminAuth);
+
+// ---- Standing-order records: stored locally only (gitignored), never on GitHub ----
+const SO_FILE = path.join(__dirname, 'storage', 'data', 'standing-orders.json');
+function readStandingOrders() {
+  try { return JSON.parse(fs.readFileSync(SO_FILE, 'utf8')); } catch { return []; }
+}
+
+app.post('/standing-orders', (req, res) => {
+  const b = req.body || {};
+  const rec = { id: `SO-${Date.now()}-${crypto.randomBytes(3).toString('hex')}`,
+    submittedAt: new Date().toISOString(), ...b };
+  try {
+    fs.mkdirSync(path.dirname(SO_FILE), { recursive: true });
+    const all = readStandingOrders();
+    all.push(rec);
+    fs.writeFileSync(SO_FILE, JSON.stringify(all, null, 2));
+    res.json({ ok: true, id: rec.id });
+  } catch (e) {
+    console.error('[SO] write error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to save record' });
+  }
+});
+
+app.get('/standing-orders', adminAuth, (_req, res) => {
+  res.json({ ok: true, rows: readStandingOrders().slice().reverse() });
+});
+
 app.get('/health', async (_req, res) => {
   try { const r = await pool.query('SELECT 1 AS ok'); res.json({ ok: true, db: r.rows?.[0]?.ok === 1 }); }
   catch (e) { res.status(500).json({ ok: false, error: e.message }); }
@@ -50,7 +99,7 @@ app.post('/apply', requireApiKey, async (req, res) => {
   catch (e) { console.error('[DB] insert error:', e.message); res.status(500).json({ ok: false, error: 'Database insert failed' }); }
 });
 
-app.get('/applications', requireApiKey, async (req, res) => {
+app.get('/applications', adminAuth, requireApiKey, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
   try {
     const { rows } = await pool.query(`select application_id,first_name,last_name,email,phone_full,address1,address2,parish,term_months,promotion_id,created_at from applications order by id desc limit $1`, [limit]);

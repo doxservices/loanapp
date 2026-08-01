@@ -4,3 +4,4 @@ node_modules/
 .chat-archive/
 variants/*/storage/
 variants/*/scripts/storage/
+storage/
