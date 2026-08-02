@@ -65,7 +65,7 @@
     }
     
     .subtitle {
-      color: #c3cfe2;
+      color: #e3ecff;
       font-size: 16px;
       margin-bottom: 20px;
     }
@@ -78,8 +78,8 @@
     }
     
     .btn {
-      background: var(--accent);
-      color: white;
+      background: #d3a63b;
+      color: #16202a;
       border: none;
       padding: 12px 20px;
       border-radius: 8px;
@@ -99,7 +99,7 @@
     }
     
     .btn:hover {
-      background: var(--secondary);
+      background: #b8912f;
       transform: translateY(-2px);
     }
     
@@ -123,7 +123,7 @@
     }
     
     .filter-bar label {
-      color: #bbdefb;
+      color: #eaf3ff;
       font-weight: 500;
       font-size: 14px;
     }
@@ -131,16 +131,16 @@
     .filter-bar select, .filter-bar input {
       padding: 10px;
       border-radius: 8px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: white;
+      background: rgba(255, 255, 255, 0.92);
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: #16202a;
       font-size: 14px;
       flex: 1;
       min-width: 120px;
     }
     
     .status {
-      color: #bbdefb;
+      color: #eaf3ff;
       margin-left: auto;
       font-size: 14px;
       text-align: center;
@@ -223,7 +223,7 @@
     .empty-state {
       text-align: center;
       padding: 40px 15px;
-      color: #bbdefb;
+      color: #eaf3ff;
     }
     
     .empty-state i {
@@ -242,7 +242,7 @@
       padding: 20px 0;
       margin-top: 30px;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
-      color: #bbdefb;
+      color: #eaf3ff;
       font-size: 14px;
     }
     
@@ -640,7 +640,7 @@
             <td>${esc(app.first_name)} ${esc(app.last_name)}</td>
             <td>${esc(app.email)}</td>
             <td>${esc(app.phone_full || '')}</td>
-            <td>${esc(app.address1)}${app.address2 ? '<br><span style="color: #bbdefb; font-size: 12px;">' + esc(app.address2) + '</span>' : ''}</td>
+            <td>${esc(app.address1)}${app.address2 ? '<br><span style="color: #eaf3ff; font-size: 12px;">' + esc(app.address2) + '</span>' : ''}</td>
             <td>${esc(app.parish || '')}</td>
             <td>${esc(app.term_months ?? '')} months</td>
             <td>JMD ${esc(app.loan_amount ?? '')}</td>
