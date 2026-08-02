@@ -333,6 +333,19 @@
       border-color: rgba(239, 195, 82, 0.60);
     }
 
+    .info-item.locked {
+      border-left-color: rgba(200, 216, 245, 0.35);
+    }
+    .info-item.locked .field {
+      cursor: default;
+      color: rgba(255,255,255,0.82);
+    }
+    .info-item.locked select.field {
+      cursor: default;
+      opacity: 0.75;
+      background-color: rgba(255,255,255,0.05);
+    }
+
     .info-item h4 {
       margin: 0 0 10px;
       font-size: 12px;
@@ -572,7 +585,7 @@
           <div class="profile-actions">
             <button class="btn" id="editProfileBtn" type="button">
               <span class="icon"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.3a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg></span>
-              Edit Profile
+              <span id="editProfileBtnLabel">Edit Profile</span>
             </button>
             <button class="btn btn-primary" id="newApplicationBtn" type="button">
               <span class="icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L18.5 9H14zM8 13h8v1.75H8zm0 4h8v1.75H8zm0-8h4v1.75H8z"/></svg></span>
@@ -715,6 +728,31 @@
   <script>
     const fields = ['fullName', 'emailAddress', 'phoneArea', 'phoneMid', 'phoneLast', 'trn', 'parish', 'addressLine1', 'addressLine2'];
     const STORAGE_KEY = 'bankingProfileTemplateGoal1to1';
+    let profileEditing = false;
+
+    function setProfileEditable(state) {
+      profileEditing = state;
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el.tagName === 'SELECT') el.disabled = !state;
+        else el.readOnly = !state;
+        const item = el.closest('.info-item');
+        if (item) item.classList.toggle('locked', !state);
+      });
+      document.getElementById('editProfileBtnLabel').textContent = state ? 'Save Changes' : 'Edit Profile';
+    }
+
+    function toggleProfileEdit() {
+      if (profileEditing) {
+        setProfileEditable(false);
+        saveProfile();
+        showNotification('Profile changes saved');
+      } else {
+        setProfileEditable(true);
+        document.getElementById('fullName').focus();
+        showNotification('Profile fields are ready to edit');
+      }
+    }
 
     function showNotification(message) {
       const notification = document.getElementById('notification');
@@ -774,6 +812,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadProfile();
       loadLoans();
+      setProfileEditable(false);
       fields.forEach(id => {
         const el = document.getElementById(id);
         el.addEventListener('input', saveProfile);
@@ -781,8 +820,8 @@
       });
       document.getElementById('emailNotifications').addEventListener('change', () => { saveProfile(); showNotification('Preferences updated'); });
       document.getElementById('logoutBtn').addEventListener('click', () => showNotification('You have been logged out successfully'));
-      document.getElementById('editProfileBtn').addEventListener('click', () => { document.getElementById('fullName').focus(); showNotification('Profile fields are ready to edit'); });
-      document.getElementById('editPersonalInfoBtn').addEventListener('click', () => { document.getElementById('fullName').focus(); showNotification('Profile fields are ready to edit'); });
+      document.getElementById('editProfileBtn').addEventListener('click', toggleProfileEdit);
+      document.getElementById('editPersonalInfoBtn').addEventListener('click', toggleProfileEdit);
       document.getElementById('newApplicationBtn').addEventListener('click', () => { window.location.href = 'user-apply.html'; });
       document.getElementById('downloadHistoryBtn').addEventListener('click', () => showNotification('Loan history export prepared'));
       document.getElementById('viewApplicationsBtn').addEventListener('click', () => showNotification('Displaying all applications'));
