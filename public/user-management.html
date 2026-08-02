@@ -44,9 +44,26 @@
     .nav-links a:hover, .nav-links a.active { background: rgba(66,111,199,0.45); color: #ffffff; }
     .nav-links a i { width: 20px; text-align: center; }
     .main-content { min-width: 0; overflow-x: hidden; }
+
+    .sidebar-toggle {
+      display: none; position: fixed; top: 14px; left: 14px; z-index: 60;
+      width: 42px; height: 42px; border-radius: 10px; background: rgba(10,20,50,0.85);
+      border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 18px;
+      align-items: center; justify-content: center; cursor: pointer;
+    }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 40; }
+    .sidebar-backdrop.show { display: block; }
+
     @media (max-width: 992px) {
-      .admin-container { grid-template-columns: 1fr; }
-      .sidebar { display: none; }
+      .admin-container, .admin-container.attached-layout { grid-template-columns: 1fr; }
+      .admin-container.attached-layout .main-content { margin-left: 0; }
+      .sidebar, .sidebar.attached { display: none; }
+      .sidebar-toggle { display: flex; }
+      .sidebar.mobile-open {
+        display: block; position: fixed; top: 0; left: 0; width: 240px; height: 100vh;
+        z-index: 50; overflow-y: auto; background: rgba(8, 20, 52, 0.98);
+        box-shadow: 8px 0 30px rgba(0,0,0,0.4);
+      }
     }
 
     .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
@@ -177,6 +194,8 @@
   </style>
 </head>
 <body>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <div class="admin-container">
     <aside class="sidebar">
       <div class="logo"><i class="fas fa-university"></i><h1>LoanAdmin Pro</h1></div>
@@ -269,6 +288,15 @@
         document.querySelector('.sidebar').classList.add('attached');
         document.querySelector('.admin-container').classList.add('attached-layout');
       }
+
+      const sidebarEl = document.querySelector('.sidebar');
+      const sidebarToggleBtn = document.getElementById('sidebarToggle');
+      const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+      function openMobileSidebar() { sidebarEl.classList.add('mobile-open'); sidebarBackdrop.classList.add('show'); }
+      function closeMobileSidebar() { sidebarEl.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show'); }
+      sidebarToggleBtn.addEventListener('click', openMobileSidebar);
+      sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+      document.querySelectorAll('.nav-links a').forEach(link => link.addEventListener('click', closeMobileSidebar));
     })();
 
     const deleteModal = document.getElementById('delete-modal');

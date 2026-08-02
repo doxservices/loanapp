@@ -72,11 +72,39 @@
     .form-group { min-width: 0; margin-bottom: 4px; }
     .form-group label { display: block; margin-bottom: 7px; font-weight: 600; font-size: 13px; color: var(--text-soft); }
     .form-group input, .form-group select, .form-group textarea {
-      width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.28); border: 1px solid rgba(255, 255, 255, 0.14);
+      width: 100%; padding: 12px; background: rgba(13, 62, 164, 0.55); border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: 8px; color: white; font-size: 14px; font-family: inherit;
     }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(239,195,82,.2); }
     .form-group select option { background: #0d3ea4; }
+
+    .term-checklist {
+      max-height: 150px; overflow-y: auto;
+      background: rgba(13, 62, 164, 0.55); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px;
+    }
+    .term-checklist .term-check {
+      display: flex; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer;
+      font-size: 14px; color: var(--text-soft); transition: background .15s ease; user-select: none;
+      margin-bottom: 0;
+    }
+    .term-checklist .term-check:hover { background: rgba(255,255,255,0.07); }
+    .term-checklist .term-check:has(.term-check-input:checked) { background: rgba(239,195,82,0.16); color: #fff; }
+    .term-check-input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .term-checklist .term-check-box {
+      width: 18px; height: 18px; flex-shrink: 0; border-radius: 4px; border: 1px solid rgba(255,255,255,0.35);
+      background: rgba(255,255,255,0.06); position: relative; display: inline-block;
+    }
+    .term-check-input:checked + .term-check-box { background: var(--gold); border-color: var(--gold); }
+    .term-check-input:checked + .term-check-box::after {
+      content: ''; position: absolute; left: 5px; top: 2px; width: 5px; height: 9px;
+      border: solid #1f2430; border-width: 0 2px 2px 0; transform: rotate(45deg);
+    }
+    .term-check-input:focus-visible + .term-check-box { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+    .term-checklist::-webkit-scrollbar, .sidebar::-webkit-scrollbar, .main-content::-webkit-scrollbar { width: 9px; }
+    .term-checklist::-webkit-scrollbar-track, .sidebar::-webkit-scrollbar-track, .main-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.22); border-radius: 8px; }
+    .term-checklist::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb, .main-content::-webkit-scrollbar-thumb { background: rgba(239,195,82,0.5); border-radius: 8px; }
+    .term-checklist::-webkit-scrollbar-thumb:hover, .sidebar::-webkit-scrollbar-thumb:hover, .main-content::-webkit-scrollbar-thumb:hover { background: rgba(239,195,82,0.78); }
 
     .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
     .btn {
@@ -101,9 +129,27 @@
     .status-active { background: rgba(39, 174, 96, 0.22); color: #8deebc; }
     .status-pending { background: rgba(243, 156, 18, 0.22); color: #ffcb51; }
 
+    .sidebar-toggle {
+      display: none; position: fixed; top: 14px; left: 14px; z-index: 60;
+      width: 42px; height: 42px; border-radius: 10px; background: rgba(10,20,50,0.85);
+      border: 1px solid rgba(255,255,255,0.22); color: #fff; font-size: 18px;
+      align-items: center; justify-content: center; cursor: pointer;
+    }
+    .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 40; }
+    .sidebar-backdrop.show { display: block; }
+
     @media (max-width: 992px) {
-      .admin-container { grid-template-columns: 1fr; margin: 0; border-radius: 0; }
-      .sidebar { display: none; }
+      .admin-container, .admin-container.attached-layout {
+        grid-template-columns: 1fr; margin: 0; border-radius: 0; max-width: none;
+      }
+      .admin-container.attached-layout .main-content { margin-left: 0; }
+      .sidebar, .sidebar.attached { display: none; }
+      .sidebar-toggle { display: flex; }
+      .sidebar.mobile-open {
+        display: block; position: fixed; top: 0; left: 0; width: 250px; height: 100vh;
+        z-index: 50; overflow-y: auto;
+        background: rgba(8, 20, 52, 0.98); box-shadow: 8px 0 30px rgba(0,0,0,0.4);
+      }
     }
     @media (max-width: 768px) {
       .form-grid { grid-template-columns: 1fr; }
@@ -113,6 +159,8 @@
   </style>
 </head>
 <body>
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fas fa-bars"></i></button>
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
   <div class="admin-container">
     <aside class="sidebar">
       <div class="logo"><i class="fas fa-university"></i><h1>LoanAdmin Pro</h1></div>
@@ -162,11 +210,16 @@
             <select id="termMode"><option value="selectable">Selectable Terms</option><option value="fixed">Fixed Term</option></select>
           </div>
           <div class="form-group">
-            <label for="allowedTerms">Allowed Terms (months)</label>
-            <select id="allowedTerms" multiple style="height: 150px;">
-              <option value="1">1 month</option><option value="3">3 months</option><option value="6">6 months</option>
-              <option value="12">12 months</option><option value="18">18 months</option><option value="24">24 months</option><option value="36">36 months</option>
-            </select>
+            <label>Allowed Terms (months)</label>
+            <div class="term-checklist" id="allowedTerms">
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="1"><span class="term-check-box"></span>1 month</label>
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="3"><span class="term-check-box"></span>3 months</label>
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="6"><span class="term-check-box"></span>6 months</label>
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="12"><span class="term-check-box"></span>12 months</label>
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="18"><span class="term-check-box"></span>18 months</label>
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="24"><span class="term-check-box"></span>24 months</label>
+              <label class="term-check"><input type="checkbox" class="term-check-input" value="36"><span class="term-check-box"></span>36 months</label>
+            </div>
           </div>
           <div class="form-group">
             <label for="fixedTerm">Fixed Term (months)</label>
@@ -227,6 +280,15 @@
         document.querySelector('.sidebar').classList.add('attached');
         document.querySelector('.admin-container').classList.add('attached-layout');
       }
+
+      const sidebarEl = document.querySelector('.sidebar');
+      const sidebarToggleBtn = document.getElementById('sidebarToggle');
+      const sidebarBackdrop = document.getElementById('sidebarBackdrop');
+      function openMobileSidebar() { sidebarEl.classList.add('mobile-open'); sidebarBackdrop.classList.add('show'); }
+      function closeMobileSidebar() { sidebarEl.classList.remove('mobile-open'); sidebarBackdrop.classList.remove('show'); }
+      sidebarToggleBtn.addEventListener('click', openMobileSidebar);
+      sidebarBackdrop.addEventListener('click', closeMobileSidebar);
+      document.querySelectorAll('.nav-links a').forEach(link => link.addEventListener('click', closeMobileSidebar));
 
       const termMode = document.getElementById('termMode');
       const allowedTerms = document.getElementById('allowedTerms').parentElement;
