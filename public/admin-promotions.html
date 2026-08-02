@@ -115,10 +115,10 @@
       <div class="logo"><i class="fas fa-university"></i><h1>LoanAdmin Pro</h1></div>
       <ul class="nav-links">
         <li><a href="admin-dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
-        <li><a href="#" class="active"><i class="fas fa-tags"></i> Manage Promotions</a></li>
+        <li><a href="admin-promotions.html"><i class="fas fa-tags"></i> Manage Promotions</a></li>
         <li><a href="admin-applications.html"><i class="fas fa-file-contract"></i> Manage Applications</a></li>
+        <li><a href="applications-list.html"><i class="fas fa-list-alt"></i> Applications List</a></li>
         <li><a href="user-management.html"><i class="fas fa-users"></i> User Management</a></li>
-        <li><a href="#"><i class="fas fa-chart-line"></i> Analytics</a></li>
         <li><a href="admin.html"><i class="fas fa-cog"></i> Settings</a></li>
         <li><a href="index.html"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
       </ul>
@@ -216,13 +216,9 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', function() {
-      const navLinks = document.querySelectorAll('.nav-links a');
-      navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-          if (this.getAttribute('href') === '#') e.preventDefault();
-          navLinks.forEach(l => l.classList.remove('active'));
-          this.classList.add('active');
-        });
+      const current = location.pathname.split('/').pop();
+      document.querySelectorAll('.nav-links a').forEach(function(link) {
+        if (link.getAttribute('href') === current) link.classList.add('active');
       });
 
       const termMode = document.getElementById('termMode');

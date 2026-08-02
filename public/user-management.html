@@ -30,6 +30,22 @@
       position: relative;
       overflow-x: hidden;
     }
+    .admin-container { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .sidebar { background: rgba(0,0,0,0.32); padding: 20px 0; border-right: 1px solid rgba(255,255,255,0.1); }
+    .sidebar .logo { padding: 0 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+    .sidebar .logo i { font-size: 24px; color: var(--gold); }
+    .sidebar .logo h1 { font-size: 17px; font-weight: 600; margin: 0; }
+    .nav-links { list-style: none; padding: 0 12px; margin: 0; }
+    .nav-links li { margin-bottom: 4px; }
+    .nav-links a { display: flex; align-items: center; gap: 12px; padding: 11px 13px; color: var(--text-soft); text-decoration: none; border-radius: 8px; transition: all 0.2s ease; font-size: 14px; }
+    .nav-links a:hover, .nav-links a.active { background: rgba(239,195,82,0.16); color: var(--gold); }
+    .nav-links a i { width: 20px; text-align: center; }
+    .main-content { min-width: 0; overflow-x: hidden; }
+    @media (max-width: 992px) {
+      .admin-container { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+    }
+
     .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
 
     .container {
@@ -158,7 +174,21 @@
   </style>
 </head>
 <body>
-  <div class="page">
+  <div class="admin-container">
+    <aside class="sidebar">
+      <div class="logo"><i class="fas fa-university"></i><h1>LoanAdmin Pro</h1></div>
+      <ul class="nav-links">
+        <li><a href="admin-dashboard.html"><i class="fas fa-tachometer-alt"></i> Dashboard</a></li>
+        <li><a href="admin-promotions.html"><i class="fas fa-tags"></i> Manage Promotions</a></li>
+        <li><a href="admin-applications.html"><i class="fas fa-file-contract"></i> Manage Applications</a></li>
+        <li><a href="applications-list.html"><i class="fas fa-list-alt"></i> Applications List</a></li>
+        <li><a href="user-management.html"><i class="fas fa-users"></i> User Management</a></li>
+        <li><a href="admin.html"><i class="fas fa-cog"></i> Settings</a></li>
+        <li><a href="index.html"><i class="fas fa-sign-out-alt"></i> Logout</a></li>
+      </ul>
+    </aside>
+    <main class="main-content">
+    <div class="page">
     <div class="container">
       <div class="user-info">
         <span>Welcome, Admin User</span>
@@ -205,6 +235,8 @@
         <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
       </footer>
     </div>
+    </div>
+    </main>
   </div>
 
   <div class="modal" id="delete-modal">
@@ -225,6 +257,13 @@
   </div>
 
   <script>
+    (function() {
+      var current = location.pathname.split('/').pop();
+      document.querySelectorAll('.nav-links a').forEach(function(link) {
+        if (link.getAttribute('href') === current) link.classList.add('active');
+      });
+    })();
+
     const deleteModal = document.getElementById('delete-modal');
     const closeModalButtons = document.querySelectorAll('.close-modal');
     closeModalButtons.forEach(btn => btn.addEventListener('click', () => { deleteModal.style.display = 'none'; }));
