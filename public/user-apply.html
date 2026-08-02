@@ -125,6 +125,7 @@
 
     .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .full-width { grid-column: span 2; }
+    .triple-row { grid-column: span 2; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
 
     .info-item {
       background: linear-gradient(180deg, rgba(69, 119, 218, 0.68), rgba(29, 76, 178, 0.74));
@@ -224,6 +225,7 @@
       .container { padding: 20px 16px 22px; }
       .form-grid { grid-template-columns: 1fr; }
       .full-width { grid-column: span 1; }
+      .triple-row { grid-column: span 1; grid-template-columns: 1fr; }
       h1 { font-size: 26px; }
       .actions-bar { flex-direction: column; }
     }
@@ -275,11 +277,11 @@
               <h4>Last Name</h4>
               <input class="field" type="text" id="lastName" name="lastName" required>
             </div>
-            <div class="info-item full-width">
+            <div class="info-item">
               <h4>Email Address</h4>
               <input class="field" type="email" id="email" name="email" required>
             </div>
-            <div class="info-item full-width">
+            <div class="info-item">
               <h4>Phone Number</h4>
               <div class="formatted-input-group">
                 <select id="phone-area" class="field" style="flex: 0 0 78px;">
@@ -296,49 +298,53 @@
               <h4>TRN (Tax Registration Number)</h4>
               <input class="field" type="text" id="trn" placeholder="123-456-789">
             </div>
-            <div class="info-item">
-              <h4>Loan Term (months)</h4>
-              <select id="termSelect" name="selectedTermMonths" class="field">
-                <option value="12">12 months</option>
-                <option value="24">24 months</option>
-                <option value="36" selected>36 months</option>
-              </select>
+            <div class="triple-row">
+              <div class="info-item">
+                <h4>Address Line 1</h4>
+                <input class="field" type="text" id="addressLine1" name="addressLine1" required>
+              </div>
+              <div class="info-item">
+                <h4>Address Line 2</h4>
+                <input class="field" type="text" id="addressLine2" name="addressLine2">
+              </div>
+              <div class="info-item">
+                <h4>Parish</h4>
+                <select id="parishSelect" name="parish" class="field">
+                  <option value="">Select Parish</option>
+                  <option value="kingston">Kingston</option>
+                  <option value="st-andrew">St. Andrew</option>
+                  <option value="st-catherine">St. Catherine</option>
+                  <option value="clarendon">Clarendon</option>
+                  <option value="manchester">Manchester</option>
+                  <option value="st-ann">St. Ann</option>
+                  <option value="trelawny">Trelawny</option>
+                  <option value="st-james">St. James</option>
+                  <option value="hanover">Hanover</option>
+                  <option value="westmoreland">Westmoreland</option>
+                  <option value="st-elizabeth">St. Elizabeth</option>
+                  <option value="st-mary">St. Mary</option>
+                  <option value="st-thomas">St. Thomas</option>
+                  <option value="portland">Portland</option>
+                </select>
+              </div>
             </div>
-            <div class="info-item full-width">
-              <h4>Upload Photo ID</h4>
-              <input class="field" type="file" id="photoId" accept="image/*">
-            </div>
-            <div class="info-item full-width">
-              <h4>Upload Payslips (PDF or image)</h4>
-              <input class="field" type="file" id="payslips" multiple accept="application/pdf,image/*">
-            </div>
-            <div class="info-item full-width">
-              <h4>Address Line 1</h4>
-              <input class="field" type="text" id="addressLine1" name="addressLine1" required>
-            </div>
-            <div class="info-item full-width">
-              <h4>Address Line 2</h4>
-              <input class="field" type="text" id="addressLine2" name="addressLine2">
-            </div>
-            <div class="info-item">
-              <h4>Parish</h4>
-              <select id="parishSelect" name="parish" class="field">
-                <option value="">Select Parish</option>
-                <option value="kingston">Kingston</option>
-                <option value="st-andrew">St. Andrew</option>
-                <option value="st-catherine">St. Catherine</option>
-                <option value="clarendon">Clarendon</option>
-                <option value="manchester">Manchester</option>
-                <option value="st-ann">St. Ann</option>
-                <option value="trelawny">Trelawny</option>
-                <option value="st-james">St. James</option>
-                <option value="hanover">Hanover</option>
-                <option value="westmoreland">Westmoreland</option>
-                <option value="st-elizabeth">St. Elizabeth</option>
-                <option value="st-mary">St. Mary</option>
-                <option value="st-thomas">St. Thomas</option>
-                <option value="portland">Portland</option>
-              </select>
+            <div class="triple-row">
+              <div class="info-item">
+                <h4>Loan Term (months)</h4>
+                <select id="termSelect" name="selectedTermMonths" class="field">
+                  <option value="12">12 months</option>
+                  <option value="24">24 months</option>
+                  <option value="36" selected>36 months</option>
+                </select>
+              </div>
+              <div class="info-item">
+                <h4>Upload Photo ID</h4>
+                <input class="field" type="file" id="photoId" accept="image/*">
+              </div>
+              <div class="info-item">
+                <h4>Upload Payslips</h4>
+                <input class="field" type="file" id="payslips" multiple accept="application/pdf,image/*">
+              </div>
             </div>
           </div>
         </form>
@@ -363,11 +369,28 @@
       const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
       let data = {};
       try { data = saved ? JSON.parse(saved) : {}; } catch (e) {}
+      // No profile in localStorage (e.g. landing straight on this page) ->
+      // every field below just falls back to '' and stays blank.
 
+      const firstName = document.getElementById('firstName');
+      const lastName = document.getElementById('lastName');
+      const email = document.getElementById('email');
+      const addressLine1 = document.getElementById('addressLine1');
+      const addressLine2 = document.getElementById('addressLine2');
+      const parish = document.getElementById('parishSelect');
       const phoneArea = document.getElementById('phone-area');
       const phoneMid = document.getElementById('phone-mid');
       const phoneLast = document.getElementById('phone-last');
       const trn = document.getElementById('trn');
+
+      const fullName = (data.fullName || '').trim();
+      const nameParts = fullName.split(/\s+/).filter(Boolean);
+      firstName.value = nameParts[0] || '';
+      lastName.value = nameParts.slice(1).join(' ') || '';
+      email.value = data.emailAddress || '';
+      addressLine1.value = data.addressLine1 || '';
+      addressLine2.value = data.addressLine2 || '';
+      if (data.parish) parish.value = data.parish;
 
       if (data.phoneArea) phoneArea.value = data.phoneArea;
       phoneMid.value = data.phoneMid || '';
