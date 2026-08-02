@@ -170,9 +170,20 @@
 
     .field:focus { outline: none; }
 
-    .formatted-input-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .formatted-input-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .formatted-input-group .field { text-align: center; min-width: 0; }
+    .formatted-input-group input.field {
+      flex: 0 1 76px;
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 9px;
+      padding: 8px 6px;
+    }
     .hyphen { color: var(--text-soft); }
+
+    .info-item.locked { border-left-color: rgba(200, 216, 245, 0.35); }
+    .info-item.locked .field { cursor: default; color: rgba(255,255,255,0.82); }
+    .info-item.locked select.field { cursor: default; opacity: 0.75; background-color: rgba(255,255,255,0.05); }
 
     input[type="file"].field { color: var(--text-soft); font-size: 13px; }
     input[type="file"].field::file-selector-button {
@@ -271,25 +282,35 @@
             <div class="info-item full-width">
               <h4>Phone Number</h4>
               <div class="formatted-input-group">
-                <select id="phone-area" class="field" style="flex: 0 0 90px;">
+                <select id="phone-area" class="field" style="flex: 0 0 78px;">
                   <option value="876">(876)</option>
                   <option value="658">(658)</option>
                 </select>
                 <div class="hyphen">-</div>
-                <input type="text" id="phone-mid" class="field" maxlength="3" placeholder="123" style="flex: 1;">
+                <input type="text" id="phone-mid" class="field" maxlength="3" placeholder="123">
                 <div class="hyphen">-</div>
-                <input type="text" id="phone-last" class="field" maxlength="4" placeholder="4567" style="flex: 1;">
+                <input type="text" id="phone-last" class="field" maxlength="4" placeholder="4567">
               </div>
             </div>
             <div class="info-item full-width">
               <h4>TRN (Tax Registration Number)</h4>
-              <div class="formatted-input-group">
-                <input type="text" id="trn1" class="field" maxlength="3" placeholder="123">
-                <div class="hyphen">-</div>
-                <input type="text" id="trn2" class="field" maxlength="3" placeholder="456">
-                <div class="hyphen">-</div>
-                <input type="text" id="trn3" class="field" maxlength="3" placeholder="789">
-              </div>
+              <input class="field" type="text" id="trn" placeholder="123-456-789">
+            </div>
+            <div class="info-item">
+              <h4>Loan Term (months)</h4>
+              <select id="termSelect" name="selectedTermMonths" class="field">
+                <option value="12">12 months</option>
+                <option value="24">24 months</option>
+                <option value="36" selected>36 months</option>
+              </select>
+            </div>
+            <div class="info-item full-width">
+              <h4>Upload Photo ID</h4>
+              <input class="field" type="file" id="photoId" accept="image/*">
+            </div>
+            <div class="info-item full-width">
+              <h4>Upload Payslips (PDF or image)</h4>
+              <input class="field" type="file" id="payslips" multiple accept="application/pdf,image/*">
             </div>
             <div class="info-item full-width">
               <h4>Address Line 1</h4>
@@ -319,22 +340,6 @@
                 <option value="portland">Portland</option>
               </select>
             </div>
-            <div class="info-item">
-              <h4>Loan Term (months)</h4>
-              <select id="termSelect" name="selectedTermMonths" class="field">
-                <option value="12">12 months</option>
-                <option value="24">24 months</option>
-                <option value="36" selected>36 months</option>
-              </select>
-            </div>
-            <div class="info-item full-width">
-              <h4>Upload Photo ID</h4>
-              <input class="field" type="file" id="photoId" accept="image/*">
-            </div>
-            <div class="info-item full-width">
-              <h4>Upload Payslips (PDF or image)</h4>
-              <input class="field" type="file" id="payslips" multiple accept="application/pdf,image/*">
-            </div>
           </div>
         </form>
       </div>
@@ -352,12 +357,33 @@
   </div>
 
   <script>
-    const trn1 = document.getElementById('trn1');
-    const trn2 = document.getElementById('trn2');
-    const trn3 = document.getElementById('trn3');
+    const PROFILE_STORAGE_KEY = 'bankingProfileTemplateGoal1to1';
 
-    trn1.addEventListener('input', function() { if (this.value.length === 3) trn2.focus(); });
-    trn2.addEventListener('input', function() { if (this.value.length === 3) trn3.focus(); });
+    function fillStaticFieldsFromProfile() {
+      const saved = localStorage.getItem(PROFILE_STORAGE_KEY);
+      let data = {};
+      try { data = saved ? JSON.parse(saved) : {}; } catch (e) {}
+
+      const phoneArea = document.getElementById('phone-area');
+      const phoneMid = document.getElementById('phone-mid');
+      const phoneLast = document.getElementById('phone-last');
+      const trn = document.getElementById('trn');
+
+      if (data.phoneArea) phoneArea.value = data.phoneArea;
+      phoneMid.value = data.phoneMid || '';
+      phoneLast.value = data.phoneLast || '';
+      trn.value = data.trn || '';
+
+      phoneArea.disabled = true;
+      phoneMid.readOnly = true;
+      phoneLast.readOnly = true;
+      trn.readOnly = true;
+      [phoneArea, phoneMid, phoneLast, trn].forEach(el => {
+        const item = el.closest('.info-item');
+        if (item) item.classList.add('locked');
+      });
+    }
+    fillStaticFieldsFromProfile();
 
     document.getElementById('promoSelect').addEventListener('change', function() {
       const promoCard = document.querySelector('.promo-card');
@@ -398,6 +424,7 @@
       this.parentNode.insertBefore(successMessage, this.nextSibling);
       successMessage.scrollIntoView({ behavior: 'smooth' });
       this.reset();
+      fillStaticFieldsFromProfile();
     });
 
     const phoneMid = document.getElementById('phone-mid');
