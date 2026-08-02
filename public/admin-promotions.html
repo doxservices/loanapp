@@ -39,7 +39,9 @@
     }
 
     .sidebar { background: rgba(0, 0, 0, 0.28); padding: 20px 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
-    .sidebar.attached { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
+    .sidebar.attached { position: fixed; top: 0; left: 0; width: 250px; height: 100vh; overflow-y: auto; z-index: 10; }
+    .admin-container.attached-layout { grid-template-columns: 1fr; max-width: none; margin: 0; border-radius: 0; }
+    .admin-container.attached-layout .main-content { margin-left: 250px; }
     .logo { padding: 0 20px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
     .logo i { font-size: 26px; color: var(--gold); }
     .logo h1 { font-size: 18px; font-weight: 600; }
@@ -223,6 +225,7 @@
       });
       if ((localStorage.getItem('adminSidebarMode') || 'floating') === 'attached') {
         document.querySelector('.sidebar').classList.add('attached');
+        document.querySelector('.admin-container').classList.add('attached-layout');
       }
 
       const termMode = document.getElementById('termMode');

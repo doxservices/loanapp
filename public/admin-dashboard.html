@@ -30,8 +30,10 @@
     }
 
     .admin-container { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+    .admin-container.attached-layout { grid-template-columns: 1fr; }
+    .admin-container.attached-layout .main-content { margin-left: 240px; }
     .sidebar { background: rgba(0,0,0,0.32); padding: 20px 0; border-right: 1px solid rgba(255,255,255,0.1); }
-    .sidebar.attached { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
+    .sidebar.attached { position: fixed; top: 0; left: 0; width: 240px; height: 100vh; overflow-y: auto; z-index: 10; }
     .sidebar .logo { padding: 0 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
     .sidebar .logo i { font-size: 24px; color: var(--gold); }
     .sidebar .logo h1 { font-size: 17px; font-weight: 600; margin: 0; }
@@ -207,6 +209,7 @@
       });
       if ((localStorage.getItem('adminSidebarMode') || 'floating') === 'attached') {
         document.querySelector('.sidebar').classList.add('attached');
+        document.querySelector('.admin-container').classList.add('attached-layout');
       }
     })();
   </script>
