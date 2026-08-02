@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>User Profile</title>
@@ -399,6 +400,7 @@
     .status-approved { background: rgba(118,224,172,0.16); color: #8deebc; }
     .status-rejected { background: rgba(255,111,111,0.16); color: #ff9a9a; }
     .status-completed { background: rgba(126,194,255,0.16); color: #92ccff; }
+    .dummy-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: rgba(255,167,38,0.22); color: #ffb74d; border: 1px solid rgba(255,167,38,0.4); vertical-align: middle; margin-left: 8px; }
 
     .actions-bar {
       display: flex;
@@ -592,7 +594,7 @@
       <section class="card">
         <div class="card-title">
           <span class="section-icon"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 0 8.95 10h-2.02A7 7 0 1 1 12 5v4l5-5-5-5z"/></svg></span>
-          Loan Application History
+          Loan Application History <span class="dummy-badge">Dummy Data</span>
         </div>
         <table class="loan-table">
           <thead>
@@ -605,39 +607,8 @@
               <th>Status</th>
             </tr>
           </thead>
-          <tbody>
-            <tr>
-              <td>APP-2025-1872</td>
-              <td>Aug 15, 2025</td>
-              <td>Homeowner Advantage</td>
-              <td>$45,000</td>
-              <td>36 months</td>
-              <td><span class="status-badge status-approved">Approved</span></td>
-            </tr>
-            <tr>
-              <td>APP-2025-1645</td>
-              <td>Jul 28, 2025</td>
-              <td>Business Growth</td>
-              <td>$25,000</td>
-              <td>24 months</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
-            </tr>
-            <tr>
-              <td>APP-2025-1423</td>
-              <td>Jun 10, 2025</td>
-              <td>Medical Assistance</td>
-              <td>$12,500</td>
-              <td>18 months</td>
-              <td><span class="status-badge status-pending">Pending</span></td>
-            </tr>
-            <tr>
-              <td>APP-2024-9871</td>
-              <td>Dec 3, 2024</td>
-              <td>Education Support</td>
-              <td>$8,000</td>
-              <td>24 months</td>
-              <td><span class="status-badge status-completed">Completed</span></td>
-            </tr>
+          <tbody id="loan-table-body">
+            <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">Loading…</td></tr>
           </tbody>
         </table>
         <div class="actions-bar">
@@ -713,8 +684,39 @@
       } catch (e) {}
     }
 
+    function esc(s) {
+      if (s == null) return '';
+      return s.toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    }
+    function fmtDate(v) { if (!v) return ''; try { return new Date(v).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); } catch { return v; } }
+
+    async function loadLoans() {
+      const tbody = document.getElementById('loan-table-body');
+      try {
+        const res = await fetch(window.LOANIT_API_BASE + '/api/loans?email=alex.j@example.com');
+        const loans = await res.json();
+        if (!loans.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No loans on record.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = loans.map(l => `
+          <tr>
+            <td>${esc(l.applicationCode)}</td>
+            <td>${fmtDate(l.createdAt)}</td>
+            <td>${esc(l.loanType)}</td>
+            <td>$${Number(l.principal).toLocaleString()}</td>
+            <td>${esc(l.termMonths)} months</td>
+            <td><span class="status-badge status-${esc((l.status || '').toLowerCase())}">${esc(l.status)}</span></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#ff9a9a;">Failed to load loan history.</td></tr>';
+      }
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       loadProfile();
+      loadLoans();
       fields.forEach(id => {
         const el = document.getElementById(id);
         el.addEventListener('input', saveProfile);

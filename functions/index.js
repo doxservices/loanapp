@@ -135,6 +135,42 @@ const PARISHES = ['Hanover', 'Saint Elizabeth', 'Saint James', 'Trelawny', 'West
 
 app.get('/api/parishes', (req, res) => res.json(PARISHES));
 
+// =========================================================================
+// Users & Loans — currently seeded with dummy/placeholder data only
+// (see scripts/seed-dummy-data.js). Every record carries isDummy: true so
+// it's identifiable if/when real user & loan data starts flowing in.
+// =========================================================================
+function userToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, firstName: d.firstName, lastName: d.lastName, email: d.email,
+    phone: d.phone || '', role: d.role || 'applicant', status: d.status || 'active',
+    lastLogin: d.lastLogin || null, isDummy: !!d.isDummy,
+    createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
+  };
+}
+app.get('/api/users', async (req, res) => {
+  const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
+  res.json(snap.docs.map(userToApi));
+});
+
+function loanToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, applicationCode: d.applicationCode || null, userEmail: d.userEmail, userName: d.userName,
+    loanType: d.loanType, principal: d.principal, termMonths: d.termMonths, status: d.status,
+    isDummy: !!d.isDummy,
+    createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
+  };
+}
+app.get('/api/loans', async (req, res) => {
+  const { email } = req.query;
+  let query = db.collection('loans');
+  query = email ? query.where('userEmail', '==', email).orderBy('createdAt', 'desc') : query.orderBy('createdAt', 'desc');
+  const snap = await query.get();
+  res.json(snap.docs.map(loanToApi));
+});
+
 function promoToApi(doc) {
   const d = doc.data();
   return {

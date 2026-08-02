@@ -7,6 +7,14 @@
         { "fieldPath": "applicant.trn", "order": "ASCENDING" },
         { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "loans",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "userEmail", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

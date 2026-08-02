@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Management | Loan System</title>
@@ -129,6 +130,7 @@
     .user-email { font-size: 13px; color: var(--text-soft); }
 
     .status, .role { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+    .dummy-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: rgba(255,167,38,0.22); color: #ffb74d; border: 1px solid rgba(255,167,38,0.4); vertical-align: middle; margin-left: 8px; }
     .status.active { background: rgba(76, 175, 80, 0.2); color: #8deebc; }
     .status.inactive { background: rgba(255, 167, 38, 0.2); color: #ffcb51; }
     .status.pending { background: rgba(66, 165, 245, 0.2); color: #92ccff; }
@@ -190,15 +192,15 @@
       </header>
 
       <div class="stats-grid">
-        <div class="stat-card"><i class="fas fa-users stat-icon"></i><div class="stat-value">1,248</div><div class="stat-label">Total Users</div></div>
-        <div class="stat-card"><i class="fas fa-user-check stat-icon"></i><div class="stat-value">894</div><div class="stat-label">Active Users</div></div>
-        <div class="stat-card"><i class="fas fa-user-clock stat-icon"></i><div class="stat-value">127</div><div class="stat-label">Pending Activation</div></div>
-        <div class="stat-card"><i class="fas fa-user-plus stat-icon"></i><div class="stat-value">42</div><div class="stat-label">New This Week</div></div>
+        <div class="stat-card"><i class="fas fa-users stat-icon"></i><div class="stat-value" id="stat-total">–</div><div class="stat-label">Total Users</div></div>
+        <div class="stat-card"><i class="fas fa-user-check stat-icon"></i><div class="stat-value" id="stat-active">–</div><div class="stat-label">Active Users</div></div>
+        <div class="stat-card"><i class="fas fa-user-clock stat-icon"></i><div class="stat-value" id="stat-pending">–</div><div class="stat-label">Pending Activation</div></div>
+        <div class="stat-card"><i class="fas fa-user-plus stat-icon"></i><div class="stat-value" id="stat-inactive">–</div><div class="stat-label">Inactive</div></div>
       </div>
 
       <div class="management-section">
         <div class="section-header">
-          <div class="section-title"><i class="fas fa-table"></i> User List</div>
+          <div class="section-title"><i class="fas fa-table"></i> User List <span class="dummy-badge">Dummy Data</span></div>
           <div class="controls">
             <div class="search-bar"><i class="fas fa-search"></i><input type="text" placeholder="Search users..."></div>
             <button class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
@@ -210,63 +212,8 @@
           <thead>
             <tr><th>User</th><th>Role</th><th>Status</th><th>Last Login</th><th>Created</th><th>Actions</th></tr>
           </thead>
-          <tbody>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">JD</div><div><div class="user-name">Jane Doe</div><div class="user-email">jane.doe@example.com</div></div></div></td>
-              <td><span class="role">Administrator</span></td>
-              <td><span class="status active">Active</span></td>
-              <td>Today, 09:42 AM</td>
-              <td>15 Jan 2023</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">MS</div><div><div class="user-name">Michael Smith</div><div class="user-email">michael.s@company.com</div></div></div></td>
-              <td><span class="role">Loan Officer</span></td>
-              <td><span class="status active">Active</span></td>
-              <td>Today, 08:15 AM</td>
-              <td>22 Mar 2024</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">RJ</div><div><div class="user-name">Robert Johnson</div><div class="user-email">robert.j@finance.com</div></div></div></td>
-              <td><span class="role">Underwriter</span></td>
-              <td><span class="status active">Active</span></td>
-              <td>Yesterday, 04:30 PM</td>
-              <td>10 Feb 2024</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">EW</div><div><div class="user-name">Emma Wilson</div><div class="user-email">emma.w@business.com</div></div></div></td>
-              <td><span class="role">Loan Officer</span></td>
-              <td><span class="status inactive">Inactive</span></td>
-              <td>3 days ago</td>
-              <td>5 May 2023</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">DB</div><div><div class="user-name">David Brown</div><div class="user-email">david.b@enterprise.com</div></div></div></td>
-              <td><span class="role">Administrator</span></td>
-              <td><span class="status active">Active</span></td>
-              <td>Today, 10:20 AM</td>
-              <td>30 Nov 2023</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">SG</div><div><div class="user-name">Sarah Green</div><div class="user-email">sarah.g@loans.com</div></div></div></td>
-              <td><span class="role">Customer Support</span></td>
-              <td><span class="status pending">Pending</span></td>
-              <td>Never</td>
-              <td>Today</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
-            <tr>
-              <td><div class="user-info-cell"><div class="user-avatar">TP</div><div><div class="user-name">Thomas Parker</div><div class="user-email">thomas.p@financial.com</div></div></div></td>
-              <td><span class="role">Underwriter</span></td>
-              <td><span class="status active">Active</span></td>
-              <td>Yesterday, 06:45 PM</td>
-              <td>18 Jan 2024</td>
-              <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
-            </tr>
+          <tbody id="user-table-body">
+            <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-soft);">Loading…</td></tr>
           </tbody>
         </table>
 
@@ -303,22 +250,71 @@
 
   <script>
     const deleteModal = document.getElementById('delete-modal');
-    const deleteButtons = document.querySelectorAll('.action-btn.delete');
     const closeModalButtons = document.querySelectorAll('.close-modal');
-
-    deleteButtons.forEach(btn => btn.addEventListener('click', () => { deleteModal.style.display = 'flex'; }));
     closeModalButtons.forEach(btn => btn.addEventListener('click', () => { deleteModal.style.display = 'none'; }));
     window.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.style.display = 'none'; });
+
+    // Delete buttons are rendered dynamically (real data), so use delegation.
+    document.getElementById('user-table-body').addEventListener('click', (e) => {
+      if (e.target.closest('.action-btn.delete')) deleteModal.style.display = 'flex';
+    });
+
+    function esc(s) {
+      if (s == null) return '';
+      return s.toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    }
+    function fmtDate(v) { if (!v) return ''; try { return new Date(v).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); } catch { return v; } }
+    function initials(first, last) { return ((first || '')[0] || '').toUpperCase() + ((last || '')[0] || '').toUpperCase(); }
+
+    let allUsers = [];
+    async function fetchUsers() {
+      const tbody = document.getElementById('user-table-body');
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-soft);">Loading…</td></tr>';
+      try {
+        const res = await fetch(window.LOANIT_API_BASE + '/api/users');
+        allUsers = await res.json();
+        renderUsers(allUsers);
+        document.getElementById('stat-total').textContent = allUsers.length;
+        document.getElementById('stat-active').textContent = allUsers.filter(u => u.status === 'active').length;
+        document.getElementById('stat-pending').textContent = allUsers.filter(u => u.status === 'pending').length;
+        document.getElementById('stat-inactive').textContent = allUsers.filter(u => u.status === 'inactive').length;
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#ff9a9a;">Failed to load users.</td></tr>';
+      }
+    }
+
+    function renderUsers(users) {
+      const tbody = document.getElementById('user-table-body');
+      tbody.innerHTML = '';
+      if (users.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-soft);">No users found.</td></tr>';
+        return;
+      }
+      for (const u of users) {
+        const tr = document.createElement('tr');
+        const statusClass = u.status === 'active' ? 'active' : (u.status === 'pending' ? 'pending' : 'inactive');
+        const statusLabel = u.status.charAt(0).toUpperCase() + u.status.slice(1);
+        tr.innerHTML = `
+          <td><div class="user-info-cell"><div class="user-avatar">${esc(initials(u.firstName, u.lastName))}</div><div><div class="user-name">${esc(u.firstName)} ${esc(u.lastName)}</div><div class="user-email">${esc(u.email)}</div></div></div></td>
+          <td><span class="role">${esc(u.role)}</span></td>
+          <td><span class="status ${statusClass}">${esc(statusLabel)}</span></td>
+          <td>${esc(u.lastLogin || '')}</td>
+          <td>${fmtDate(u.createdAt)}</td>
+          <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
+        `;
+        tbody.appendChild(tr);
+      }
+    }
 
     const searchInput = document.querySelector('.search-bar input');
     searchInput.addEventListener('input', function() {
       const searchTerm = this.value.toLowerCase();
-      document.querySelectorAll('.user-table tbody tr').forEach(row => {
-        const userName = row.querySelector('.user-name').textContent.toLowerCase();
-        const userEmail = row.querySelector('.user-email').textContent.toLowerCase();
-        row.style.display = (userName.includes(searchTerm) || userEmail.includes(searchTerm)) ? '' : 'none';
-      });
+      renderUsers(allUsers.filter(u =>
+        `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm) || u.email.toLowerCase().includes(searchTerm)
+      ));
     });
+
+    fetchUsers();
 
     const paginationButtons = document.querySelectorAll('.pagination button');
     paginationButtons.forEach((button, index) => {
