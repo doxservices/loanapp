@@ -281,6 +281,13 @@
 
     .info-item.full-width { grid-column: 1 / -1; }
 
+    .address-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
     .info-item {
       background: linear-gradient(180deg, var(--field-top), var(--field-bottom));
       border: 1px solid rgba(255,255,255,0.14);
@@ -317,11 +324,33 @@
 
     .field::placeholder { color: rgba(255,255,255,0.50); }
 
-    select.field { appearance: none; -webkit-appearance: none; cursor: pointer; }
+    select.field {
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      background-color: rgba(255,255,255,0.09);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23efc352' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
+      background-size: 13px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 9px;
+      padding: 8px 30px 8px 11px;
+      transition: border-color .15s ease, background-color .15s ease;
+    }
+    select.field:hover { border-color: rgba(239,195,82,0.55); background-color: rgba(255,255,255,0.13); }
+    select.field:focus { outline: none; border-color: var(--gold); }
     select.field option { background: #0d3ea4; color: #fff; }
 
-    .formatted-input-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .formatted-input-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .formatted-input-group .field { text-align: center; min-width: 0; }
+    .formatted-input-group input.field {
+      flex: 0 1 76px;
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 9px;
+      padding: 8px 6px;
+    }
     .hyphen { color: var(--text-soft); }
 
     .loan-table {
@@ -466,6 +495,7 @@
       .profile-actions { justify-content: center; }
       .profile-info-grid { grid-template-columns: 1fr; }
       .info-item.full-width { grid-column: auto; }
+      .address-row { grid-template-columns: 1fr; grid-column: auto; }
       .loan-table { display: block; overflow-x: auto; }
       .actions-bar { flex-direction: column; }
       h1 { font-size: 26px; }
@@ -540,43 +570,45 @@
           <div class="info-item">
             <h4>Phone Number</h4>
             <div class="formatted-input-group">
-              <select id="phoneArea" class="field" style="flex: 0 0 82px;">
+              <select id="phoneArea" class="field" style="flex: 0 0 78px;">
                 <option value="876" selected>(876)</option>
                 <option value="658">(658)</option>
               </select>
               <div class="hyphen">-</div>
-              <input type="text" id="phoneMid" class="field" maxlength="3" placeholder="555" value="555" style="flex: 1;" />
+              <input type="text" id="phoneMid" class="field" maxlength="3" placeholder="555" value="555" />
               <div class="hyphen">-</div>
-              <input type="text" id="phoneLast" class="field" maxlength="4" placeholder="1234" value="1234" style="flex: 1;" />
+              <input type="text" id="phoneLast" class="field" maxlength="4" placeholder="1234" value="1234" />
             </div>
           </div>
-          <div class="info-item full-width">
-            <h4>Parish</h4>
-            <select class="field" id="parish">
-              <option value="">Select Parish</option>
-              <option value="kingston" selected>Kingston</option>
-              <option value="st-andrew">St. Andrew</option>
-              <option value="st-catherine">St. Catherine</option>
-              <option value="clarendon">Clarendon</option>
-              <option value="manchester">Manchester</option>
-              <option value="st-ann">St. Ann</option>
-              <option value="trelawny">Trelawny</option>
-              <option value="st-james">St. James</option>
-              <option value="hanover">Hanover</option>
-              <option value="westmoreland">Westmoreland</option>
-              <option value="st-elizabeth">St. Elizabeth</option>
-              <option value="st-mary">St. Mary</option>
-              <option value="st-thomas">St. Thomas</option>
-              <option value="portland">Portland</option>
-            </select>
-          </div>
-          <div class="info-item full-width">
-            <h4>Address Line 1</h4>
-            <input class="field" id="addressLine1" type="text" value="42 Hope Road" />
-          </div>
-          <div class="info-item full-width">
-            <h4>Address Line 2</h4>
-            <input class="field" id="addressLine2" type="text" value="Kingston 10" />
+          <div class="address-row">
+            <div class="info-item">
+              <h4>Address Line 1</h4>
+              <input class="field" id="addressLine1" type="text" value="42 Hope Road" />
+            </div>
+            <div class="info-item">
+              <h4>Address Line 2</h4>
+              <input class="field" id="addressLine2" type="text" value="Kingston 10" />
+            </div>
+            <div class="info-item">
+              <h4>Parish</h4>
+              <select class="field" id="parish">
+                <option value="">Select Parish</option>
+                <option value="kingston" selected>Kingston</option>
+                <option value="st-andrew">St. Andrew</option>
+                <option value="st-catherine">St. Catherine</option>
+                <option value="clarendon">Clarendon</option>
+                <option value="manchester">Manchester</option>
+                <option value="st-ann">St. Ann</option>
+                <option value="trelawny">Trelawny</option>
+                <option value="st-james">St. James</option>
+                <option value="hanover">Hanover</option>
+                <option value="westmoreland">Westmoreland</option>
+                <option value="st-elizabeth">St. Elizabeth</option>
+                <option value="st-mary">St. Mary</option>
+                <option value="st-thomas">St. Thomas</option>
+                <option value="portland">Portland</option>
+              </select>
+            </div>
           </div>
         </div>
       </section>
