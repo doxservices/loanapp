@@ -134,6 +134,79 @@ session; see the dated section below). Connectivity confirmed via `git ls-remote
 session's Firebase migration work is committed and pushed to `main` — see the commit log
 for the exact commit if you need the hash.
 
+## Update — 2026-08-02, later: moved to doxservices.com/loanit-financing/, auth reworked for cross-origin
+
+The user wanted the app reachable from **`doxservices.com/loanit-financing/`**, not the
+Firebase `.web.app` URL or GitHub Pages' own `.github.io` domain. `doxservices.com` turned
+out to already be GitHub Pages itself (confirmed via `nslookup` — resolves to GitHub's
+Pages IPs, `Server: GitHub.com`, custom domain `www.doxservices.com` via a `CNAME` file) —
+it's the **`doxservices/doxservices`** repo, a plain static site with an existing
+`transformation/` folder as precedent for "one subfolder = one product section." So:
+
+- All of this app's static pages now live at **`doxservices/doxservices` → `/loanit-financing/`**
+  (pushed there, not to `doxservices/loanapp`). `doxservices/loanapp`'s `public/` folder
+  is kept as a staging mirror only, still served at `doxservices-loanapp.web.app` for
+  testing changes before pushing the real copy to the site repo — there is no automated
+  sync between the two; changes need to be made/copied to both by hand (or scripted later).
+- **This forced an auth rework.** GitHub Pages can't run Cloud Functions, so the frontend
+  (`doxservices.com`) and backend (`doxservices-loanapp.web.app`, Cloud Functions) are
+  permanently different origins. The cookie-based Google session built earlier the same
+  day would not have survived that reliably (modern browsers increasingly block/partition
+  third-party cookies — Safari ITP, Firefox ETP, Chrome's ongoing phase-out). Fixed by
+  switching to **Bearer-token auth**: the client keeps its Firebase ID token (via the
+  Firebase SDK's own session, `onAuthStateChanged`) and sends `Authorization: Bearer
+  <token>` on every request; the server (`functions/index.js`) verifies it fresh on every
+  single call — no cookie, no server-side session state at all.
+- **HTTP Basic Auth was dropped entirely**, per the user's choice when asked. All 5
+  previously-mixed-auth admin pages (`admin.html`, `admin-applications.html`,
+  `admin-nav.html`, `admin-standing-orders.html`, `applications-list.html`) now use the
+  same Google Sign-In gate, via a new shared script: **`public/admin-auth.js`** (copied
+  into `loanit-financing/` too). It renders a "Sign in with Google" overlay if not
+  authenticated as `doxcorp.services@gmail.com`, and exposes `window.adminAuth.fetch(path,
+  opts)` — same as plain `fetch` but auto-attaches the Bearer token and prefixes the
+  Firebase API base URL. New endpoint `GET /auth/verify` lets the client confirm "am I
+  signed in as the right account" independent of any specific data call.
+- **CORS added** to `functions/index.js` (was not needed before — same-origin). Allow-list
+  lives in `functions/.env` → `CORS_ORIGINS` (currently: `www.doxservices.com`,
+  `doxservices.com`, the Firebase staging URL, and two localhost ports for local testing).
+- **New shared file `public/api-base.js`** (also copied to `loanit-financing/`): sets
+  `window.LOANIT_API_BASE = 'https://doxservices-loanapp.web.app'`. Every page that talks
+  to the API (`index.html`, `applicant-edit.html`, `status.html`, and all 5 admin pages)
+  now builds absolute URLs against this instead of relative paths like `/api/...` — those
+  would otherwise resolve against `doxservices.com` itself (wrong host) once the pages
+  moved out of the same origin as the backend.
+- **All root-relative asset paths fixed** (`/analytics.js` → `analytics.js`, etc.) across
+  every page — they now live in a subfolder (`/loanit-financing/`) on the site, so an
+  absolute `/xxx` path would incorrectly resolve against the site root instead of the
+  subfolder. `admin-nav.html` also got its stale links fixed (it pointed at
+  `/apply-legacy.html` and `/test.html`, both deleted earlier the same day) and now links
+  to the real page set, including the ones from the "full loan-application feature set"
+  work (`user-apply.html`, `status.html`, `admin-promotions.html`, etc.) that weren't in
+  its catalog before.
+- `firebase.json` hosting rewrites trimmed to API-only paths (`/auth/**`, `/api/**`,
+  `/uploads/**`, `/standing-orders`, `/applications`, `/health`) — no more page-path
+  rewrites, since the Function no longer serves any HTML at all (that was only ever needed
+  to gate Basic-Auth/cookie pages server-side; with Bearer tokens, gating is 100%
+  client-side + API-side, so plain static files work fine).
+- **Deployed and smoke-tested for real**, including actual CORS preflight/response headers
+  against `Origin: https://www.doxservices.com` (not just localhost) and a live
+  cross-origin `POST /standing-orders` + `GET /api/promotions` from that exact origin —
+  both confirmed working, then the smoke-test record was deleted from Firestore
+  afterward. Live URLs:
+  - **https://www.doxservices.com/loanit-financing/** — the real, user-facing site
+  - https://doxservices-loanapp.web.app — Firebase staging mirror + the actual API backend
+
+**Still outstanding — same manual step as before, not yet done as of this update:** the
+Google sign-in provider still needs to be enabled once in the Firebase Console
+(https://console.firebase.google.com/project/doxservices-loanapp/authentication/providers
+→ Get started → enable Google → Save). Until that happens, `signInWithPopup` will fail
+client-side with `auth/operation-not-allowed` on every admin page. This could not be
+verified end-to-end in this session since it requires an actual interactive Google OAuth
+popup in a real browser — everything else (CORS, Bearer verification, the `/auth/verify`
+endpoint, page routing) was tested up to that point via curl with forged/garbage tokens
+behaving correctly (401/403 as expected), but the *real* sign-in flow itself needs a human
+in a browser to complete for the first time.
+
 ## Where things are, top to bottom
 
 ```
