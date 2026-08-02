@@ -217,11 +217,7 @@
           </tbody>
         </table>
 
-        <div class="pagination">
-          <button disabled><i class="fas fa-chevron-left"></i></button>
-          <button class="active">1</button><button>2</button><button>3</button><button>4</button><button>5</button>
-          <button><i class="fas fa-chevron-right"></i></button>
-        </div>
+        <div class="pagination" id="pagination"></div>
       </div>
 
       <footer>
@@ -283,14 +279,28 @@
       }
     }
 
+    const PAGE_SIZE = 5;
+    let currentUsers = [];
+    let currentPage = 1;
+
     function renderUsers(users) {
+      currentUsers = users;
+      currentPage = 1;
+      renderPage();
+    }
+
+    function renderPage() {
       const tbody = document.getElementById('user-table-body');
+      const totalPages = Math.max(1, Math.ceil(currentUsers.length / PAGE_SIZE));
+      currentPage = Math.min(currentPage, totalPages);
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const pageUsers = currentUsers.slice(start, start + PAGE_SIZE);
+
       tbody.innerHTML = '';
-      if (users.length === 0) {
+      if (pageUsers.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-soft);">No users found.</td></tr>';
-        return;
       }
-      for (const u of users) {
+      for (const u of pageUsers) {
         const tr = document.createElement('tr');
         const statusClass = u.status === 'active' ? 'active' : (u.status === 'pending' ? 'pending' : 'inactive');
         const statusLabel = u.status.charAt(0).toUpperCase() + u.status.slice(1);
@@ -304,6 +314,23 @@
         `;
         tbody.appendChild(tr);
       }
+      renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+      const el = document.getElementById('pagination');
+      el.innerHTML = '';
+      const mkBtn = (label, page, opts = {}) => {
+        const btn = document.createElement('button');
+        btn.innerHTML = label;
+        if (opts.active) btn.classList.add('active');
+        if (opts.disabled) btn.disabled = true;
+        btn.addEventListener('click', () => { currentPage = page; renderPage(); });
+        return btn;
+      };
+      el.appendChild(mkBtn('<i class="fas fa-chevron-left"></i>', currentPage - 1, { disabled: currentPage <= 1 }));
+      for (let p = 1; p <= totalPages; p++) el.appendChild(mkBtn(String(p), p, { active: p === currentPage }));
+      el.appendChild(mkBtn('<i class="fas fa-chevron-right"></i>', currentPage + 1, { disabled: currentPage >= totalPages }));
     }
 
     const searchInput = document.querySelector('.search-bar input');
@@ -315,15 +342,6 @@
     });
 
     fetchUsers();
-
-    const paginationButtons = document.querySelectorAll('.pagination button');
-    paginationButtons.forEach((button, index) => {
-      button.addEventListener('click', function() {
-        if (this.disabled) return;
-        paginationButtons.forEach(btn => btn.classList.remove('active'));
-        if (index > 0 && index < paginationButtons.length - 1) this.classList.add('active');
-      });
-    });
 
     document.querySelectorAll('.stat-card, .management-section').forEach((element, index) => {
       element.style.opacity = '0';
