@@ -80,10 +80,10 @@
     .container {
       max-width: 960px;
       margin: 32px auto 0;
-      background: linear-gradient(135deg,
-        rgba(105, 151, 226, 0.64) 0%,
-        rgba(31, 91, 190, 0.76) 45%,
-        rgba(5, 48, 132, 0.86) 100%);
+      background: linear-gradient(180deg,
+        rgba(5, 48, 132, 0.86) 0%,
+        rgba(31, 91, 190, 0.76) 50%,
+        rgba(105, 151, 226, 0.64) 100%);
       border: 1px solid rgba(255,255,255,0.26);
       border-radius: 24px;
       padding: 24px 26px 26px;
@@ -251,12 +251,10 @@
     }
 
     .card {
-      background: linear-gradient(180deg, rgba(12, 62, 157, 0.88), rgba(4, 42, 124, 0.92));
+      background: transparent;
       border-radius: 18px;
       padding: 20px 20px 20px;
       border: 1px solid rgba(190, 218, 255, 0.20);
-      backdrop-filter: blur(6px) saturate(110%);
-      -webkit-backdrop-filter: blur(6px) saturate(110%);
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
       margin-bottom: 18px;
       position: relative;
@@ -633,7 +631,6 @@
 
       <section class="card">
         <div class="card-title">
-          <span class="section-icon"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 1 0 8.95 10h-2.02A7 7 0 1 1 12 5v4l5-5-5-5z"/></svg></span>
           Loan Application History <span class="dummy-badge">Dummy Data</span>
         </div>
         <table class="loan-table">
