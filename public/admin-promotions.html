@@ -138,7 +138,31 @@
     .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 40; }
     .sidebar-backdrop.show { display: block; }
 
+    .sidebar-mode-toggle {
+      position: fixed; top: 16px; right: 16px; z-index: 30;
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 12px; background: rgba(10,20,50,0.75);
+      border: 1px solid rgba(205,226,255,0.20); border-radius: 10px;
+      font-size: 12px; font-weight: 600; color: var(--text-soft);
+      backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); user-select: none;
+    }
+    .sidebar-mode-toggle i { color: var(--gold); }
+    .sidebar-mode-toggle span { min-width: 52px; }
+    .mini-switch { position: relative; width: 36px; height: 20px; display: inline-block; flex: 0 0 36px; }
+    .mini-switch input { opacity: 0; width: 0; height: 0; }
+    .mini-slider {
+      position: absolute; inset: 0; border-radius: 999px;
+      background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.22); transition: .2s ease; cursor: pointer;
+    }
+    .mini-slider::before {
+      content: ''; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px;
+      background: #fff; border-radius: 50%; transition: .2s ease; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+    }
+    .mini-switch input:checked + .mini-slider { background: rgba(239,195,82,0.42); border-color: rgba(239,195,82,0.55); }
+    .mini-switch input:checked + .mini-slider::before { transform: translateX(16px); }
+
     @media (max-width: 992px) {
+      .sidebar-mode-toggle { display: none; }
       .admin-container, .admin-container.attached-layout {
         grid-template-columns: 1fr; margin: 0; border-radius: 0; max-width: none;
       }
@@ -161,6 +185,14 @@
 <body>
   <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fas fa-bars"></i></button>
   <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+  <div class="sidebar-mode-toggle">
+    <i class="fas fa-thumbtack"></i>
+    <span id="sidebarModeLabel">Floating</span>
+    <label class="mini-switch">
+      <input type="checkbox" id="sidebarModeSwitch">
+      <span class="mini-slider"></span>
+    </label>
+  </div>
   <div class="admin-container">
     <aside class="sidebar">
       <div class="logo"><i class="fas fa-university"></i><h1>LoanAdmin Pro</h1></div>
@@ -276,10 +308,21 @@
       document.querySelectorAll('.nav-links a').forEach(function(link) {
         if (link.getAttribute('href') === current) link.classList.add('active');
       });
-      if ((localStorage.getItem('adminSidebarMode') || 'floating') === 'attached') {
-        document.querySelector('.sidebar').classList.add('attached');
-        document.querySelector('.admin-container').classList.add('attached-layout');
+      const sidebarModeSwitch = document.getElementById('sidebarModeSwitch');
+      const sidebarModeLabel = document.getElementById('sidebarModeLabel');
+      function applySidebarMode(mode) {
+        const attached = mode === 'attached';
+        document.querySelector('.sidebar').classList.toggle('attached', attached);
+        document.querySelector('.admin-container').classList.toggle('attached-layout', attached);
+        sidebarModeSwitch.checked = attached;
+        sidebarModeLabel.textContent = attached ? 'Attached' : 'Floating';
       }
+      applySidebarMode(localStorage.getItem('adminSidebarMode') || 'floating');
+      sidebarModeSwitch.addEventListener('change', function() {
+        const mode = this.checked ? 'attached' : 'floating';
+        localStorage.setItem('adminSidebarMode', mode);
+        applySidebarMode(mode);
+      });
 
       const sidebarEl = document.querySelector('.sidebar');
       const sidebarToggleBtn = document.getElementById('sidebarToggle');
