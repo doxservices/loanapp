@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Applicant – Edit Your Details</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <!-- Top navigation similar to admin pages -->
+    <nav class="top-nav">
+      <span class="nav-title">Loan Applicant</span>
+      <div class="nav-links">
+        <a href="status.html" id="status-page-link">Status</a>
+        <a href="index.html" id="logout-link">Logout</a>
+      </div>
+    </nav>
+    <h1>Edit Your Application</h1>
+    <!-- Area to display status and reason -->
+    <div id="status-area"></div>
+    <form id="applicant-form" style="display:none;">
+      <input type="hidden" name="id">
+      <!-- Display selected promotion/loan terms -->
+      <div id="promo-info" class="promo-info" style="margin-bottom: 16px;"></div>
+      <div id="flagged-container"></div>
+      <!-- Attachments upload section -->
+      <h3>Attachments</h3>
+      <div id="existing-attachments"></div>
+      <label>
+        Upload Photo ID
+        <input type="file" id="photoId" accept="image/*">
+      </label>
+      <label>
+        Upload Payslips
+        <input type="file" id="payslips" multiple accept="application/pdf,image/*">
+      </label>
+      <!-- Messaging section for applicant to communicate with admin/loan officer -->
+      <h3>Mailbox</h3>
+      <div id="messages-container">
+        <ul id="messages-list"></ul>
+        <label>
+          New Message
+          <textarea id="message-body" rows="2"></textarea>
+        </label>
+        <button type="button" id="send-message-btn">Send Message</button>
+      </div>
+      <button type="submit" class="btn">Save Changes</button>
+      <a href="index.html" class="btn back-btn">Cancel</a>
+    </form>
+
+    <script>
+      // Load parishes for dropdown
+      let parishesList = [];
+      async function loadParishes() {
+        try {
+          const res = await fetch('/api/parishes');
+          parishesList = await res.json();
+        } catch (err) {
+          console.error('Error loading parishes', err);
+        }
+      }
+      // We will call loadParishes when needed before rendering selects
+
+      // Map of field labels
+      const fieldLabels = {
+        firstName: 'First Name',
+        lastName: 'Last Name',
+        email: 'Email',
+        phone: 'Phone',
+        trn: 'TRN',
+        addressLine1: 'Address Line 1',
+        addressLine2: 'Address Line 2',
+        parish: 'Parish'
+      };
+
+      // Get TRN from query parameters
+      const params = new URLSearchParams(window.location.search);
+      const trn = params.get('trn');
+
+      const statusArea = document.getElementById('status-area');
+      const form = document.getElementById('applicant-form');
+      const flaggedContainer = document.getElementById('flagged-container');
+
+      async function loadApplication() {
+        if (!trn) {
+          statusArea.textContent = 'No TRN provided';
+          return;
+        }
+        try {
+          const res = await fetch('/api/applications/trn/' + encodeURIComponent(trn));
+          if (!res.ok) {
+            statusArea.textContent = 'No application found for this TRN';
+            return;
+          }
+          const app = await res.json();
+          // Ensure parishes are loaded before building selects
+          if (parishesList.length === 0) {
+            await loadParishes();
+          }
+          form.elements.id.value = app.id;
+          const flags = app.reviewFlags || {};
+          const applicant = app.applicant || {};
+          // Display status and reason to guide the applicant
+          const statusHTML = [];
+          if (app.status) statusHTML.push('<strong>Status:</strong> ' + app.status);
+          if (app.reason) statusHTML.push('<strong>Reason:</strong> ' + (app.reason || ''));
+          if (statusHTML.length > 0) {
+            statusArea.innerHTML = statusHTML.join('<br>');
+          }
+          // Display promotion details
+          const promoInfoDiv = document.getElementById('promo-info');
+          if (app.promoSnapshot) {
+            const promo = app.promoSnapshot;
+            let termsText = '';
+            if (promo.termMode === 'fixed') {
+              termsText = `${promo.fixedTermMonths} month` + (promo.fixedTermMonths > 1 ? 's' : '');
+            } else if (Array.isArray(promo.allowedTerms) && promo.allowedTerms.length) {
+              termsText = promo.allowedTerms.join(', ') + ' months';
+            }
+            promoInfoDiv.innerHTML = `
+              <div class="promo-card-info">
+                <h3>Loan Terms</h3>
+                <p><strong>Name:</strong> ${promo.name}</p>
+                <p><strong>Principal:</strong> ${promo.currency || ''} ${promo.principal?.toLocaleString() || ''}</p>
+                <p><strong>Interest:</strong> ${promo.monthlyInterestPct}% monthly</p>
+                <p><strong>Terms:</strong> ${termsText}</p>
+              </div>`;
+          } else {
+            promoInfoDiv.innerHTML = '';
+          }
+
+          // Build rows for all applicant fields; highlight flagged ones
+          flaggedContainer.innerHTML = '';
+          Object.keys(applicant).forEach(key => {
+            const row = document.createElement('div');
+            row.className = 'field-row';
+            if (flags[key]) {
+              row.classList.add('flagged');
+            }
+            const lbl = document.createElement('label');
+            lbl.textContent = fieldLabels[key] || key;
+            lbl.htmlFor = 'edit-' + key;
+            // Special phone input: area code + number
+            if (key === 'phone') {
+              const group = document.createElement('div');
+              group.className = 'phone-group';
+              const areaSelect = document.createElement('select');
+              areaSelect.name = 'phone-area';
+              areaSelect.id = 'edit-phone-area';
+              ['876','658'].forEach(code => {
+                const opt = document.createElement('option');
+                opt.value = code;
+                opt.textContent = code;
+                areaSelect.appendChild(opt);
+              });
+              const numberInput = document.createElement('input');
+              numberInput.type = 'text';
+              numberInput.name = 'phone-number';
+              numberInput.id = 'edit-phone-number';
+              numberInput.pattern = '\\d{7}';
+              numberInput.maxLength = 7;
+              let area = '876';
+              let num = '';
+              if (applicant.phone) {
+                const parts = applicant.phone.split('-');
+                if (parts.length === 3) {
+                  area = parts[1];
+                  num = parts[2];
+                }
+              }
+              areaSelect.value = area;
+              numberInput.value = num;
+              group.appendChild(areaSelect);
+              group.appendChild(numberInput);
+              row.appendChild(lbl);
+              row.appendChild(group);
+              flaggedContainer.appendChild(row);
+              return;
+            }
+            // Parish dropdown
+            if (key === 'parish') {
+              const select = document.createElement('select');
+              select.name = 'parish';
+              select.id = 'edit-parish';
+              parishesList.forEach(p => {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                select.appendChild(opt);
+              });
+              select.value = applicant.parish || '';
+              row.appendChild(lbl);
+              row.appendChild(select);
+              flaggedContainer.appendChild(row);
+              return;
+            }
+            // Default input
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.name = key;
+            input.id = 'edit-' + key;
+            input.value = applicant[key] || '';
+            row.appendChild(lbl);
+            row.appendChild(input);
+            flaggedContainer.appendChild(row);
+          });
+          // Display existing attachments with remove buttons
+          const attachmentsDiv = document.getElementById('existing-attachments');
+          attachmentsDiv.innerHTML = '';
+          const attachments = app.attachments || {};
+          // Show photo ID
+          if (attachments.photoId) {
+            const div = document.createElement('div');
+            div.className = 'attachment-item';
+            const fileName = attachments.photoId.split('/').pop();
+            const a = document.createElement('a');
+            a.href = attachments.photoId;
+            a.textContent = fileName || 'Photo ID';
+            a.target = '_blank';
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'remove-attachment';
+            btn.dataset.type = 'photoId';
+            btn.textContent = 'Remove';
+            div.appendChild(a);
+            div.appendChild(btn);
+            attachmentsDiv.appendChild(div);
+          }
+          // Show payslips
+          if (Array.isArray(attachments.payslips)) {
+            attachments.payslips.forEach((url, index) => {
+              const div = document.createElement('div');
+              div.className = 'attachment-item';
+              const fileName = url.split('/').pop();
+              const a = document.createElement('a');
+              a.href = url;
+              a.textContent = fileName || 'Payslip ' + (index + 1);
+              a.target = '_blank';
+              const btn = document.createElement('button');
+              btn.type = 'button';
+              btn.className = 'remove-attachment';
+              btn.dataset.type = 'payslip';
+              btn.dataset.url = url;
+              btn.textContent = 'Remove';
+              div.appendChild(a);
+              div.appendChild(btn);
+              attachmentsDiv.appendChild(div);
+            });
+          }
+          // Render messages (conversation)
+          renderMessages(app.messages || []);
+          // Show form once fields are built
+          form.style.display = '';
+        } catch (err) {
+          statusArea.textContent = 'Error fetching application data';
+          console.error(err);
+        }
+      }
+
+      // Helper to convert a File to a data URI string
+      function readFileAsDataURI(file) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Render messages list
+      function renderMessages(msgs) {
+        const list = document.getElementById('messages-list');
+        list.innerHTML = '';
+        msgs.forEach(msg => {
+          const li = document.createElement('li');
+          const time = new Date(msg.timestamp).toLocaleString();
+          li.textContent = `[${msg.role}] ${time}: ${msg.text}`;
+          list.appendChild(li);
+        });
+      }
+
+      // Handle sending new message
+      document.getElementById('send-message-btn').addEventListener('click', async () => {
+        const bodyEl = document.getElementById('message-body');
+        const text = bodyEl.value.trim();
+        if (!text) return;
+        const appId = form.elements.id.value;
+        try {
+          const res = await fetch('/api/applications/' + appId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ newMessage: { role: 'applicant', text } })
+          });
+          if (res.ok) {
+            const updated = await res.json();
+            renderMessages(updated.messages || []);
+            bodyEl.value = '';
+          } else {
+            alert('Error sending message');
+          }
+        } catch (err) {
+          console.error('Error sending message', err);
+        }
+      });
+
+      // Handle submit
+      form.addEventListener('submit', async e => {
+        e.preventDefault();
+        const appId = form.elements.id.value;
+        const updatedApplicant = {};
+        // Collect updated values
+        flaggedContainer.querySelectorAll('input, select').forEach(el => {
+          if (el.name === 'phone-area' || el.name === 'phone-number') return;
+          // Skip attachments fields (handled separately)
+          if (el.name === 'parish' || el.name === 'phone' || el.id === 'edit-parish') {
+            updatedApplicant[el.name] = el.value;
+          } else {
+            updatedApplicant[el.name] = el.value;
+          }
+        });
+        // Build phone if present
+        const areaEl = flaggedContainer.querySelector('select[name="phone-area"]');
+        const numberEl = flaggedContainer.querySelector('input[name="phone-number"]');
+        if (areaEl && numberEl) {
+          updatedApplicant.phone = '1-' + areaEl.value + '-' + numberEl.value;
+        }
+        // Build attachments from file inputs
+        const attachments = {};
+        const photoEl = document.getElementById('photoId');
+        const payslipEl = document.getElementById('payslips');
+        if (photoEl && photoEl.files && photoEl.files[0]) {
+          const file = photoEl.files[0];
+          const dataUri = await readFileAsDataURI(file);
+          attachments.photoId = { name: file.name, type: file.type, data: dataUri };
+        }
+        if (payslipEl && payslipEl.files && payslipEl.files.length > 0) {
+          attachments.payslips = [];
+          for (const file of payslipEl.files) {
+            const dataUri = await readFileAsDataURI(file);
+            attachments.payslips.push({ name: file.name, type: file.type, data: dataUri });
+          }
+        }
+        // Clear review flags after update (applicant completions)
+        const reviewFlags = {};
+        // Build payload; include attachments only if any were uploaded
+        const payload = { applicant: updatedApplicant, reviewFlags };
+        if (Object.keys(attachments).length > 0) {
+          payload.attachments = attachments;
+        }
+        try {
+          const res = await fetch('/api/applications/' + appId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          if (res.ok) {
+            statusArea.textContent = 'Your information has been updated successfully.';
+            form.style.display = 'none';
+          } else {
+            statusArea.textContent = 'Error updating application.';
+          }
+        } catch (err) {
+          statusArea.textContent = 'Error updating application.';
+          console.error(err);
+        }
+      });
+
+      // Handle removal of attachments
+      document.getElementById('existing-attachments').addEventListener('click', async (ev) => {
+        const target = ev.target;
+        if (!target.classList.contains('remove-attachment')) return;
+        const type = target.dataset.type;
+        const appId = form.elements.id.value;
+        const removePayload = { removeAttachments: {} };
+        if (type === 'photoId') {
+          removePayload.removeAttachments.photoId = true;
+        } else if (type === 'payslip') {
+          const url = target.dataset.url;
+          removePayload.removeAttachments.payslips = [url];
+        }
+        try {
+          const res = await fetch('/api/applications/' + appId, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(removePayload)
+          });
+          if (res.ok) {
+            // Reload application data to refresh attachments list
+            loadApplication();
+          } else {
+            alert('Error removing attachment');
+          }
+        } catch (err) {
+          console.error('Error removing attachment', err);
+        }
+      });
+
+      // On load, fetch application data
+      loadApplication();
+    </script>
+  </body>
+</html>

@@ -1,0 +1,400 @@
+const { onRequest } = require('firebase-functions/v2/https');
+const { setGlobalOptions } = require('firebase-functions/v2');
+const admin = require('firebase-admin');
+const { getFirestore, FieldValue } = require('firebase-admin/firestore');
+const { getAuth } = require('firebase-admin/auth');
+const { getStorage } = require('firebase-admin/storage');
+const express = require('express');
+const crypto = require('crypto');
+const path = require('path');
+
+setGlobalOptions({ maxInstances: 10 });
+
+admin.initializeApp();
+const db = getFirestore();
+const firebaseAuth = getAuth();
+const bucket = getStorage().bucket(process.env.STORAGE_BUCKET || 'doxservices-loanapp-uploads');
+
+const app = express();
+app.disable('x-powered-by');
+app.use(express.json({ limit: '25mb' }));
+app.use(express.urlencoded({ extended: false }));
+
+// =========================================================================
+// Basic Auth — unchanged pages (admin-applications, admin-nav,
+// admin-standing-orders, applications-list)
+// =========================================================================
+function safeEqual(a, b) {
+  const ba = Buffer.from(String(a)), bb = Buffer.from(String(b));
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+function adminAuth(req, res, next) {
+  const user = process.env.ADMIN_USER || 'doxservices';
+  const pass = process.env.ADMIN_PASSWORD;
+  if (!pass) return res.status(503).json({ ok: false, error: 'ADMIN_PASSWORD not set' });
+  const hdr = req.get('authorization') || '';
+  if (hdr.startsWith('Basic ')) {
+    const [u, ...p] = Buffer.from(hdr.slice(6), 'base64').toString().split(':');
+    if (safeEqual(u, user) && safeEqual(p.join(':'), pass)) return next();
+  }
+  res.set('WWW-Authenticate', 'Basic realm="Loanapp admin (doxservices)"');
+  return res.status(401).send('Authentication required');
+}
+
+// =========================================================================
+// Google Sign-In (admin.html only) — restricted to one allow-listed account
+// =========================================================================
+const ALLOWED_ADMIN_EMAIL = (process.env.ALLOWED_ADMIN_EMAIL || '').toLowerCase();
+const SESSION_SECRET = process.env.SESSION_SECRET;
+const SESSION_COOKIE = 'admin_session';
+const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12h
+
+function parseCookies(req) {
+  const header = req.headers.cookie || '';
+  return Object.fromEntries(header.split(';').filter(Boolean).map(kv => {
+    const i = kv.indexOf('=');
+    return [kv.slice(0, i).trim(), decodeURIComponent(kv.slice(i + 1).trim())];
+  }));
+}
+function signSession(b64) {
+  return crypto.createHmac('sha256', SESSION_SECRET).update(b64).digest('base64url');
+}
+function makeSessionCookie(email) {
+  const b64 = Buffer.from(JSON.stringify({ email, exp: Date.now() + SESSION_MAX_AGE_MS })).toString('base64url');
+  return `${b64}.${signSession(b64)}`;
+}
+function verifySessionCookie(value) {
+  if (!value || !SESSION_SECRET) return null;
+  const [b64, sig] = value.split('.');
+  if (!b64 || !sig || !safeEqual(sig, signSession(b64))) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(b64, 'base64url').toString());
+    if (!payload.exp || payload.exp < Date.now()) return null;
+    if (payload.email !== ALLOWED_ADMIN_EMAIL) return null;
+    return payload;
+  } catch {
+    return null;
+  }
+}
+function hasValidGoogleSession(req) {
+  return !!verifySessionCookie(parseCookies(req)[SESSION_COOKIE]);
+}
+
+function googleSignInPage() {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Admin sign-in</title>
+<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f5f7;margin:0}
+.card{background:#fff;padding:32px 40px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);text-align:center;max-width:360px}
+button{margin-top:16px;padding:10px 20px;font-size:15px;cursor:pointer;border:1px solid #ddd;border-radius:6px;background:#fff}
+button:hover{background:#f5f5f7}#msg{color:#c00;font-size:13px;margin-top:12px;min-height:16px}</style></head>
+<body><div class="card"><h2>Admin sign-in</h2><p>Sign in with the doxservices Google account to continue.</p>
+<button id="signin">Sign in with Google</button><div id="msg"></div></div>
+<script src="/firebase-config.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+const fbApp = initializeApp(window.FIREBASE_CONFIG);
+const auth = getAuth(fbApp);
+const msg = document.getElementById('msg');
+document.getElementById('signin').addEventListener('click', async () => {
+  msg.textContent = '';
+  try {
+    const result = await signInWithPopup(auth, new GoogleAuthProvider());
+    const idToken = await result.user.getIdToken();
+    const res = await fetch('/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
+    const json = await res.json();
+    if (json.ok) { location.reload(); return; }
+    msg.textContent = json.error || 'Sign-in failed.';
+    await signOut(auth);
+  } catch (err) {
+    msg.textContent = err.message || 'Sign-in failed.';
+  }
+});
+</script></body></html>`;
+}
+
+function googleAdminAuth(req, res, next) {
+  if (hasValidGoogleSession(req)) return next();
+  res.set('Content-Type', 'text/html').status(200).send(googleSignInPage());
+}
+function flexibleAdminAuth(req, res, next) {
+  if (hasValidGoogleSession(req)) return next();
+  return adminAuth(req, res, next);
+}
+
+app.post('/auth/google', async (req, res) => {
+  if (!SESSION_SECRET) return res.status(503).json({ ok: false, error: 'SESSION_SECRET not set' });
+  const { idToken } = req.body || {};
+  if (!idToken) return res.status(400).json({ ok: false, error: 'Missing idToken' });
+  try {
+    const decoded = await firebaseAuth.verifyIdToken(idToken);
+    const email = (decoded.email || '').toLowerCase();
+    if (!decoded.email_verified || !ALLOWED_ADMIN_EMAIL || email !== ALLOWED_ADMIN_EMAIL) {
+      return res.status(403).json({ ok: false, error: 'This Google account is not authorized for admin access.' });
+    }
+    res.cookie(SESSION_COOKIE, makeSessionCookie(email), {
+      httpOnly: true, sameSite: 'lax', secure: true, maxAge: SESSION_MAX_AGE_MS
+    });
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[auth] verifyIdToken failed:', e.message);
+    res.status(401).json({ ok: false, error: 'Invalid or expired sign-in token.' });
+  }
+});
+app.post('/auth/logout', (req, res) => {
+  res.clearCookie(SESSION_COOKIE);
+  res.json({ ok: true });
+});
+
+// Serve the gated static admin pages (moved out of public/ so Hosting can't
+// serve them directly — see functions/protected/ and firebase.json rewrites)
+const PROTECTED_DIR = path.join(__dirname, 'protected');
+app.get('/admin.html', googleAdminAuth, (req, res) => res.sendFile(path.join(PROTECTED_DIR, 'admin.html')));
+app.get(['/admin-applications.html', '/admin-nav.html', '/admin-standing-orders.html', '/applications-list.html'],
+  adminAuth, (req, res) => res.sendFile(path.join(PROTECTED_DIR, path.basename(req.path))));
+
+// =========================================================================
+// Standing orders — public submit, admin-gated list (Firestore: standingOrders)
+// =========================================================================
+app.post('/standing-orders', async (req, res) => {
+  try {
+    const rec = { submittedAt: FieldValue.serverTimestamp(), ...(req.body || {}) };
+    const ref = await db.collection('standingOrders').add(rec);
+    res.json({ ok: true, id: ref.id });
+  } catch (e) {
+    console.error('[standing-orders] write error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to save record' });
+  }
+});
+app.get('/standing-orders', flexibleAdminAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('standingOrders').orderBy('submittedAt', 'desc').get();
+    res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[standing-orders] read error:', e.message);
+    res.status(500).json({ ok: false, error: 'Query failed' });
+  }
+});
+
+// =========================================================================
+// Legacy flat applications listing (Firestore: applications) — feeds
+// admin.html + admin-applications.html unchanged
+// =========================================================================
+function toFlatRow(doc) {
+  const d = doc.data();
+  const a = d.applicant || {};
+  return {
+    application_id: d.applicationCode || doc.id,
+    first_name: a.firstName || '', last_name: a.lastName || '', email: a.email || '',
+    phone_full: a.phone || '', address1: a.addressLine1 || '', address2: a.addressLine2 || '',
+    parish: a.parish || '', term_months: d.selectedTermMonths ?? null, promotion_id: d.promotionId ?? null,
+    created_at: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
+  };
+}
+app.get('/applications', flexibleAdminAuth, async (req, res) => {
+  const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
+  try {
+    const snap = await db.collection('applications').orderBy('createdAt', 'desc').limit(limit).get();
+    res.json({ ok: true, rows: snap.docs.map(toFlatRow) });
+  } catch (e) {
+    console.error('[applications] read error:', e.message);
+    res.status(500).json({ ok: false, error: 'Query failed' });
+  }
+});
+
+app.get('/health', async (req, res) => {
+  try {
+    await db.collection('_health').limit(1).get();
+    res.json({ ok: true, db: true });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// =========================================================================
+// Full loan-application API (public-facing pages: user-apply, user-profile,
+// applicant-edit, status, admin-promotions, admin-dashboard)
+// =========================================================================
+const PARISHES = ['Hanover', 'Saint Elizabeth', 'Saint James', 'Trelawny', 'Westmoreland',
+  'Clarendon', 'Manchester', 'Saint Ann', 'Saint Catherine', 'Saint Mary',
+  'Kingston', 'Portland', 'Saint Andrew', 'Saint Thomas'];
+
+app.get('/api/parishes', (req, res) => res.json(PARISHES));
+
+function promoToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, name: d.name, description: d.description || '', currency: d.currency || 'JMD',
+    principal: d.principal, monthlyInterestPct: d.monthlyInterestPct, termMode: d.termMode || 'selectable',
+    fixedTermMonths: d.fixedTermMonths ?? null, allowedTerms: d.allowedTerms || [],
+    createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
+  };
+}
+app.get('/api/promotions', async (req, res) => {
+  const snap = await db.collection('promotions').orderBy('createdAt', 'asc').get();
+  res.json(snap.docs.map(promoToApi));
+});
+app.get('/api/promotions/:id', async (req, res) => {
+  const doc = await db.collection('promotions').doc(req.params.id).get();
+  if (!doc.exists) return res.status(404).json({ error: 'Promotion not found' });
+  res.json(promoToApi(doc));
+});
+app.post('/api/promotions', flexibleAdminAuth, async (req, res) => {
+  const p = req.body || {};
+  const ref = await db.collection('promotions').add({
+    name: p.name, description: p.description || '', currency: p.currency || 'JMD',
+    principal: p.principal, monthlyInterestPct: p.monthlyInterestPct, termMode: p.termMode || 'selectable',
+    fixedTermMonths: p.fixedTermMonths ?? null, allowedTerms: p.allowedTerms || [],
+    createdAt: FieldValue.serverTimestamp()
+  });
+  res.status(201).json(promoToApi(await ref.get()));
+});
+app.put('/api/promotions/:id', flexibleAdminAuth, async (req, res) => {
+  const p = req.body || {};
+  const ref = db.collection('promotions').doc(req.params.id);
+  await ref.update({
+    name: p.name, description: p.description || '', currency: p.currency || 'JMD',
+    principal: p.principal, monthlyInterestPct: p.monthlyInterestPct, termMode: p.termMode || 'selectable',
+    fixedTermMonths: p.fixedTermMonths ?? null, allowedTerms: p.allowedTerms || []
+  });
+  res.json(promoToApi(await ref.get()));
+});
+app.delete('/api/promotions/:id', flexibleAdminAuth, async (req, res) => {
+  await db.collection('promotions').doc(req.params.id).delete();
+  res.json({ ok: true });
+});
+
+function appToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, applicationCode: d.applicationCode || null,
+    createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null,
+    promotionId: d.promotionId, selectedTermMonths: d.selectedTermMonths, promoSnapshot: d.promoSnapshot || {},
+    applicant: d.applicant || {}, status: d.status || 'Submitted', reason: d.reason || '',
+    reviewFlags: d.reviewFlags || {}, attachments: d.attachments || {}, messages: d.messages || []
+  };
+}
+app.get('/api/applications', flexibleAdminAuth, async (req, res) => {
+  const snap = await db.collection('applications').orderBy('createdAt', 'desc').get();
+  res.json(snap.docs.map(appToApi));
+});
+app.get('/api/applications/trn/:trn', async (req, res) => {
+  const snap = await db.collection('applications').where('applicant.trn', '==', req.params.trn)
+    .orderBy('createdAt', 'desc').limit(1).get();
+  if (snap.empty) return res.status(404).json({ error: 'No application found for this TRN' });
+  res.json(appToApi(snap.docs[0]));
+});
+app.get('/api/applications/:id', async (req, res) => {
+  const doc = await db.collection('applications').doc(req.params.id).get();
+  if (!doc.exists) return res.status(404).json({ error: 'Application not found' });
+  res.json(appToApi(doc));
+});
+app.post('/api/applications', async (req, res) => {
+  const { promotionId, selectedTermMonths, applicant } = req.body || {};
+  const promoDoc = await db.collection('promotions').doc(String(promotionId)).get();
+  if (!promoDoc.exists) return res.status(400).json({ error: 'Unknown promotion' });
+  const promo = promoDoc.data();
+  const promoSnapshot = {
+    name: promo.name, currency: promo.currency, principal: promo.principal,
+    monthlyInterestPct: promo.monthlyInterestPct, termMode: promo.termMode,
+    fixedTermMonths: promo.fixedTermMonths ?? null, allowedTerms: promo.allowedTerms || []
+  };
+  const applicationCode = `APP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const ref = await db.collection('applications').add({
+    applicationCode, promotionId: promoDoc.id, selectedTermMonths, promoSnapshot,
+    applicant: applicant || {}, status: 'Submitted', reason: '', reviewFlags: {}, attachments: {}, messages: [],
+    createdAt: FieldValue.serverTimestamp()
+  });
+  res.status(201).json(appToApi(await ref.get()));
+});
+
+// ---- Attachments: base64 data URI -> Cloud Storage (private bucket, proxied read) ----
+function extFromNameOrType(name, type) {
+  const m = /\.[a-zA-Z0-9]+$/.exec(name || '');
+  if (m) return m[0];
+  if (type === 'application/pdf') return '.pdf';
+  if (type && type.startsWith('image/')) return '.' + type.split('/')[1].split('+')[0];
+  return '';
+}
+function parseDataUri(dataUri) {
+  const m = /^data:([^;]+);base64,(.*)$/s.exec(dataUri || '');
+  if (!m) return null;
+  return { mime: m[1], buffer: Buffer.from(m[2], 'base64') };
+}
+async function saveAttachment(appId, baseName, file) {
+  const parsed = parseDataUri(file.data);
+  if (!parsed) throw new Error('Invalid attachment data');
+  const ext = extFromNameOrType(file.name, file.type || parsed.mime);
+  const objectPath = `app-${appId}/${baseName}${ext}`;
+  await bucket.file(objectPath).save(parsed.buffer, { contentType: file.type || parsed.mime });
+  return `/uploads/${objectPath}`;
+}
+async function deleteAttachment(relativeUrl) {
+  if (!relativeUrl || !relativeUrl.startsWith('/uploads/')) return;
+  try {
+    await bucket.file(relativeUrl.slice('/uploads/'.length)).delete();
+  } catch (e) {
+    if (e.code !== 404) throw e;
+  }
+}
+
+app.get('/uploads/:appDir/:filename', flexibleAdminAuth, async (req, res) => {
+  try {
+    const file = bucket.file(`${req.params.appDir}/${req.params.filename}`);
+    const [exists] = await file.exists();
+    if (!exists) return res.status(404).send('Not found');
+    file.createReadStream().on('error', () => res.status(500).end()).pipe(res);
+  } catch (e) {
+    res.status(500).send('Error reading file');
+  }
+});
+
+app.patch('/api/applications/:id', async (req, res) => {
+  const id = req.params.id;
+  const ref = db.collection('applications').doc(id);
+  const doc = await ref.get();
+  if (!doc.exists) return res.status(404).json({ error: 'Application not found' });
+  const current = doc.data();
+  const body = req.body || {};
+
+  const applicant = body.applicant ? { ...current.applicant, ...body.applicant } : current.applicant;
+  const status = body.status || current.status;
+  const reason = typeof body.reason === 'string' ? body.reason : current.reason;
+  const reviewFlags = body.reviewFlags || current.reviewFlags;
+  const attachments = { ...(current.attachments || {}) };
+
+  if (body.attachments) {
+    if (body.attachments.photoId) {
+      if (attachments.photoId) await deleteAttachment(attachments.photoId);
+      attachments.photoId = await saveAttachment(id, 'photoId', body.attachments.photoId);
+    }
+    if (Array.isArray(body.attachments.payslips) && body.attachments.payslips.length) {
+      attachments.payslips = attachments.payslips || [];
+      let n = attachments.payslips.length + 1;
+      for (const file of body.attachments.payslips) {
+        attachments.payslips.push(await saveAttachment(id, 'payslip' + n, file));
+        n++;
+      }
+    }
+  }
+  if (body.removeAttachments) {
+    if (body.removeAttachments.photoId && attachments.photoId) {
+      await deleteAttachment(attachments.photoId);
+      delete attachments.photoId;
+    }
+    if (Array.isArray(body.removeAttachments.payslips) && attachments.payslips) {
+      for (const url of body.removeAttachments.payslips) await deleteAttachment(url);
+      attachments.payslips = attachments.payslips.filter(u => !body.removeAttachments.payslips.includes(u));
+    }
+  }
+
+  const messages = [...(current.messages || [])];
+  if (body.newMessage) {
+    messages.push({ role: body.newMessage.role || 'applicant', text: body.newMessage.text, timestamp: new Date().toISOString() });
+  }
+
+  await ref.update({ applicant, status, reason, reviewFlags, attachments, messages });
+  res.json(appToApi(await ref.get()));
+});
+
+exports.api = onRequest({ region: 'us-central1' }, app);

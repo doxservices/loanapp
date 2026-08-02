@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Profile | Loan Application System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    body {
+      background: linear-gradient(135deg, #1a2a6c, #2a4cb3);
+      color: #fff;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    header {
+      text-align: center;
+      padding: 30px 0;
+    }
+    
+    .logo {
+      font-size: 36px;
+      margin-bottom: 10px;
+    }
+    
+    h1 {
+      font-size: 32px;
+      margin-bottom: 5px;
+    }
+    
+    .subtitle {
+      color: #c3cfe2;
+      font-size: 18px;
+      margin-bottom: 30px;
+    }
+    
+    .user-info {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 20px 0;
+    }
+    
+    .user-info span {
+      margin-right: 15px;
+      color: #bbdefb;
+    }
+    
+    .user-info button {
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: white;
+      padding: 8px 15px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .user-info button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .profile-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 25px;
+      margin-top: 30px;
+    }
+    
+    @media (max-width: 768px) {
+      .profile-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      padding: 25px;
+      transition: all 0.3s ease;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .card:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .card-title {
+      font-size: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      padding-bottom: 15px;
+    }
+    
+    .card-title i {
+      margin-right: 10px;
+      color: #64b5f6;
+    }
+    
+    .profile-info {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    
+    @media (max-width: 480px) {
+      .profile-info {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    .info-item {
+      margin-bottom: 15px;
+    }
+    
+    .info-label {
+      font-size: 14px;
+      color: #bbdefb;
+      margin-bottom: 5px;
+    }
+    
+    .info-value {
+      font-size: 16px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 8px;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .info-value.empty {
+      color: #ffa726;
+      font-style: italic;
+      background: rgba(255, 167, 38, 0.1);
+    }
+    
+    .address-form {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+    }
+    
+    .form-group {
+      margin-bottom: 15px;
+    }
+    
+    .form-group.full {
+      grid-column: span 2;
+    }
+    
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: #bbdefb;
+    }
+    
+    input, select, textarea {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 16px;
+    }
+    
+    input:focus, select:focus, textarea:focus {
+      outline: none;
+      border-color: #64b5f6;
+      background: rgba(100, 181, 246, 0.1);
+    }
+    
+    .btn {
+      background: #64b5f6;
+      color: white;
+      border: none;
+      padding: 12px 25px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    
+    .btn i {
+      margin-right: 8px;
+    }
+    
+    .btn:hover {
+      background: #42a5f5;
+      transform: translateY(-2px);
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+    
+    .bank-account {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+      padding: 15px;
+      margin-bottom: 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .bank-info {
+      flex-grow: 1;
+    }
+    
+    .bank-name {
+      font-weight: 600;
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+    
+    .bank-details {
+      font-size: 14px;
+      color: #bbdefb;
+    }
+    
+    .bank-actions button {
+      background: none;
+      border: none;
+      color: #bbdefb;
+      cursor: pointer;
+      margin-left: 10px;
+      font-size: 16px;
+    }
+    
+    .bank-actions button:hover {
+      color: #64b5f6;
+    }
+    
+    .no-accounts {
+      text-align: center;
+      padding: 30px;
+      color: #bbdefb;
+    }
+    
+    .no-accounts i {
+      font-size: 48px;
+      margin-bottom: 15px;
+      color: #64b5f6;
+    }
+    
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      justify-content: center;
+      align-items: center;
+    }
+    
+    .modal-content {
+      background: linear-gradient(135deg, #1a2a6c, #2a4cb3);
+      border-radius: 15px;
+      width: 100%;
+      max-width: 500px;
+      padding: 30px;
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .modal-title {
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .modal-title i {
+      margin-right: 10px;
+      color: #64b5f6;
+    }
+    
+    .close-modal {
+      background: none;
+      border: none;
+      color: #bbdefb;
+      font-size: 24px;
+      cursor: pointer;
+    }
+    
+    .close-modal:hover {
+      color: #ff6b6b;
+    }
+    
+    .modal-body {
+      margin-bottom: 25px;
+    }
+    
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 15px;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 30px 0;
+      margin-top: 40px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      color: #bbdefb;
+    }
+    
+    .completion-status {
+      display: flex;
+      align-items: center;
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 10px;
+    }
+    
+    .status-icon {
+      font-size: 24px;
+      margin-right: 15px;
+      color: #ffa726;
+    }
+    
+    .status-text {
+      flex-grow: 1;
+    }
+    
+    .progress-bar {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      margin-top: 10px;
+      overflow: hidden;
+    }
+    
+    .progress-fill {
+      height: 100%;
+      background: #64b5f6;
+      width: 65%;
+      border-radius: 4px;
+    }
+    
+    .actions-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 20px;
+      gap: 15px;
+    }
+    
+    /* TRN and Phone Number Fields */
+    .formatted-input-group {
+      display: flex;
+      align-items: center;
+    }
+    
+    .formatted-input {
+      flex: 1;
+      text-align: center;
+      padding: 12px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: white;
+      font-size: 16px;
+      border-radius: 0;
+    }
+    
+    .formatted-input:first-child {
+      border-radius: 8px 0 0 8px;
+    }
+    
+    .formatted-input:last-child {
+      border-radius: 0 8px 8px 0;
+    }
+    
+    .hyphen {
+      padding: 0 5px;
+      color: #bbdefb;
+    }
+    
+    /* Date of Birth Field */
+    .dob-input {
+      position: relative;
+    }
+    
+    .dob-input i {
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64b5f6;
+      cursor: pointer;
+    }
+    
+    /* Styling for dropdowns */
+    select {
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364b5f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 1rem center;
+      background-size: 1em;
+      padding-right: 2.5rem;
+    }
+    
+    /* Numeric input styling */
+    input[type="number"] {
+      -moz-appearance: textfield;
+    }
+    
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    
+    /* Bank dropdown styling */
+    .bank-dropdown select {
+      background-color: rgba(255, 255, 255, 0.08);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      width: 100%;
+    }
+    
+    .bank-dropdown select:focus {
+      border-color: #64b5f6;
+      background: rgba(100, 181, 246, 0.1);
+    }
+    
+    .bank-dropdown option {
+      background-color: #1a2a6c;
+      color: white;
+      padding: 10px;
+    }
+    
+    .bank-dropdown option:hover {
+      background-color: #2a4cb3;
+    }
+    
+    /* Input group styling */
+    .input-group {
+      position: relative;
+    }
+    
+    .input-group i {
+      position: absolute;
+      right: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #64b5f6;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="user-info">
+      <span>Welcome, Jane Doe</span>
+      <button><i class="fas fa-sign-out-alt"></i> Logout</button>
+    </div>
+    
+    <header>
+      <h1>User Profile</h1>
+      <p class="subtitle">Manage your personal information and account settings</p>
+    </header>
+    
+    <div class="completion-status">
+      <div class="status-icon">
+        <i class="fas fa-exclamation-circle"></i>
+      </div>
+      <div class="status-text">
+        <strong>Profile Incomplete (65%)</strong>
+        <p>Please complete your profile information to improve your loan eligibility</p>
+        <div class="progress-bar">
+          <div class="progress-fill"></div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="profile-grid">
+      <!-- Personal Information Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-user"></i> Personal Information
+        </div>
+        
+        <div class="profile-info">
+          <div class="info-item">
+            <div class="info-label">Full Name</div>
+            <div class="info-value">Jane Doe</div>
+          </div>
+          
+          <div class="info-item">
+            <div class="info-label">Email Address</div>
+            <div class="info-value">jane.doe@example.com</div>
+          </div>
+          
+          <div class="info-item">
+            <div class="info-label">Phone Number</div>
+            <div class="info-value">
+              <div class="formatted-input-group">
+                <input type="text" id="phone-prefix" class="formatted-input" maxlength="4" placeholder="(876)" value="(876)">
+                <div class="hyphen">-</div>
+                <input type="text" id="phone-number" class="formatted-input" maxlength="8" placeholder="555-0123">
+              </div>
+            </div>
+          </div>
+          
+          <div class="info-item">
+            <div class="info-label">TRN (Tax Registration Number)</div>
+            <div class="info-value">
+              <div class="formatted-input-group">
+                <input type="text" id="trn1" class="formatted-input" maxlength="3" placeholder="123">
+                <div class="hyphen">-</div>
+                <input type="text" id="trn2" class="formatted-input" maxlength="3" placeholder="456">
+                <div class="hyphen">-</div>
+                <input type="text" id="trn3" class="formatted-input" maxlength="3" placeholder="789">
+              </div>
+            </div>
+          </div>
+          
+          <div class="info-item">
+            <div class="info-label">Date of Birth</div>
+            <div class="info-value">
+              <div class="input-group">
+                <input type="text" id="dob" placeholder="Select date" readonly>
+                <i class="fas fa-calendar-alt"></i>
+              </div>
+            </div>
+          </div>
+          
+          <div class="info-item">
+            <div class="info-label">Nationality</div>
+            <div class="info-value">Jamaican</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Work/Business Address Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-briefcase"></i> Work/Business Address
+        </div>
+        
+        <form class="address-form">
+          <div class="form-group">
+            <label for="company">Company Name</label>
+            <input type="text" id="company" placeholder="Enter company name">
+          </div>
+          
+          <div class="form-group">
+            <label for="job-title">Job Title</label>
+            <input type="text" id="job-title" placeholder="Enter your position">
+          </div>
+          
+          <div class="form-group">
+            <label for="address-line1">Address Line 1</label>
+            <input type="text" id="address-line1" placeholder="Enter street address">
+          </div>
+          
+          <div class="form-group">
+            <label for="address-line2">Address Line 2</label>
+            <input type="text" id="address-line2" placeholder="Enter additional address details">
+          </div>
+          
+          <div class="form-group">
+            <label for="work-city">City</label>
+            <input type="text" id="work-city" placeholder="Enter city">
+          </div>
+          
+          <div class="form-group">
+            <label for="work-parish">Parish</label>
+            <select id="work-parish">
+              <option value="">Select Parish</option>
+              <!-- Populated by JSON data -->
+            </select>
+          </div>
+        </form>
+      </div>
+      
+      <!-- Bank Accounts Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-university"></i> Bank Accounts
+        </div>
+        
+        <div class="bank-accounts-list">
+          <div class="bank-account">
+            <div class="bank-info">
+              <div class="bank-name">National Commercial Bank Jamaica</div>
+              <div class="bank-details">Account: ********1234 • Branch: 12345</div>
+            </div>
+            <div class="bank-actions">
+              <button title="Edit"><i class="fas fa-edit"></i></button>
+              <button title="Delete"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </div>
+          
+          <div class="bank-account">
+            <div class="bank-info">
+              <div class="bank-name">Scotiabank Jamaica</div>
+              <div class="bank-details">Account: ********5678 • Branch: 67890</div>
+            </div>
+            <div class="bank-actions">
+              <button title="Edit"><i class="fas fa-edit"></i></button>
+              <button title="Delete"><i class="fas fa-trash-alt"></i></button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="no-accounts" id="no-accounts" style="display: none;">
+          <i class="fas fa-piggy-bank"></i>
+          <h3>No Bank Accounts Added</h3>
+          <p>Add your Jamaican bank accounts to enable faster loan processing</p>
+        </div>
+        
+        <div class="text-center" style="margin-top: 20px;">
+          <button class="btn" id="add-bank-btn">
+            <i class="fas fa-plus-circle"></i> Add Bank Account
+          </button>
+        </div>
+      </div>
+      
+      <!-- Residential Address Card -->
+      <div class="card">
+        <div class="card-title">
+          <i class="fas fa-home"></i> Residential Address
+        </div>
+        
+        <form class="address-form">
+          <div class="form-group">
+            <label for="res-address-line1">Address Line 1</label>
+            <input type="text" id="res-address-line1" placeholder="Enter street address" value="15 Hope Road">
+          </div>
+          
+          <div class="form-group">
+            <label for="res-address-line2">Address Line 2</label>
+            <input type="text" id="res-address-line2" placeholder="Enter additional address details">
+          </div>
+          
+          <div class="form-group">
+            <label for="res-city">City</label>
+            <input type="text" id="res-city" placeholder="Enter city" value="Kingston">
+          </div>
+          
+          <div class="form-group">
+            <label for="res-parish">Parish</label>
+            <select id="res-parish">
+              <option value="">Select Parish</option>
+              <!-- Populated by JSON data -->
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="residence-type">Residence Type</label>
+            <select id="residence-type">
+              <option value="">Select Type</option>
+              <option value="owned" selected>Owned</option>
+              <option value="rented">Rented</option>
+              <option value="family">Family Property</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="years-at-address">Years at Address</label>
+            <input type="number" id="years-at-address" min="0" max="50" value="5">
+          </div>
+        </form>
+      </div>
+    </div>
+    
+    <div class="actions-bar">
+      <button class="btn btn-secondary">
+        <i class="fas fa-times"></i> Cancel
+      </button>
+      <button class="btn">
+        <i class="fas fa-save"></i> Save Profile
+      </button>
+    </div>
+    
+    <footer>
+      <p>Loan Application System &copy; 2025 | Dox Services</p>
+      <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
+    </footer>
+  </div>
+  
+  <!-- Add Bank Account Modal -->
+  <div class="modal" id="bank-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-university"></i> Add Jamaican Bank Account
+        </div>
+        <button class="close-modal">&times;</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group bank-dropdown">
+          <label for="bank-name">Bank Name</label>
+          <select id="bank-name">
+            <option value="">Select a bank</option>
+            <option value="NCB">National Commercial Bank Jamaica (NCB)</option>
+            <option value="Scotia">Scotiabank Jamaica</option>
+            <option value="BOS">Bank of Nova Scotia Jamaica</option>
+            <option value="Sagicor">Sagicor Bank Jamaica</option>
+            <option value="JN">JN Bank</option>
+            <option value="FirstCaribbean">CIBC FirstCaribbean</option>
+            <option value="FGB">First Global Bank</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="branch">Branch Code</label>
+          <input type="text" id="branch" placeholder="Enter branch code">
+        </div>
+        
+        <div class="form-group">
+          <label for="account-number">Account Number</label>
+          <input type="text" id="account-number" placeholder="Enter account number">
+        </div>
+        
+        <div class="form-group bank-dropdown">
+          <label for="account-type">Account Type</label>
+          <select id="account-type">
+            <option value="">Select account type</option>
+            <option value="savings">Savings Account</option>
+            <option value="checking">Checking Account</option>
+            <option value="business">Business Account</option>
+          </select>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn btn-secondary close-modal">
+          <i class="fas fa-times"></i> Cancel
+        </button>
+        <button class="btn" id="save-bank-btn">
+          <i class="fas fa-save"></i> Save Account
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script>
+    // Modal functionality
+    const bankModal = document.getElementById('bank-modal');
+    const addBankBtn = document.getElementById('add-bank-btn');
+    const closeModalBtns = document.querySelectorAll('.close-modal');
+    
+    addBankBtn.addEventListener('click', () => {
+      bankModal.style.display = 'flex';
+    });
+    
+    closeModalBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        bankModal.style.display = 'none';
+      });
+    });
+    
+    // Close modal when clicking outside of it
+    window.addEventListener('click', (e) => {
+      if (e.target === bankModal) {
+        bankModal.style.display = 'none';
+      }
+    });
+    
+    // Save bank account
+    document.getElementById('save-bank-btn').addEventListener('click', function() {
+      const bankName = document.getElementById('bank-name').value;
+      const branch = document.getElementById('branch').value;
+      const accountNumber = document.getElementById('account-number').value;
+      
+      if (!bankName || !branch || !accountNumber) {
+        alert('Please fill in all required fields');
+        return;
+      }
+      
+      // Hide the no accounts message
+      document.getElementById('no-accounts').style.display = 'none';
+      
+      // Create new account element
+      const accountsList = document.querySelector('.bank-accounts-list');
+      const newAccount = document.createElement('div');
+      newAccount.className = 'bank-account';
+      newAccount.innerHTML = `
+        <div class="bank-info">
+          <div class="bank-name">${document.querySelector('#bank-name option:checked').textContent}</div>
+          <div class="bank-details">Account: ******${accountNumber.slice(-4)} • Branch: ${branch}</div>
+        </div>
+        <div class="bank-actions">
+          <button title="Edit"><i class="fas fa-edit"></i></button>
+          <button title="Delete"><i class="fas fa-trash-alt"></i></button>
+        </div>
+      `;
+      
+      accountsList.appendChild(newAccount);
+      bankModal.style.display = 'none';
+      
+      // Reset form
+      document.getElementById('bank-name').value = '';
+      document.getElementById('branch').value = '';
+      document.getElementById('account-number').value = '';
+      document.getElementById('account-type').value = '';
+      
+      // Show success message
+      alert('Bank account added successfully!');
+    });
+    
+    // Logout functionality
+    document.querySelector('.user-info button').addEventListener('click', function() {
+      if (confirm('Are you sure you want to logout?')) {
+        window.location.href = 'index.html';
+      }
+    });
+    
+    // Form validation for work address
+    const workAddressForm = document.querySelector('.address-form');
+    workAddressForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      // Validation would happen here
+      alert('Work address saved successfully!');
+    });
+    
+    // Add animations
+    document.querySelectorAll('.card').forEach((card, index) => {
+      card.style.opacity = '0';
+      card.style.transform = 'translateY(20px)';
+      
+      setTimeout(() => {
+        card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, 200 * index);
+    });
+    
+    // Initialize date picker
+    flatpickr("#dob", {
+      dateFormat: "d M Y",
+      defaultDate: "1985-01-15",
+      maxDate: "today"
+    });
+    
+    // Auto-format TRN number
+    const trn1 = document.getElementById('trn1');
+    const trn2 = document.getElementById('trn2');
+    const trn3 = document.getElementById('trn3');
+    
+    trn1.addEventListener('input', function() {
+      if (this.value.length === 3) {
+        trn2.focus();
+      }
+    });
+    
+    trn2.addEventListener('input', function() {
+      if (this.value.length === 3) {
+        trn3.focus();
+      }
+    });
+    
+    // Auto-format phone number
+    const phoneNumber = document.getElementById('phone-number');
+    
+    phoneNumber.addEventListener('input', function() {
+      let value = this.value.replace(/\D/g, '');
+      
+      if (value.length > 3) {
+        value = value.substring(0, 3) + '-' + value.substring(3);
+      }
+      
+      if (value.length > 7) {
+        value = value.substring(0, 7);
+      }
+      
+      this.value = value;
+    });
+    
+    // Parish data from JSON
+    const parishes = [
+      "Kingston",
+      "St. Andrew",
+      "St. Catherine",
+      "Clarendon",
+      "Manchester",
+      "St. Ann",
+      "Trelawny",
+      "St. James",
+      "Hanover",
+      "Westmoreland",
+      "St. Elizabeth",
+      "St. Mary",
+      "St. Thomas",
+      "Portland"
+    ];
+    
+    // Populate parish dropdowns
+    const workParish = document.getElementById('work-parish');
+    const resParish = document.getElementById('res-parish');
+    
+    parishes.forEach(parish => {
+      const option1 = document.createElement('option');
+      option1.value = parish.toLowerCase().replace(/[. ]/g, '-');
+      option1.textContent = parish;
+      
+      const option2 = document.createElement('option');
+      option2.value = parish.toLowerCase().replace(/[. ]/g, '-');
+      option2.textContent = parish;
+      
+      workParish.appendChild(option1);
+      resParish.appendChild(option2);
+    });
+    
+    // Set default parish values
+    document.querySelector('#res-parish option[value="st-andrew"]').selected = true;
+    
+    // Initialize TRN with placeholder values
+    trn1.value = "123";
+    trn2.value = "456";
+    trn3.value = "789";
+  </script>
+</body>
+</html>

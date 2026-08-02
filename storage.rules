@@ -1,0 +1,12 @@
+rules_version = '2';
+
+// All uploads/downloads go through Cloud Functions using the Admin SDK
+// (see functions/index.js: saveAttachment / GET /uploads/:appDir/:filename),
+// which bypasses these rules entirely. Default-deny for any direct client access.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

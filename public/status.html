@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Application Status</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <nav class="top-nav">
+      <span class="nav-title">Loan Applicant</span>
+      <div class="nav-links">
+        <a href="index.html" id="logout-link">Logout</a>
+      </div>
+    </nav>
+    <h1>Application Status</h1>
+    <div id="status-content">Loading…</div>
+
+    <script>
+      const params = new URLSearchParams(window.location.search);
+      const id = params.get('id');
+      const content = document.getElementById('status-content');
+
+      async function loadStatus() {
+        if (!id) {
+          content.textContent = 'No application id provided. Append ?id=APP_ID to the URL.';
+          return;
+        }
+        try {
+          const res = await fetch('/api/applications/' + encodeURIComponent(id));
+          if (!res.ok) {
+            content.textContent = 'No application found for id ' + id;
+            return;
+          }
+          const app = await res.json();
+          const flags = app.reviewFlags || {};
+          const flaggedFields = Object.keys(flags).filter(k => flags[k]);
+          const html = [];
+          html.push('<div class="promo-card-info">');
+          html.push('<p><strong>Application ID:</strong> ' + app.id + '</p>');
+          html.push('<p><strong>Status:</strong> ' + (app.status || 'Unknown') + '</p>');
+          if (app.reason) html.push('<p><strong>Reason:</strong> ' + app.reason + '</p>');
+          if (flaggedFields.length) {
+            html.push('<p><strong>Fields needing your attention:</strong> ' + flaggedFields.join(', ') + '</p>');
+          }
+          html.push('</div>');
+          if (app.applicant && app.applicant.trn) {
+            html.push('<p style="margin-top:16px;"><a class="btn" href="applicant-edit.html?trn=' +
+              encodeURIComponent(app.applicant.trn) + '">Edit Application</a></p>');
+          }
+          content.innerHTML = html.join('');
+        } catch (err) {
+          content.textContent = 'Error fetching application status.';
+          console.error(err);
+        }
+      }
+
+      loadStatus();
+    </script>
+  </body>
+</html>

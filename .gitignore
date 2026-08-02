@@ -5,3 +5,8 @@ node_modules/
 variants/*/storage/
 variants/*/scripts/storage/
 storage/
+.secrets/
+functions/.env
+functions/node_modules/
+.firebase/
+firebase-debug.log
