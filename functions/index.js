@@ -145,7 +145,9 @@ function userToApi(doc) {
   return {
     id: doc.id, firstName: d.firstName, lastName: d.lastName, email: d.email,
     phone: d.phone || '', role: d.role || 'applicant', status: d.status || 'active',
-    lastLogin: d.lastLogin || null, isDummy: !!d.isDummy,
+    lastLogin: d.lastLogin || null,
+    addressLine1: d.addressLine1 || '', addressLine2: d.addressLine2 || '', parish: d.parish || '',
+    isDummy: !!d.isDummy,
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }

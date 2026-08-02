@@ -316,6 +316,9 @@
 
     .field::placeholder { color: rgba(255,255,255,0.50); }
 
+    select.field { appearance: none; -webkit-appearance: none; cursor: pointer; }
+    select.field option { background: #0d3ea4; color: #fff; }
+
     .loan-table {
       width: 100%;
       border-collapse: collapse;
@@ -534,8 +537,32 @@
             <input class="field" id="trn" type="text" value="123-456-789" />
           </div>
           <div class="info-item full-width">
-            <h4>Address</h4>
-            <textarea class="field" id="address" rows="2">42 Hope Road, Kingston 10, Jamaica</textarea>
+            <h4>Address Line 1</h4>
+            <input class="field" id="addressLine1" type="text" value="42 Hope Road" />
+          </div>
+          <div class="info-item full-width">
+            <h4>Address Line 2</h4>
+            <input class="field" id="addressLine2" type="text" value="Kingston 10" />
+          </div>
+          <div class="info-item">
+            <h4>Parish</h4>
+            <select class="field" id="parish">
+              <option value="">Select Parish</option>
+              <option value="kingston" selected>Kingston</option>
+              <option value="st-andrew">St. Andrew</option>
+              <option value="st-catherine">St. Catherine</option>
+              <option value="clarendon">Clarendon</option>
+              <option value="manchester">Manchester</option>
+              <option value="st-ann">St. Ann</option>
+              <option value="trelawny">Trelawny</option>
+              <option value="st-james">St. James</option>
+              <option value="hanover">Hanover</option>
+              <option value="westmoreland">Westmoreland</option>
+              <option value="st-elizabeth">St. Elizabeth</option>
+              <option value="st-mary">St. Mary</option>
+              <option value="st-thomas">St. Thomas</option>
+              <option value="portland">Portland</option>
+            </select>
           </div>
         </div>
       </section>
@@ -605,7 +632,7 @@
   </div>
 
   <script>
-    const fields = ['fullName', 'emailAddress', 'phoneNumber', 'trn', 'address'];
+    const fields = ['fullName', 'emailAddress', 'phoneNumber', 'trn', 'addressLine1', 'addressLine2', 'parish'];
     const STORAGE_KEY = 'bankingProfileTemplateGoal1to1';
 
     function showNotification(message) {

@@ -11,14 +11,14 @@ initializeApp();
 const db = getFirestore();
 
 const users = [
-  { firstName: 'Alexandra', lastName: 'Johnson', email: 'alex.j@example.com', phone: '(876) 555-1234', role: 'Applicant', status: 'active', lastLogin: 'Today, 07:50 AM', createdAt: '2024-08-01' },
-  { firstName: 'Jane', lastName: 'Doe', email: 'jane.doe@example.com', phone: '', role: 'Administrator', status: 'active', lastLogin: 'Today, 09:42 AM', createdAt: '2023-01-15' },
-  { firstName: 'Michael', lastName: 'Smith', email: 'michael.s@company.com', phone: '', role: 'Loan Officer', status: 'active', lastLogin: 'Today, 08:15 AM', createdAt: '2024-03-22' },
-  { firstName: 'Robert', lastName: 'Johnson', email: 'robert.j@finance.com', phone: '', role: 'Underwriter', status: 'active', lastLogin: 'Yesterday, 04:30 PM', createdAt: '2024-02-10' },
-  { firstName: 'Emma', lastName: 'Wilson', email: 'emma.w@business.com', phone: '', role: 'Loan Officer', status: 'inactive', lastLogin: '3 days ago', createdAt: '2023-05-05' },
-  { firstName: 'David', lastName: 'Brown', email: 'david.b@enterprise.com', phone: '', role: 'Administrator', status: 'active', lastLogin: 'Today, 10:20 AM', createdAt: '2023-11-30' },
-  { firstName: 'Sarah', lastName: 'Green', email: 'sarah.g@loans.com', phone: '', role: 'Customer Support', status: 'pending', lastLogin: 'Never', createdAt: '2026-08-02' },
-  { firstName: 'Thomas', lastName: 'Parker', email: 'thomas.p@financial.com', phone: '', role: 'Underwriter', status: 'active', lastLogin: 'Yesterday, 06:45 PM', createdAt: '2024-01-18' }
+  { firstName: 'Alexandra', lastName: 'Johnson', email: 'alex.j@example.com', phone: '(876) 555-1234', role: 'Applicant', status: 'active', lastLogin: 'Today, 07:50 AM', createdAt: '2024-08-01', addressLine1: '42 Hope Road', addressLine2: 'Kingston 10', parish: 'kingston' },
+  { firstName: 'Jane', lastName: 'Doe', email: 'jane.doe@example.com', phone: '', role: 'Administrator', status: 'active', lastLogin: 'Today, 09:42 AM', createdAt: '2023-01-15', addressLine1: '8 Constant Spring Road', addressLine2: '', parish: 'st-andrew' },
+  { firstName: 'Michael', lastName: 'Smith', email: 'michael.s@company.com', phone: '', role: 'Loan Officer', status: 'active', lastLogin: 'Today, 08:15 AM', createdAt: '2024-03-22', addressLine1: '15 Manchester Avenue', addressLine2: '', parish: 'manchester' },
+  { firstName: 'Robert', lastName: 'Johnson', email: 'robert.j@finance.com', phone: '', role: 'Underwriter', status: 'active', lastLogin: 'Yesterday, 04:30 PM', createdAt: '2024-02-10', addressLine1: '3 Independence Drive', addressLine2: '', parish: 'st-catherine' },
+  { firstName: 'Emma', lastName: 'Wilson', email: 'emma.w@business.com', phone: '', role: 'Loan Officer', status: 'inactive', lastLogin: '3 days ago', createdAt: '2023-05-05', addressLine1: '21 Ocean View', addressLine2: '', parish: 'st-james' },
+  { firstName: 'David', lastName: 'Brown', email: 'david.b@enterprise.com', phone: '', role: 'Administrator', status: 'active', lastLogin: 'Today, 10:20 AM', createdAt: '2023-11-30', addressLine1: '9 Ridgemount Road', addressLine2: '', parish: 'st-andrew' },
+  { firstName: 'Sarah', lastName: 'Green', email: 'sarah.g@loans.com', phone: '', role: 'Customer Support', status: 'pending', lastLogin: 'Never', createdAt: '2026-08-02', addressLine1: '54 Main Street', addressLine2: '', parish: 'clarendon' },
+  { firstName: 'Thomas', lastName: 'Parker', email: 'thomas.p@financial.com', phone: '', role: 'Underwriter', status: 'active', lastLogin: 'Yesterday, 06:45 PM', createdAt: '2024-01-18', addressLine1: '6 Palm Avenue', addressLine2: '', parish: 'westmoreland' }
 ];
 
 const loans = [
