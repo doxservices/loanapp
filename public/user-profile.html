@@ -288,6 +288,7 @@
       padding: 16px 18px 15px 18px;
       position: relative;
       min-height: 86px;
+      min-width: 0;
       overflow: hidden;
       box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
     }
@@ -318,6 +319,10 @@
 
     select.field { appearance: none; -webkit-appearance: none; cursor: pointer; }
     select.field option { background: #0d3ea4; color: #fff; }
+
+    .formatted-input-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .formatted-input-group .field { text-align: center; min-width: 0; }
+    .hyphen { color: var(--text-soft); }
 
     .loan-table {
       width: 100%;
@@ -525,26 +530,27 @@
             <input class="field" id="fullName" type="text" value="Alexandra Johnson" />
           </div>
           <div class="info-item">
+            <h4>TRN</h4>
+            <input class="field" id="trn" type="text" value="123-456-789" />
+          </div>
+          <div class="info-item">
             <h4>Email Address</h4>
             <input class="field" id="emailAddress" type="email" value="alex.j@example.com" />
           </div>
           <div class="info-item">
             <h4>Phone Number</h4>
-            <input class="field" id="phoneNumber" type="text" value="(876) 555-1234" />
-          </div>
-          <div class="info-item">
-            <h4>TRN</h4>
-            <input class="field" id="trn" type="text" value="123-456-789" />
+            <div class="formatted-input-group">
+              <select id="phoneArea" class="field" style="flex: 0 0 82px;">
+                <option value="876" selected>(876)</option>
+                <option value="658">(658)</option>
+              </select>
+              <div class="hyphen">-</div>
+              <input type="text" id="phoneMid" class="field" maxlength="3" placeholder="555" value="555" style="flex: 1;" />
+              <div class="hyphen">-</div>
+              <input type="text" id="phoneLast" class="field" maxlength="4" placeholder="1234" value="1234" style="flex: 1;" />
+            </div>
           </div>
           <div class="info-item full-width">
-            <h4>Address Line 1</h4>
-            <input class="field" id="addressLine1" type="text" value="42 Hope Road" />
-          </div>
-          <div class="info-item full-width">
-            <h4>Address Line 2</h4>
-            <input class="field" id="addressLine2" type="text" value="Kingston 10" />
-          </div>
-          <div class="info-item">
             <h4>Parish</h4>
             <select class="field" id="parish">
               <option value="">Select Parish</option>
@@ -563,6 +569,14 @@
               <option value="st-thomas">St. Thomas</option>
               <option value="portland">Portland</option>
             </select>
+          </div>
+          <div class="info-item full-width">
+            <h4>Address Line 1</h4>
+            <input class="field" id="addressLine1" type="text" value="42 Hope Road" />
+          </div>
+          <div class="info-item full-width">
+            <h4>Address Line 2</h4>
+            <input class="field" id="addressLine2" type="text" value="Kingston 10" />
           </div>
         </div>
       </section>
@@ -632,7 +646,7 @@
   </div>
 
   <script>
-    const fields = ['fullName', 'emailAddress', 'phoneNumber', 'trn', 'addressLine1', 'addressLine2', 'parish'];
+    const fields = ['fullName', 'emailAddress', 'phoneArea', 'phoneMid', 'phoneLast', 'trn', 'parish', 'addressLine1', 'addressLine2'];
     const STORAGE_KEY = 'bankingProfileTemplateGoal1to1';
 
     function showNotification(message) {
