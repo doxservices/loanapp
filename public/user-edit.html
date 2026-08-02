@@ -15,8 +15,9 @@
     }
     
     body {
-      background: linear-gradient(135deg, rgba(26,42,108,.6), rgba(42,76,179,.6)), url('assets/bg-corporate-blue.jpg') center/cover fixed no-repeat;
+      background: url('assets/bg-corporate-blue.jpg') center/cover fixed no-repeat;
       color: #fff;
+      text-shadow: 0 1px 4px rgba(0,0,0,.65);
       min-height: 100vh;
       padding: 20px;
     }
@@ -24,6 +25,10 @@
     .container {
       max-width: 1200px;
       margin: 0 auto;
+      background: rgba(13,20,38,.4);
+      border-radius: 20px;
+      padding: 20px;
+      backdrop-filter: blur(6px);
     }
     
     header {
