@@ -39,6 +39,7 @@
     }
 
     .sidebar { background: rgba(0, 0, 0, 0.28); padding: 20px 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
+    .sidebar.attached { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
     .logo { padding: 0 20px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
     .logo i { font-size: 26px; color: var(--gold); }
     .logo h1 { font-size: 18px; font-weight: 600; }
@@ -220,6 +221,9 @@
       document.querySelectorAll('.nav-links a').forEach(function(link) {
         if (link.getAttribute('href') === current) link.classList.add('active');
       });
+      if ((localStorage.getItem('adminSidebarMode') || 'floating') === 'attached') {
+        document.querySelector('.sidebar').classList.add('attached');
+      }
 
       const termMode = document.getElementById('termMode');
       const allowedTerms = document.getElementById('allowedTerms').parentElement;

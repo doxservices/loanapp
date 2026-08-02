@@ -32,6 +32,7 @@
 
     .admin-container { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
     .sidebar { background: rgba(0,0,0,0.32); padding: 20px 0; border-right: 1px solid rgba(255,255,255,0.1); }
+    .sidebar.attached { position: sticky; top: 0; align-self: start; height: 100vh; overflow-y: auto; }
     .sidebar .logo { padding: 0 20px 18px; border-bottom: 1px solid rgba(255,255,255,0.1); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
     .sidebar .logo i { font-size: 24px; color: var(--gold); }
     .sidebar .logo h1 { font-size: 17px; font-weight: 600; margin: 0; }
@@ -191,6 +192,9 @@
       document.querySelectorAll('.nav-links a').forEach(function(link) {
         if (link.getAttribute('href') === current) link.classList.add('active');
       });
+      if ((localStorage.getItem('adminSidebarMode') || 'floating') === 'attached') {
+        document.querySelector('.sidebar').classList.add('attached');
+      }
     })();
 
     const sampleApplications = [

@@ -48,6 +48,31 @@
     <li><a class="nav" href="admin.html"><span>This page</span><span class="path">admin.html</span></a></li>
   </ul>
 
+  <h2>Sidebar navigation</h2>
+  <div class="muted">Applies to Dashboard, Manage Promotions, Applications List, and User Management.</div>
+  <div style="display:flex;gap:18px;flex-wrap:wrap;padding:10px 12px;border:1px solid #e3e3e8;border-radius:8px;margin:6px 0 20px;background:#fafafc;">
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+      <input type="radio" name="sidebarMode" value="floating" id="mode-floating">
+      Floating <span class="muted" style="margin:0;">— scrolls with the page (original)</span>
+    </label>
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px;">
+      <input type="radio" name="sidebarMode" value="attached" id="mode-attached">
+      Attached <span class="muted" style="margin:0;">— stays fixed to the side while you scroll</span>
+    </label>
+  </div>
+
+  <script>
+    (function() {
+      const KEY = 'adminSidebarMode';
+      const saved = localStorage.getItem(KEY) || 'floating';
+      const radio = document.querySelector(`input[name="sidebarMode"][value="${saved}"]`);
+      if (radio) radio.checked = true;
+      document.querySelectorAll('input[name="sidebarMode"]').forEach(r => {
+        r.addEventListener('change', () => { if (r.checked) localStorage.setItem(KEY, r.value); });
+      });
+    })();
+  </script>
+
   <h2>API endpoints (Firebase, cross-origin)</h2>
   <div class="muted">Base URL: <code id="api-base"></code> &middot; admin-gated endpoints send your sign-in token automatically.</div>
   <ul>
