@@ -5,8 +5,6 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
 const express = require('express');
-const crypto = require('crypto');
-const path = require('path');
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -21,137 +19,53 @@ app.use(express.json({ limit: '25mb' }));
 app.use(express.urlencoded({ extended: false }));
 
 // =========================================================================
-// Basic Auth — unchanged pages (admin-applications, admin-nav,
-// admin-standing-orders, applications-list)
+// CORS — the frontend now lives on a different origin (doxservices.com),
+// so every request is cross-origin. No cookies are used (see auth below),
+// so this is plain CORS, not credentialed CORS.
 // =========================================================================
-function safeEqual(a, b) {
-  const ba = Buffer.from(String(a)), bb = Buffer.from(String(b));
-  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
-}
-function adminAuth(req, res, next) {
-  const user = process.env.ADMIN_USER || 'doxservices';
-  const pass = process.env.ADMIN_PASSWORD;
-  if (!pass) return res.status(503).json({ ok: false, error: 'ADMIN_PASSWORD not set' });
-  const hdr = req.get('authorization') || '';
-  if (hdr.startsWith('Basic ')) {
-    const [u, ...p] = Buffer.from(hdr.slice(6), 'base64').toString().split(':');
-    if (safeEqual(u, user) && safeEqual(p.join(':'), pass)) return next();
+const ALLOWED_ORIGINS = (process.env.CORS_ORIGINS ||
+  'https://www.doxservices.com,https://doxservices.com,https://doxservices-loanapp.web.app,http://localhost:5000,http://127.0.0.1:5000'
+).split(',').map(s => s.trim());
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.set('Access-Control-Allow-Origin', origin);
+    res.set('Vary', 'Origin');
   }
-  res.set('WWW-Authenticate', 'Basic realm="Loanapp admin (doxservices)"');
-  return res.status(401).send('Authentication required');
-}
+  res.set('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  if (req.method === 'OPTIONS') return res.status(204).end();
+  next();
+});
 
 // =========================================================================
-// Google Sign-In (admin.html only) — restricted to one allow-listed account
+// Google Sign-In — Bearer token, verified fresh on every request.
+// Restricted to one allow-listed account. Applied to all 5 admin surfaces.
 // =========================================================================
 const ALLOWED_ADMIN_EMAIL = (process.env.ALLOWED_ADMIN_EMAIL || '').toLowerCase();
-const SESSION_SECRET = process.env.SESSION_SECRET;
-const SESSION_COOKIE = 'admin_session';
-const SESSION_MAX_AGE_MS = 12 * 60 * 60 * 1000; // 12h
 
-function parseCookies(req) {
-  const header = req.headers.cookie || '';
-  return Object.fromEntries(header.split(';').filter(Boolean).map(kv => {
-    const i = kv.indexOf('=');
-    return [kv.slice(0, i).trim(), decodeURIComponent(kv.slice(i + 1).trim())];
-  }));
-}
-function signSession(b64) {
-  return crypto.createHmac('sha256', SESSION_SECRET).update(b64).digest('base64url');
-}
-function makeSessionCookie(email) {
-  const b64 = Buffer.from(JSON.stringify({ email, exp: Date.now() + SESSION_MAX_AGE_MS })).toString('base64url');
-  return `${b64}.${signSession(b64)}`;
-}
-function verifySessionCookie(value) {
-  if (!value || !SESSION_SECRET) return null;
-  const [b64, sig] = value.split('.');
-  if (!b64 || !sig || !safeEqual(sig, signSession(b64))) return null;
+async function requireGoogleAuth(req, res, next) {
+  const hdr = req.get('authorization') || '';
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+  if (!token) return res.status(401).json({ ok: false, error: 'Missing bearer token' });
   try {
-    const payload = JSON.parse(Buffer.from(b64, 'base64url').toString());
-    if (!payload.exp || payload.exp < Date.now()) return null;
-    if (payload.email !== ALLOWED_ADMIN_EMAIL) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-function hasValidGoogleSession(req) {
-  return !!verifySessionCookie(parseCookies(req)[SESSION_COOKIE]);
-}
-
-function googleSignInPage() {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8">
-<title>Admin sign-in</title>
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#f5f5f7;margin:0}
-.card{background:#fff;padding:32px 40px;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.08);text-align:center;max-width:360px}
-button{margin-top:16px;padding:10px 20px;font-size:15px;cursor:pointer;border:1px solid #ddd;border-radius:6px;background:#fff}
-button:hover{background:#f5f5f7}#msg{color:#c00;font-size:13px;margin-top:12px;min-height:16px}</style></head>
-<body><div class="card"><h2>Admin sign-in</h2><p>Sign in with the doxservices Google account to continue.</p>
-<button id="signin">Sign in with Google</button><div id="msg"></div></div>
-<script src="/firebase-config.js"></script>
-<script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-const fbApp = initializeApp(window.FIREBASE_CONFIG);
-const auth = getAuth(fbApp);
-const msg = document.getElementById('msg');
-document.getElementById('signin').addEventListener('click', async () => {
-  msg.textContent = '';
-  try {
-    const result = await signInWithPopup(auth, new GoogleAuthProvider());
-    const idToken = await result.user.getIdToken();
-    const res = await fetch('/auth/google', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ idToken }) });
-    const json = await res.json();
-    if (json.ok) { location.reload(); return; }
-    msg.textContent = json.error || 'Sign-in failed.';
-    await signOut(auth);
-  } catch (err) {
-    msg.textContent = err.message || 'Sign-in failed.';
-  }
-});
-</script></body></html>`;
-}
-
-function googleAdminAuth(req, res, next) {
-  if (hasValidGoogleSession(req)) return next();
-  res.set('Content-Type', 'text/html').status(200).send(googleSignInPage());
-}
-function flexibleAdminAuth(req, res, next) {
-  if (hasValidGoogleSession(req)) return next();
-  return adminAuth(req, res, next);
-}
-
-app.post('/auth/google', async (req, res) => {
-  if (!SESSION_SECRET) return res.status(503).json({ ok: false, error: 'SESSION_SECRET not set' });
-  const { idToken } = req.body || {};
-  if (!idToken) return res.status(400).json({ ok: false, error: 'Missing idToken' });
-  try {
-    const decoded = await firebaseAuth.verifyIdToken(idToken);
+    const decoded = await firebaseAuth.verifyIdToken(token);
     const email = (decoded.email || '').toLowerCase();
     if (!decoded.email_verified || !ALLOWED_ADMIN_EMAIL || email !== ALLOWED_ADMIN_EMAIL) {
       return res.status(403).json({ ok: false, error: 'This Google account is not authorized for admin access.' });
     }
-    res.cookie(SESSION_COOKIE, makeSessionCookie(email), {
-      httpOnly: true, sameSite: 'lax', secure: true, maxAge: SESSION_MAX_AGE_MS
-    });
-    res.json({ ok: true });
+    req.adminEmail = email;
+    next();
   } catch (e) {
     console.error('[auth] verifyIdToken failed:', e.message);
     res.status(401).json({ ok: false, error: 'Invalid or expired sign-in token.' });
   }
-});
-app.post('/auth/logout', (req, res) => {
-  res.clearCookie(SESSION_COOKIE);
-  res.json({ ok: true });
-});
+}
 
-// Serve the gated static admin pages (moved out of public/ so Hosting can't
-// serve them directly — see functions/protected/ and firebase.json rewrites)
-const PROTECTED_DIR = path.join(__dirname, 'protected');
-app.get('/admin.html', googleAdminAuth, (req, res) => res.sendFile(path.join(PROTECTED_DIR, 'admin.html')));
-app.get(['/admin-applications.html', '/admin-nav.html', '/admin-standing-orders.html', '/applications-list.html'],
-  adminAuth, (req, res) => res.sendFile(path.join(PROTECTED_DIR, path.basename(req.path))));
+// Lets the client confirm "am I signed in as the right account?" before
+// rendering admin UI, independent of any specific data call.
+app.get('/auth/verify', requireGoogleAuth, (req, res) => res.json({ ok: true, email: req.adminEmail }));
 
 // =========================================================================
 // Standing orders — public submit, admin-gated list (Firestore: standingOrders)
@@ -166,7 +80,7 @@ app.post('/standing-orders', async (req, res) => {
     res.status(500).json({ ok: false, error: 'Failed to save record' });
   }
 });
-app.get('/standing-orders', flexibleAdminAuth, async (req, res) => {
+app.get('/standing-orders', requireGoogleAuth, async (req, res) => {
   try {
     const snap = await db.collection('standingOrders').orderBy('submittedAt', 'desc').get();
     res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
@@ -191,7 +105,7 @@ function toFlatRow(doc) {
     created_at: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }
-app.get('/applications', flexibleAdminAuth, async (req, res) => {
+app.get('/applications', requireGoogleAuth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
   try {
     const snap = await db.collection('applications').orderBy('createdAt', 'desc').limit(limit).get();
@@ -239,7 +153,7 @@ app.get('/api/promotions/:id', async (req, res) => {
   if (!doc.exists) return res.status(404).json({ error: 'Promotion not found' });
   res.json(promoToApi(doc));
 });
-app.post('/api/promotions', flexibleAdminAuth, async (req, res) => {
+app.post('/api/promotions', requireGoogleAuth, async (req, res) => {
   const p = req.body || {};
   const ref = await db.collection('promotions').add({
     name: p.name, description: p.description || '', currency: p.currency || 'JMD',
@@ -249,7 +163,7 @@ app.post('/api/promotions', flexibleAdminAuth, async (req, res) => {
   });
   res.status(201).json(promoToApi(await ref.get()));
 });
-app.put('/api/promotions/:id', flexibleAdminAuth, async (req, res) => {
+app.put('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   const p = req.body || {};
   const ref = db.collection('promotions').doc(req.params.id);
   await ref.update({
@@ -259,7 +173,7 @@ app.put('/api/promotions/:id', flexibleAdminAuth, async (req, res) => {
   });
   res.json(promoToApi(await ref.get()));
 });
-app.delete('/api/promotions/:id', flexibleAdminAuth, async (req, res) => {
+app.delete('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   await db.collection('promotions').doc(req.params.id).delete();
   res.json({ ok: true });
 });
@@ -274,7 +188,7 @@ function appToApi(doc) {
     reviewFlags: d.reviewFlags || {}, attachments: d.attachments || {}, messages: d.messages || []
   };
 }
-app.get('/api/applications', flexibleAdminAuth, async (req, res) => {
+app.get('/api/applications', requireGoogleAuth, async (req, res) => {
   const snap = await db.collection('applications').orderBy('createdAt', 'desc').get();
   res.json(snap.docs.map(appToApi));
 });
@@ -338,7 +252,10 @@ async function deleteAttachment(relativeUrl) {
   }
 }
 
-app.get('/uploads/:appDir/:filename', flexibleAdminAuth, async (req, res) => {
+// Public, same as the original local-disk version (no auth on this in any
+// prior version of the app — the applicant-facing pages read their own
+// attachments back this way too, and they're never signed in as admin).
+app.get('/uploads/:appDir/:filename', async (req, res) => {
   try {
     const file = bucket.file(`${req.params.appDir}/${req.params.filename}`);
     const [exists] = await file.exists();

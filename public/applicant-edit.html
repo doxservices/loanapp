@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Applicant – Edit Your Details</title>
     <link rel="stylesheet" href="styles.css">
+    <script src="api-base.js"></script>
   </head>
   <body>
     <!-- Top navigation similar to admin pages -->
@@ -53,7 +54,7 @@
       let parishesList = [];
       async function loadParishes() {
         try {
-          const res = await fetch('/api/parishes');
+          const res = await fetch(window.LOANIT_API_BASE + '/api/parishes');
           parishesList = await res.json();
         } catch (err) {
           console.error('Error loading parishes', err);
@@ -87,7 +88,7 @@
           return;
         }
         try {
-          const res = await fetch('/api/applications/trn/' + encodeURIComponent(trn));
+          const res = await fetch(window.LOANIT_API_BASE + '/api/applications/trn/' + encodeURIComponent(trn));
           if (!res.ok) {
             statusArea.textContent = 'No application found for this TRN';
             return;
@@ -286,7 +287,7 @@
         if (!text) return;
         const appId = form.elements.id.value;
         try {
-          const res = await fetch('/api/applications/' + appId, {
+          const res = await fetch(window.LOANIT_API_BASE + '/api/applications/' + appId, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ newMessage: { role: 'applicant', text } })
@@ -348,7 +349,7 @@
           payload.attachments = attachments;
         }
         try {
-          const res = await fetch('/api/applications/' + appId, {
+          const res = await fetch(window.LOANIT_API_BASE + '/api/applications/' + appId, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -379,7 +380,7 @@
           removePayload.removeAttachments.payslips = [url];
         }
         try {
-          const res = await fetch('/api/applications/' + appId, {
+          const res = await fetch(window.LOANIT_API_BASE + '/api/applications/' + appId, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(removePayload)

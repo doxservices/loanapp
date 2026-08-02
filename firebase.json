@@ -3,11 +3,6 @@
     "public": "public",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
-      { "source": "/admin.html", "function": { "functionId": "api", "region": "us-central1" } },
-      { "source": "/admin-applications.html", "function": { "functionId": "api", "region": "us-central1" } },
-      { "source": "/admin-nav.html", "function": { "functionId": "api", "region": "us-central1" } },
-      { "source": "/admin-standing-orders.html", "function": { "functionId": "api", "region": "us-central1" } },
-      { "source": "/applications-list.html", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/auth/**", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/api/**", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/uploads/**", "function": { "functionId": "api", "region": "us-central1" } },

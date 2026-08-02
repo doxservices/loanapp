@@ -1,12 +1,13 @@
 <!doctype html><html lang="en">
 <head>
-  <script src="/analytics.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Applications</title>
+  <script src="analytics.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Applications</title>
+  <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
 <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px}h1{margin:0 0 12px}.bar{display:flex;gap:8px;align-items:center;margin-bottom:12px}input,button,select{padding:8px 10px;font-size:14px}table{border-collapse:collapse;width:100%;font-size:14px}th,td{border:1px solid #ddd;padding:8px;vertical-align:top}th{background:#f5f5f7;text-align:left;position:sticky;top:0}.muted{color:#666;font-size:12px}</style></head>
 <body><h1>Applications</h1><div class="bar"><label for="limit">Limit</label><select id="limit"><option>25</option><option selected>100</option><option>200</option><option>500</option></select><button id="refresh">Refresh</button><button id="signout" style="margin-left:auto">Sign out</button><span id="status" class="muted"></span></div>
 <div style="overflow:auto"><table id="tbl"><thead><tr><th>Application ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Parish</th><th>Term</th><th>Promotion</th><th>Created</th></tr></thead><tbody></tbody></table></div>
-<script>
+<script type="module">
 async function fetchRows(){const limit=document.getElementById('limit').value||100;const status=document.getElementById('status');status.textContent='Loading…';
-  const res=await fetch(`/applications?limit=${encodeURIComponent(limit)}`,{headers:{'Accept':'application/json'/*,'x-api-key':'YOUR_KEY'*/}});
+  const res=await window.adminAuth.fetch(`/applications?limit=${encodeURIComponent(limit)}`,{headers:{'Accept':'application/json'}});
   if(!res.ok){status.textContent=`Error ${res.status}`;return;}
   const json=await res.json();if(!json.ok){status.textContent=`Error: ${json.error||'unknown'}`;return;}
   const tbody=document.querySelector('#tbl tbody');tbody.innerHTML='';
@@ -23,6 +24,6 @@ async function fetchRows(){const limit=document.getElementById('limit').value||1
   status.textContent=`Loaded ${json.rows.length} row(s).`;}
 function esc(s){return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
 function fmtDate(v){if(!v)return'';try{return new Date(v).toLocaleString()}catch{return v}}
-document.getElementById('refresh').addEventListener('click',fetchRows);document.addEventListener('DOMContentLoaded',fetchRows);
-document.getElementById('signout').addEventListener('click',async()=>{await fetch('/auth/logout',{method:'POST'});location.reload();});
+document.getElementById('refresh').addEventListener('click',fetchRows);window.adminAuth.ready().then(fetchRows);
+document.getElementById('signout').addEventListener('click',()=>window.adminAuth.signOut());
 </script></body></html>

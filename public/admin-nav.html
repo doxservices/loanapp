@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin — Site Navigation</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;max-width:860px}
+    h1{margin:0 0 4px}
+    .muted{color:#666;font-size:13px;margin-bottom:20px}
+    h2{font-size:15px;margin:22px 0 8px;color:#333;border-bottom:1px solid #eee;padding-bottom:4px}
+    ul{list-style:none;margin:0;padding:0}
+    li{margin:0}
+    a.nav{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e3e3e8;border-radius:8px;margin:6px 0;text-decoration:none;color:#1a1a1a;background:#fafafc}
+    a.nav:hover{background:#f0f4ff;border-color:#b9c8f5}
+    a.nav .path{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:#888;white-space:nowrap}
+    button.nav{display:flex;width:100%;justify-content:space-between;align-items:center;gap:12px;padding:10px 12px;border:1px solid #e3e3e8;border-radius:8px;margin:6px 0;text-decoration:none;color:#1a1a1a;background:#fafafc;font:inherit;cursor:pointer}
+    button.nav:hover{background:#f0f4ff;border-color:#b9c8f5}
+    .pill{display:inline-block;font-size:11px;padding:2px 8px;border-radius:999px;background:#eef;color:#336;margin-left:8px;vertical-align:middle}
+    #db{font-weight:600}
+    #api-result{white-space:pre-wrap;background:#f5f5f7;padding:12px;border-radius:8px;font-family:ui-monospace,Consolas,monospace;font-size:12px;margin-top:8px;max-height:240px;overflow:auto;display:none}
+  </style>
+</head>
+<body>
+  <h1>Loanapp — Admin Navigation</h1>
+  <div class="muted">All pages and endpoints for Loan It Financing &middot; API: <span id="db">checking…</span></div>
+
+  <h2>Public pages</h2>
+  <ul>
+    <li><a class="nav" href="index.html"><span>Standing Order Authorization — Loan It Financing <span class="pill">home</span></span><span class="path">index.html</span></a></li>
+    <li><a class="nav" href="user-apply.html"><span>Apply for a Loan</span><span class="path">user-apply.html</span></a></li>
+    <li><a class="nav" href="user-profile.html"><span>Applicant profile</span><span class="path">user-profile.html</span></a></li>
+    <li><a class="nav" href="applicant-edit.html"><span>Applicant edit / mailbox (by TRN)</span><span class="path">applicant-edit.html?trn=</span></a></li>
+    <li><a class="nav" href="status.html"><span>Application status (by id)</span><span class="path">status.html?id=</span></a></li>
+  </ul>
+
+  <h2>Admin pages <span class="pill">doxservices Google sign-in</span></h2>
+  <ul>
+    <li><a class="nav" href="admin-standing-orders.html"><span>Standing Order submissions</span><span class="path">admin-standing-orders.html</span></a></li>
+    <li><a class="nav" href="admin.html"><span>Applications table</span><span class="path">admin.html</span></a></li>
+    <li><a class="nav" href="admin-applications.html"><span>Applications (Admin)</span><span class="path">admin-applications.html</span></a></li>
+    <li><a class="nav" href="applications-list.html"><span>Loan Application System — list viewer</span><span class="path">applications-list.html</span></a></li>
+    <li><a class="nav" href="admin-promotions.html"><span>Manage promotions</span><span class="path">admin-promotions.html</span></a></li>
+    <li><a class="nav" href="admin-dashboard.html"><span>Admin dashboard</span><span class="path">admin-dashboard.html</span></a></li>
+    <li><a class="nav" href="user-management.html"><span>User management</span><span class="path">user-management.html</span></a></li>
+    <li><a class="nav" href="admin-nav.html"><span>This page</span><span class="path">admin-nav.html</span></a></li>
+  </ul>
+
+  <h2>API endpoints (Firebase, cross-origin)</h2>
+  <div class="muted">Base URL: <code id="api-base"></code> &middot; admin-gated endpoints send your sign-in token automatically.</div>
+  <ul>
+    <li><button class="nav" data-path="/health"><span>Health / database check <span class="pill">GET</span></span><span class="path">/health</span></button></li>
+    <li><button class="nav" data-path="/standing-orders"><span>Standing orders JSON <span class="pill">GET · admin</span></span><span class="path">/standing-orders</span></button></li>
+    <li><button class="nav" data-path="/applications"><span>Applications JSON <span class="pill">GET · admin</span></span><span class="path">/applications</span></button></li>
+    <li><button class="nav" data-path="/api/promotions"><span>Promotions JSON <span class="pill">GET</span></span><span class="path">/api/promotions</span></button></li>
+  </ul>
+  <pre id="api-result"></pre>
+
+  <script type="module">
+    await window.adminAuth.ready();
+    document.getElementById('api-base').textContent = window.adminAuth.apiBase;
+
+    async function checkHealth() {
+      try {
+        const res = await window.adminAuth.fetch('/health');
+        const j = await res.json();
+        const el = document.getElementById('db');
+        el.textContent = j.ok ? 'connected' : ('down — ' + (j.error || 'unknown'));
+        el.style.color = j.ok ? '#1a7f37' : '#c0392b';
+      } catch {
+        const el = document.getElementById('db');
+        el.textContent = 'down — request failed';
+        el.style.color = '#c0392b';
+      }
+    }
+    checkHealth();
+
+    const result = document.getElementById('api-result');
+    document.querySelectorAll('button.nav[data-path]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        result.style.display = 'block';
+        result.textContent = 'Loading…';
+        try {
+          const res = await window.adminAuth.fetch(btn.dataset.path);
+          const text = await res.text();
+          try { result.textContent = JSON.stringify(JSON.parse(text), null, 2); }
+          catch { result.textContent = text; }
+        } catch (err) {
+          result.textContent = 'Error: ' + err.message;
+        }
+      });
+    });
+  </script>
+</body>
+</html>
