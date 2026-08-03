@@ -123,23 +123,6 @@
     .form-group select option { background: #0d3ea4; color: #fff; }
     input::placeholder, .form-group input::placeholder { color: rgba(255,255,255,0.55); }
 
-    /* Once a field has a value, flip it to a filled-in look: white
-       background, dark text -- distinct from the empty blue/placeholder
-       state. Toggled by JS via the .filled class. */
-    input.field.filled, textarea.field.filled, .form-group input.filled {
-      background: #ffffff;
-      color: #16202a;
-      border-radius: 6px;
-      padding: 4px 8px;
-      margin: -4px -8px;
-    }
-    .formatted-input.filled {
-      background: #ffffff;
-      color: #16202a;
-      border-radius: 6px;
-      padding: 4px 6px;
-      margin: -4px -6px;
-    }
 
     .formatted-input-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
     .formatted-input { flex: 1; min-width: 0; background: transparent; border: 0; outline: 0; color: #fff; font-size: 15px; text-align: center; font-family: inherit; }
@@ -364,13 +347,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script>
-    document.querySelectorAll('.field, .form-group input, .form-group select, .formatted-input').forEach(el => {
-      const update = () => el.classList.toggle('filled', !!el.value && el.value.trim() !== '');
-      update();
-      el.addEventListener('input', update);
-      el.addEventListener('change', update);
-    });
-
     const bankModal = document.getElementById('bank-modal');
     const addBankBtn = document.getElementById('add-bank-btn');
     const closeModalBtns = document.querySelectorAll('.close-modal');

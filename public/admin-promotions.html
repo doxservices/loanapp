@@ -86,11 +86,6 @@
     .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,0.55); }
     .form-group select option { background: #0d3ea4; }
 
-    /* Once a field has a value, flip it to a filled-in look: white
-       background, dark text -- distinct from the empty blue/placeholder
-       state. Toggled by JS via the .filled class. */
-    .form-group input.filled, .form-group textarea.filled { background: #ffffff; color: #16202a; }
-
     .term-checklist {
       max-height: 150px; overflow-y: auto;
       background: rgba(13, 62, 164, 0.60); border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 8px;
@@ -323,12 +318,6 @@
         if (link.getAttribute('href') === current) link.classList.add('active');
       });
 
-      document.querySelectorAll('.form-group input, .form-group textarea').forEach(el => {
-        const update = () => el.classList.toggle('filled', !!el.value && el.value.trim() !== '');
-        update();
-        el.addEventListener('input', update);
-        el.addEventListener('change', update);
-      });
       const sidebarModeSwitch = document.getElementById('sidebarModeSwitch');
       const sidebarModeLabel = document.getElementById('sidebarModeLabel');
       function applySidebarMode(mode) {

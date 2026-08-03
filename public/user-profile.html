@@ -346,24 +346,6 @@
       background-color: rgba(255,255,255,0.05);
     }
 
-    /* Once a field has a value, flip it to a filled-in look: white
-       background, dark text -- distinct from the empty blue/placeholder
-       state. Toggled by JS via the .filled class. */
-    input.field.filled, textarea.field.filled {
-      background: #ffffff;
-      color: #16202a;
-      border-radius: 6px;
-      padding: 4px 8px;
-      margin: -4px -8px;
-    }
-    .formatted-input-group input.field.filled {
-      background: #ffffff;
-      color: #16202a;
-      padding: 8px 6px;
-      margin: 0;
-    }
-    .info-item.locked .field.filled { color: #16202a; }
-
     .info-item h4 {
       margin: 0 0 10px;
       font-size: 12px;
@@ -835,12 +817,6 @@
         const el = document.getElementById(id);
         el.addEventListener('input', saveProfile);
         el.addEventListener('change', saveProfile);
-      });
-      document.querySelectorAll('input.field, textarea.field').forEach(el => {
-        const update = () => el.classList.toggle('filled', !!el.value && el.value.trim() !== '');
-        update();
-        el.addEventListener('input', update);
-        el.addEventListener('change', update);
       });
       document.getElementById('emailNotifications').addEventListener('change', () => { saveProfile(); showNotification('Preferences updated'); });
       document.getElementById('logoutBtn').addEventListener('click', () => showNotification('You have been logged out successfully'));

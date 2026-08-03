@@ -186,22 +186,6 @@
     .info-item.locked .field { cursor: default; color: rgba(255,255,255,0.82); }
     .info-item.locked select.field { cursor: default; opacity: 0.75; background-color: rgba(255,255,255,0.05); }
 
-    /* Once a field has a value, flip it to a filled-in look: white
-       background, dark text -- distinct from the empty blue/placeholder
-       state. Toggled by JS via the .filled class. */
-    input.field.filled, textarea.field.filled {
-      background: #ffffff;
-      color: #16202a;
-      border-radius: 6px;
-      padding: 4px 8px;
-      margin: -4px -8px;
-    }
-    .formatted-input-group input.field.filled {
-      background: #ffffff;
-      color: #16202a;
-      padding: 8px 6px;
-      margin: 0;
-    }
 
     input[type="file"].field { color: var(--text-soft); font-size: 13px; }
     input[type="file"].field::file-selector-button {
@@ -434,20 +418,6 @@
     }
     fillStaticFieldsFromProfile();
 
-    function initFilledFieldTracking() {
-      // Locked fields (profile data, never editable here) keep the static
-      // locked look always -- the filled/white "you typed something" theme
-      // only makes sense for fields the user can actually type into.
-      document.querySelectorAll('input.field, textarea.field').forEach(el => {
-        if (el.readOnly || el.disabled) { el.classList.remove('filled'); return; }
-        const update = () => el.classList.toggle('filled', !!el.value && el.value.trim() !== '');
-        update();
-        el.addEventListener('input', update);
-        el.addEventListener('change', update);
-      });
-    }
-    initFilledFieldTracking();
-
     document.getElementById('promoSelect').addEventListener('change', function() {
       const promoCard = document.querySelector('.promo-card');
       const value = this.value;
@@ -488,7 +458,6 @@
       successMessage.scrollIntoView({ behavior: 'smooth' });
       this.reset();
       fillStaticFieldsFromProfile();
-      initFilledFieldTracking();
     });
 
     const phoneMid = document.getElementById('phone-mid');
