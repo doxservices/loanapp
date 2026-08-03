@@ -726,11 +726,41 @@
       if (profileEditing) {
         setProfileEditable(false);
         saveProfile();
-        showNotification('Profile changes saved');
+        syncProfileToApi();
       } else {
         setProfileEditable(true);
         document.getElementById('fullName').focus();
         showNotification('Profile fields are ready to edit');
+      }
+    }
+
+    // Writes the profile edit through to Firestore (users collection) so the
+    // change shows up in admin User Management too, not just this browser.
+    const PROFILE_EMAIL = 'alex.j@example.com'; // demo profile identity (dummy data)
+    async function syncProfileToApi() {
+      const fullName = document.getElementById('fullName').value.trim();
+      const nameParts = fullName.split(/\s+/);
+      const phone = `(${document.getElementById('phoneArea').value.trim()}) ${document.getElementById('phoneMid').value.trim()}-${document.getElementById('phoneLast').value.trim()}`;
+      const payload = {
+        firstName: nameParts[0] || '',
+        lastName: nameParts.slice(1).join(' ') || '',
+        phone,
+        trn: document.getElementById('trn').value.trim(),
+        parish: document.getElementById('parish').value,
+        addressLine1: document.getElementById('addressLine1').value.trim(),
+        addressLine2: document.getElementById('addressLine2').value.trim(),
+        emailNotifications: document.getElementById('emailNotifications').checked
+      };
+      try {
+        const res = await fetch(window.LOANIT_API_BASE + '/api/users/by-email/' + encodeURIComponent(PROFILE_EMAIL), {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        showNotification('Profile changes saved to your account');
+      } catch (err) {
+        showNotification('Saved locally — server sync failed');
       }
     }
 
@@ -765,11 +795,13 @@
     }
     function fmtDate(v) { if (!v) return ''; try { return new Date(v).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); } catch { return v; } }
 
+    let loadedLoans = [];
     async function loadLoans() {
       const tbody = document.getElementById('loan-table-body');
       try {
-        const res = await fetch(window.LOANIT_API_BASE + '/api/loans?email=alex.j@example.com');
+        const res = await fetch(window.LOANIT_API_BASE + '/api/loans?email=' + encodeURIComponent(PROFILE_EMAIL));
         const loans = await res.json();
+        loadedLoans = loans;
         if (!loans.length) {
           tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No loans on record.</td></tr>';
           return;
@@ -798,13 +830,25 @@
         el.addEventListener('input', saveProfile);
         el.addEventListener('change', saveProfile);
       });
-      document.getElementById('emailNotifications').addEventListener('change', () => { saveProfile(); showNotification('Preferences updated'); });
+      document.getElementById('emailNotifications').addEventListener('change', () => { saveProfile(); syncProfileToApi(); });
       document.getElementById('logoutBtn').addEventListener('click', () => showNotification('You have been logged out successfully'));
       document.getElementById('editProfileBtn').addEventListener('click', toggleProfileEdit);
       document.getElementById('editPersonalInfoBtn').addEventListener('click', toggleProfileEdit);
       document.getElementById('newApplicationBtn').addEventListener('click', () => { window.location.href = 'user-apply.html'; });
-      document.getElementById('downloadHistoryBtn').addEventListener('click', () => showNotification('Loan history export prepared'));
-      document.getElementById('viewApplicationsBtn').addEventListener('click', () => showNotification('Displaying all applications'));
+      document.getElementById('downloadHistoryBtn').addEventListener('click', () => {
+        if (!loadedLoans.length) { showNotification('No loan history to export yet'); return; }
+        const cols = ['applicationCode', 'createdAt', 'loanType', 'principal', 'termMonths', 'status'];
+        const csvCell = v => '"' + String(v ?? '').replaceAll('"', '""') + '"';
+        const csv = [cols.join(',')].concat(loadedLoans.map(l => cols.map(c => csvCell(l[c])).join(','))).join('\r\n');
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'loan-history.csv';
+        a.click();
+        URL.revokeObjectURL(a.href);
+        showNotification('Loan history downloaded');
+      });
+      document.getElementById('viewApplicationsBtn').addEventListener('click', () => { window.location.href = 'my-active-loans.html'; });
       document.getElementById('changePasswordBtn').addEventListener('click', () => showNotification('Password update screen coming next'));
       document.getElementById('enable2FABtn').addEventListener('click', () => showNotification('Two-factor authentication enabled'));
       setTimeout(() => showNotification('Welcome back, Alexandra!'), 500);

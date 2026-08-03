@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan Calculator</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --text-main: rgba(255,255,255,0.97);
+      --text-soft: rgba(239,245,255,0.92);
+      --text-muted: rgba(228,237,255,0.78);
+      --gold: #efc352;
+      --gold-deep: #d9a230;
+      --panel-strong-1: rgba(13, 62, 164, 0.70);
+      --panel-strong-2: rgba(7, 50, 145, 0.82);
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--text-main);
+      background: url('assets/banking-background.jpg') center center / cover no-repeat fixed;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.14); position: relative; overflow-x: hidden;
+    }
+    .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
+    .container {
+      max-width: 960px; margin: 32px auto 0;
+      background: linear-gradient(135deg, rgba(5, 48, 132, 0.78) 0%, rgba(31, 91, 190, 0.48) 45%, rgba(105, 151, 226, 0.26) 100%);
+      border: 1px solid rgba(255,255,255,0.26); border-radius: 24px; padding: 24px 26px 26px;
+      backdrop-filter: blur(10px) saturate(115%); -webkit-backdrop-filter: blur(10px) saturate(115%);
+      box-shadow: 0 22px 50px rgba(3, 25, 89, 0.20); position: relative; overflow: hidden;
+    }
+    .container::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,0.20); pointer-events: none; }
+
+    .top-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; position: relative; z-index: 2; }
+    .page-title { font-size: 24px; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+    .page-title i { color: var(--gold); }
+    .page-subtitle { color: var(--text-soft); font-size: 14px; margin: 0; }
+    .user-info { display: flex; gap: 14px; flex-wrap: wrap; }
+    .nav-btn, .btn {
+      border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; text-decoration: none; cursor: pointer;
+      transition: all .18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      line-height: 1; font-family: inherit;
+    }
+    .nav-btn {
+      padding: 12px 18px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20);
+      backdrop-filter: blur(4px); color: var(--text-main); font-size: 13px; font-weight: 600;
+    }
+    .btn { padding: 13px 20px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20); color: var(--text-main); font-size: 14px; font-weight: 600; }
+    .btn-primary { background: linear-gradient(180deg, #f1c75a, #dfa938); color: #172033; border-color: rgba(255,255,255,0.18); box-shadow: 0 8px 18px rgba(96, 65, 8, 0.18); }
+    .nav-btn:hover, .btn:hover { transform: translateY(-1px); }
+
+    .card {
+      background: transparent; border-radius: 18px; padding: 20px; border: 1px solid rgba(190, 218, 255, 0.20);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); margin-bottom: 18px; position: relative; z-index: 2;
+    }
+    .card-title { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.12); font-size: 18px; font-weight: 600; }
+    .card-title i { color: var(--gold); }
+
+    .calc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .form-group label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 12px 14px; border-radius: 10px; font-family: inherit; font-size: 15px;
+      background: rgba(13, 62, 164, 0.60); border: 1px solid rgba(165, 203, 255, 0.24); color: var(--text-main);
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: rgba(239, 195, 82, 0.60); }
+    .form-group select option { background: #0d3ea4; color: #fff; }
+    .calc-actions { grid-column: 1 / -1; display: flex; gap: 12px; flex-wrap: wrap; margin-top: 4px; }
+
+    .results-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .result-card {
+      background: linear-gradient(180deg, var(--panel-strong-1), var(--panel-strong-2));
+      border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; padding: 18px; text-align: center; position: relative; overflow: hidden;
+    }
+    .result-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); }
+    .result-value { font-size: 26px; font-weight: bold; margin: 6px 0; color: var(--gold); }
+    .result-label { font-size: 13px; color: var(--text-soft); }
+
+    .schedule-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .schedule-table th { text-align: left; padding: 12px; background: rgba(0,0,0,0.18); color: var(--gold); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .schedule-table td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .schedule-table tr:hover { background: rgba(255,255,255,0.04); }
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.14); }
+
+    footer { text-align: center; padding-top: 20px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(234,243,255,0.84); font-size: 13px; position: relative; z-index: 2; }
+    footer a { color: var(--gold); text-decoration: none; font-weight: 600; }
+    footer p { margin: 6px 0; }
+
+    @media (max-width: 768px) {
+      .calc-grid { grid-template-columns: 1fr; }
+      .top-bar { flex-direction: column; align-items: center; text-align: center; }
+      .user-info { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="container">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-chart-line"></i> Loan Calculator</h1>
+          <p class="page-subtitle">Estimate your monthly payments before you apply</p>
+        </div>
+        <div class="user-info">
+          <a href="user-profile.html" class="nav-btn"><i class="fas fa-id-card"></i> My Profile</a>
+          <a href="index.html" class="nav-btn"><i class="fas fa-home"></i> Dashboard</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-sliders-h"></i> Loan Details</div>
+        <div class="calc-grid">
+          <div class="form-group" style="grid-column: 1 / -1;">
+            <label for="promotion">Start From a Promotion (optional)</label>
+            <select id="promotion"><option value="">— Custom loan —</option></select>
+          </div>
+          <div class="form-group">
+            <label for="amount">Loan Amount (JMD)</label>
+            <input type="number" id="amount" min="1000" step="1000" value="100000">
+          </div>
+          <div class="form-group">
+            <label for="rate">Monthly Interest Rate (%)</label>
+            <input type="number" id="rate" min="0" step="0.1" value="10">
+          </div>
+          <div class="form-group">
+            <label for="term">Term (months)</label>
+            <select id="term">
+              <option value="1">1 month</option>
+              <option value="3">3 months</option>
+              <option value="6">6 months</option>
+              <option value="12" selected>12 months</option>
+              <option value="18">18 months</option>
+              <option value="24">24 months</option>
+              <option value="36">36 months</option>
+            </select>
+          </div>
+          <div class="calc-actions">
+            <button class="btn btn-primary" id="calc-btn" type="button"><i class="fas fa-calculator"></i> Calculate</button>
+            <a class="btn" href="user-apply.html"><i class="fas fa-file-alt"></i> Apply for This Loan</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="results-card" style="display:none;">
+        <div class="card-title"><i class="fas fa-coins"></i> Your Estimate</div>
+        <div class="results-grid">
+          <div class="result-card"><div class="result-value" id="r-monthly">—</div><div class="result-label">Monthly Payment</div></div>
+          <div class="result-card"><div class="result-value" id="r-interest">—</div><div class="result-label">Total Interest</div></div>
+          <div class="result-card"><div class="result-value" id="r-total">—</div><div class="result-label">Total Repayable</div></div>
+        </div>
+      </div>
+
+      <div class="card" id="schedule-card" style="display:none;">
+        <div class="card-title"><i class="fas fa-calendar-alt"></i> Payment Schedule</div>
+        <div class="table-wrap">
+          <table class="schedule-table">
+            <thead><tr><th>Month</th><th>Payment</th><th>Principal</th><th>Interest</th><th>Remaining Balance</th></tr></thead>
+            <tbody id="schedule-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+        <p><i class="fas fa-lock"></i> Estimates use flat monthly interest, matching Loan It promotion terms</p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const fmt = n => 'JMD ' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+
+    // Promotions come straight from Firestore so estimates match what admin
+    // has configured on the Manage Promotions page.
+    async function loadPromotions() {
+      try {
+        const res = await fetch(window.LOANIT_API_BASE + '/api/promotions');
+        const promos = await res.json();
+        const sel = document.getElementById('promotion');
+        for (const p of promos) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          opt.textContent = `${p.name} — ${p.currency} ${Number(p.principal).toLocaleString()} @ ${p.monthlyInterestPct}%/mo`;
+          opt.dataset.principal = p.principal;
+          opt.dataset.rate = p.monthlyInterestPct;
+          opt.dataset.term = p.termMode === 'fixed' ? (p.fixedTermMonths ?? '') : (p.allowedTerms && p.allowedTerms[0]) || '';
+          sel.appendChild(opt);
+        }
+      } catch (err) { /* calculator still works with manual inputs */ }
+    }
+
+    document.getElementById('promotion').addEventListener('change', function() {
+      const opt = this.selectedOptions[0];
+      if (!opt || !opt.value) return;
+      document.getElementById('amount').value = opt.dataset.principal;
+      document.getElementById('rate').value = opt.dataset.rate;
+      if (opt.dataset.term) {
+        const termSel = document.getElementById('term');
+        if (![...termSel.options].some(o => o.value === opt.dataset.term)) {
+          const o = document.createElement('option');
+          o.value = opt.dataset.term;
+          o.textContent = opt.dataset.term + ' months';
+          termSel.appendChild(o);
+        }
+        termSel.value = opt.dataset.term;
+      }
+      calculate();
+    });
+
+    function calculate() {
+      const principal = Number(document.getElementById('amount').value) || 0;
+      const rate = Number(document.getElementById('rate').value) || 0;
+      const term = Number(document.getElementById('term').value) || 1;
+      if (principal <= 0) return;
+
+      const monthlyInterest = principal * (rate / 100);
+      const totalInterest = monthlyInterest * term;
+      const total = principal + totalInterest;
+      const monthly = total / term;
+      const monthlyPrincipal = principal / term;
+
+      document.getElementById('r-monthly').textContent = fmt(monthly);
+      document.getElementById('r-interest').textContent = fmt(totalInterest);
+      document.getElementById('r-total').textContent = fmt(total);
+      document.getElementById('results-card').style.display = 'block';
+
+      let balance = total;
+      const rows = [];
+      for (let m = 1; m <= term; m++) {
+        balance = Math.max(0, balance - monthly);
+        rows.push(`<tr><td>${m}</td><td>${fmt(monthly)}</td><td>${fmt(monthlyPrincipal)}</td><td>${fmt(monthlyInterest)}</td><td>${fmt(balance)}</td></tr>`);
+      }
+      document.getElementById('schedule-body').innerHTML = rows.join('');
+      document.getElementById('schedule-card').style.display = 'block';
+    }
+
+    document.getElementById('calc-btn').addEventListener('click', calculate);
+    loadPromotions();
+    calculate();
+  </script>
+</body>
+</html>

@@ -1,62 +1,248 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Application Status</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="api-base.js"></script>
-  </head>
-  <body>
-    <nav class="top-nav">
-      <span class="nav-title">Loan Applicant</span>
-      <div class="nav-links">
-        <a href="index.html" id="logout-link">Logout</a>
+<head>
+  <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Application Status</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --text-main: rgba(255,255,255,0.97);
+      --text-soft: rgba(239,245,255,0.92);
+      --text-muted: rgba(228,237,255,0.78);
+      --gold: #efc352;
+      --gold-deep: #d9a230;
+      --panel-strong-1: rgba(13, 62, 164, 0.70);
+      --panel-strong-2: rgba(7, 50, 145, 0.82);
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--text-main);
+      background: url('assets/banking-background.jpg') center center / cover no-repeat fixed;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.14); position: relative; overflow-x: hidden;
+    }
+    .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
+    .container {
+      max-width: 860px; margin: 32px auto 0;
+      background: linear-gradient(135deg, rgba(5, 48, 132, 0.78) 0%, rgba(31, 91, 190, 0.48) 45%, rgba(105, 151, 226, 0.26) 100%);
+      border: 1px solid rgba(255,255,255,0.26); border-radius: 24px; padding: 24px 26px 26px;
+      backdrop-filter: blur(10px) saturate(115%); -webkit-backdrop-filter: blur(10px) saturate(115%);
+      box-shadow: 0 22px 50px rgba(3, 25, 89, 0.20); position: relative; overflow: hidden;
+    }
+    .container::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,0.20); pointer-events: none; }
+
+    .top-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; position: relative; z-index: 2; }
+    .page-title { font-size: 24px; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+    .page-title i { color: var(--gold); }
+    .page-subtitle { color: var(--text-soft); font-size: 14px; margin: 0; }
+    .user-info { display: flex; gap: 14px; flex-wrap: wrap; }
+    .nav-btn, .btn {
+      border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; text-decoration: none; cursor: pointer;
+      transition: all .18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      line-height: 1; font-family: inherit;
+    }
+    .nav-btn {
+      padding: 12px 18px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20);
+      backdrop-filter: blur(4px); color: var(--text-main); font-size: 13px; font-weight: 600;
+    }
+    .btn { padding: 12px 18px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20); color: var(--text-main); font-size: 14px; font-weight: 600; }
+    .btn-primary { background: linear-gradient(180deg, #f1c75a, #dfa938); color: #172033; border-color: rgba(255,255,255,0.18); box-shadow: 0 8px 18px rgba(96, 65, 8, 0.18); }
+    .btn:disabled { opacity: .55; cursor: not-allowed; }
+    .nav-btn:hover, .btn:hover:not(:disabled) { transform: translateY(-1px); }
+
+    .card {
+      background: transparent; border-radius: 18px; padding: 20px; border: 1px solid rgba(190, 218, 255, 0.20);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); margin-bottom: 18px; position: relative; z-index: 2;
+    }
+    .card-title { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.12); font-size: 18px; font-weight: 600; }
+    .card-title i { color: var(--gold); }
+
+    .lookup-row { display: flex; gap: 12px; flex-wrap: wrap; }
+    .lookup-row input {
+      flex: 1; min-width: 200px; padding: 12px 14px; border-radius: 10px; font-family: inherit; font-size: 15px;
+      background: rgba(13, 62, 164, 0.60); border: 1px solid rgba(165, 203, 255, 0.24); color: var(--text-main);
+    }
+    .lookup-row input::placeholder { color: rgba(255,255,255,0.55); }
+    .lookup-row input:focus { outline: none; border-color: rgba(239, 195, 82, 0.60); }
+    .lookup-hint { margin: 10px 0 0; font-size: 12px; color: var(--text-muted); }
+
+    .timeline { display: flex; align-items: flex-start; gap: 0; margin: 8px 0 4px; }
+    .timeline-step { flex: 1; text-align: center; position: relative; }
+    .timeline-step:not(:last-child)::after {
+      content: ''; position: absolute; top: 17px; left: calc(50% + 22px); width: calc(100% - 44px); height: 3px;
+      background: rgba(255,255,255,0.16); border-radius: 3px;
+    }
+    .timeline-step.done:not(:last-child)::after { background: linear-gradient(90deg, var(--gold-deep), var(--gold)); }
+    .timeline-dot {
+      width: 36px; height: 36px; border-radius: 50%; margin: 0 auto 8px; display: flex; align-items: center; justify-content: center;
+      background: rgba(255,255,255,0.10); border: 2px solid rgba(255,255,255,0.25); font-size: 14px; color: var(--text-soft);
+    }
+    .timeline-step.done .timeline-dot { background: rgba(239,195,82,0.22); border-color: var(--gold); color: var(--gold); }
+    .timeline-step.rejected .timeline-dot { background: rgba(192,57,43,0.25); border-color: #ff9a9a; color: #ff9a9a; }
+    .timeline-label { font-size: 12px; font-weight: 600; color: var(--text-soft); }
+
+    .detail-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .detail-item { background: rgba(13, 62, 164, 0.55); border: 1px solid rgba(165, 203, 255, 0.22); border-left: 2px solid rgba(239, 195, 82, 0.86); border-radius: 12px; padding: 14px 16px; }
+    .detail-item h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+    .detail-item div { font-size: 16px; font-weight: 600; }
+
+    .alert { border-radius: 12px; padding: 14px 16px; font-size: 14px; margin-top: 16px; }
+    .alert-warn { background: rgba(243, 156, 18, 0.18); border: 1px solid rgba(243,156,18,0.4); color: #ffcb51; }
+    .alert-error { background: rgba(192, 57, 43, 0.18); border: 1px solid rgba(192,57,43,0.45); color: #ff9a9a; }
+
+    footer { text-align: center; padding-top: 20px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(234,243,255,0.84); font-size: 13px; position: relative; z-index: 2; }
+    footer a { color: var(--gold); text-decoration: none; font-weight: 600; }
+    footer p { margin: 6px 0; }
+
+    @media (max-width: 768px) {
+      .top-bar { flex-direction: column; align-items: center; text-align: center; }
+      .user-info { justify-content: center; }
+      .timeline { flex-wrap: wrap; gap: 14px; }
+      .timeline-step { flex: 1 1 40%; }
+      .timeline-step:not(:last-child)::after { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="container">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-info-circle"></i> Application Status</h1>
+          <p class="page-subtitle">Check where your loan application is in the review process</p>
+        </div>
+        <div class="user-info">
+          <a href="user-profile.html" class="nav-btn"><i class="fas fa-id-card"></i> My Profile</a>
+          <a href="index.html" class="nav-btn"><i class="fas fa-home"></i> Home</a>
+        </div>
       </div>
-    </nav>
-    <h1>Application Status</h1>
-    <div id="status-content">Loading…</div>
 
-    <script>
-      const params = new URLSearchParams(window.location.search);
-      const id = params.get('id');
-      const content = document.getElementById('status-content');
+      <div class="card">
+        <div class="card-title"><i class="fas fa-search"></i> Find Your Application</div>
+        <div class="lookup-row">
+          <input type="text" id="lookup-input" placeholder="Enter your TRN (e.g. 123-456-789)">
+          <button class="btn btn-primary" id="lookup-btn" type="button"><i class="fas fa-search"></i> Check Status</button>
+        </div>
+        <p class="lookup-hint">Use the TRN you applied with. If you followed a link with an application ID, your status loads automatically.</p>
+      </div>
 
-      async function loadStatus() {
-        if (!id) {
-          content.textContent = 'No application id provided. Append ?id=APP_ID to the URL.';
-          return;
-        }
-        try {
-          const res = await fetch(window.LOANIT_API_BASE + '/api/applications/' + encodeURIComponent(id));
-          if (!res.ok) {
-            content.textContent = 'No application found for id ' + id;
-            return;
-          }
-          const app = await res.json();
-          const flags = app.reviewFlags || {};
-          const flaggedFields = Object.keys(flags).filter(k => flags[k]);
-          const html = [];
-          html.push('<div class="promo-card-info">');
-          html.push('<p><strong>Application ID:</strong> ' + app.id + '</p>');
-          html.push('<p><strong>Status:</strong> ' + (app.status || 'Unknown') + '</p>');
-          if (app.reason) html.push('<p><strong>Reason:</strong> ' + app.reason + '</p>');
-          if (flaggedFields.length) {
-            html.push('<p><strong>Fields needing your attention:</strong> ' + flaggedFields.join(', ') + '</p>');
-          }
-          html.push('</div>');
-          if (app.applicant && app.applicant.trn) {
-            html.push('<p style="margin-top:16px;"><a class="btn" href="applicant-edit.html?trn=' +
-              encodeURIComponent(app.applicant.trn) + '">Edit Application</a></p>');
-          }
-          content.innerHTML = html.join('');
-        } catch (err) {
-          content.textContent = 'Error fetching application status.';
-          console.error(err);
-        }
+      <div id="status-result" style="display:none;">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-route"></i> Progress</div>
+          <div class="timeline" id="timeline"></div>
+          <div id="status-alerts"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fas fa-file-alt"></i> Application Details</div>
+          <div class="detail-grid" id="detail-grid"></div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top: 18px;" id="status-actions"></div>
+        </div>
+      </div>
+      <div class="card" id="status-error" style="display:none;">
+        <div class="alert alert-error" id="status-error-text" style="margin-top:0;"></div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+        <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const API = window.LOANIT_API_BASE;
+    const esc = s => (s ?? '').toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    const fmtDate = v => { if (!v) return '—'; try { return new Date(v).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return v; } };
+
+    function showError(message) {
+      document.getElementById('status-result').style.display = 'none';
+      document.getElementById('status-error').style.display = 'block';
+      document.getElementById('status-error-text').textContent = message;
+    }
+
+    function renderApp(app) {
+      document.getElementById('status-error').style.display = 'none';
+      const s = (app.status || 'Submitted').toLowerCase();
+      const rejected = s === 'rejected';
+      const decided = ['approved', 'rejected', 'completed'].includes(s);
+      const inReview = decided || s === 'pending';
+
+      const steps = [
+        { label: 'Submitted', icon: 'fa-paper-plane', done: true },
+        { label: 'In Review', icon: 'fa-search', done: inReview },
+        rejected
+          ? { label: 'Rejected', icon: 'fa-times', done: true, rejected: true }
+          : { label: 'Approved', icon: 'fa-check', done: ['approved', 'completed'].includes(s) }
+      ];
+      if (!rejected) steps.push({ label: 'Disbursed', icon: 'fa-hand-holding-usd', done: s === 'completed' });
+      document.getElementById('timeline').innerHTML = steps.map(step => `
+        <div class="timeline-step ${step.done ? 'done' : ''} ${step.rejected ? 'rejected' : ''}">
+          <div class="timeline-dot"><i class="fas ${step.icon}"></i></div>
+          <div class="timeline-label">${step.label}</div>
+        </div>`).join('');
+
+      const alerts = [];
+      if (app.reason) alerts.push(`<div class="alert ${rejected ? 'alert-error' : 'alert-warn'}"><strong>Note from our team:</strong> ${esc(app.reason)}</div>`);
+      const flags = app.reviewFlags || {};
+      const flagged = Object.keys(flags).filter(k => flags[k]);
+      if (flagged.length) alerts.push(`<div class="alert alert-warn"><strong>Fields needing your attention:</strong> ${flagged.map(esc).join(', ')}</div>`);
+      document.getElementById('status-alerts').innerHTML = alerts.join('');
+
+      const a = app.applicant || {};
+      const snap = app.promoSnapshot || {};
+      document.getElementById('detail-grid').innerHTML = `
+        <div class="detail-item"><h4>Application ID</h4><div>${esc(app.applicationCode || app.id)}</div></div>
+        <div class="detail-item"><h4>Status</h4><div style="text-transform:capitalize;">${esc(app.status || 'Submitted')}</div></div>
+        <div class="detail-item"><h4>Applicant</h4><div>${esc(((a.firstName || '') + ' ' + (a.lastName || '')).trim() || '—')}</div></div>
+        <div class="detail-item"><h4>Submitted On</h4><div>${fmtDate(app.createdAt)}</div></div>
+        ${snap.principal ? `<div class="detail-item"><h4>Amount</h4><div>${esc(snap.currency || 'JMD')} ${Number(snap.principal).toLocaleString()}</div></div>` : ''}
+        ${app.selectedTermMonths ? `<div class="detail-item"><h4>Term</h4><div>${esc(app.selectedTermMonths)} months</div></div>` : ''}
+      `;
+
+      const actions = [];
+      if (a.trn) actions.push(`<a class="btn btn-primary" href="applicant-edit.html?trn=${encodeURIComponent(a.trn)}"><i class="fas fa-edit"></i> Edit Application</a>`);
+      actions.push('<a class="btn" href="user-apply.html"><i class="fas fa-file-alt"></i> New Application</a>');
+      document.getElementById('status-actions').innerHTML = actions.join('');
+
+      document.getElementById('status-result').style.display = 'block';
+    }
+
+    async function lookupByTrn() {
+      const trn = document.getElementById('lookup-input').value.trim();
+      if (!trn) { showError('Please enter your TRN.'); return; }
+      const btn = document.getElementById('lookup-btn');
+      btn.disabled = true;
+      try {
+        const res = await fetch(API + '/api/applications/trn/' + encodeURIComponent(trn));
+        if (!res.ok) { showError('No application found for TRN ' + trn + '.'); return; }
+        renderApp(await res.json());
+      } catch (err) {
+        showError('Error fetching application status.');
+      } finally {
+        btn.disabled = false;
       }
+    }
 
-      loadStatus();
-    </script>
-  </body>
+    async function lookupById(id) {
+      try {
+        const res = await fetch(API + '/api/applications/' + encodeURIComponent(id));
+        if (!res.ok) { showError('No application found for id ' + id + '.'); return; }
+        renderApp(await res.json());
+      } catch (err) {
+        showError('Error fetching application status.');
+      }
+    }
+
+    document.getElementById('lookup-btn').addEventListener('click', lookupByTrn);
+    document.getElementById('lookup-input').addEventListener('keydown', e => { if (e.key === 'Enter') lookupByTrn(); });
+
+    const id = new URLSearchParams(window.location.search).get('id');
+    if (id) lookupById(id);
+  </script>
+</body>
 </html>

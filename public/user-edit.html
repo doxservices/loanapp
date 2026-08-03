@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Profile | Loan Application System</title>
@@ -295,8 +296,8 @@
       </div>
 
       <div class="actions-bar">
-        <button class="btn"><i class="fas fa-times"></i> Cancel</button>
-        <button class="btn btn-primary"><i class="fas fa-save"></i> Save Profile</button>
+        <button class="btn" id="cancel-profile-btn"><i class="fas fa-times"></i> Cancel</button>
+        <button class="btn btn-primary" id="save-profile-btn"><i class="fas fa-save"></i> Save Profile</button>
       </div>
 
       <footer>
@@ -355,40 +356,129 @@
     closeModalBtns.forEach(btn => btn.addEventListener('click', () => { bankModal.style.display = 'none'; }));
     window.addEventListener('click', (e) => { if (e.target === bankModal) bankModal.style.display = 'none'; });
 
+    // ---- Firestore-backed profile save (users collection, keyed by the demo
+    // profile's email) ----
+    const PROFILE_EMAIL = 'alex.j@example.com';
+
+    async function patchProfile(payload) {
+      const res = await fetch(window.LOANIT_API_BASE + '/api/users/by-email/' + encodeURIComponent(PROFILE_EMAIL), {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    let bankAccounts = [
+      { bankName: 'National Commercial Bank Jamaica (NCB)', branch: '12345', accountNumber: '********1234', accountType: 'savings' },
+      { bankName: 'Scotiabank Jamaica', branch: '67890', accountNumber: '********5678', accountType: 'checking' }
+    ];
+
+    function renderBankAccounts() {
+      const list = document.querySelector('.bank-accounts-list');
+      document.getElementById('no-accounts').style.display = bankAccounts.length ? 'none' : 'block';
+      list.innerHTML = bankAccounts.map((a, i) => `
+        <div class="bank-account">
+          <div class="bank-info">
+            <div class="bank-name">${a.bankName}</div>
+            <div class="bank-details">Account: ******${a.accountNumber.slice(-4)} • Branch: ${a.branch}</div>
+          </div>
+          <div class="bank-actions"><button type="button" title="Delete" data-index="${i}" class="bank-delete"><i class="fas fa-trash-alt"></i></button></div>
+        </div>
+      `).join('');
+    }
+    renderBankAccounts();
+
+    async function saveBankAccounts(successMessage) {
+      try {
+        await patchProfile({ bankAccounts });
+        alert(successMessage);
+      } catch (err) {
+        alert('Saved locally — server sync failed: ' + err.message);
+      }
+      renderBankAccounts();
+    }
+
+    document.querySelector('.bank-accounts-list').addEventListener('click', function(e) {
+      const btn = e.target.closest('.bank-delete');
+      if (!btn) return;
+      const account = bankAccounts[Number(btn.dataset.index)];
+      if (!confirm('Remove the ' + account.bankName + ' account?')) return;
+      bankAccounts.splice(Number(btn.dataset.index), 1);
+      saveBankAccounts('Bank account removed.');
+    });
+
     document.getElementById('save-bank-btn').addEventListener('click', function() {
       const bankName = document.getElementById('bank-name').value;
       const branch = document.getElementById('branch').value;
       const accountNumber = document.getElementById('account-number').value;
       if (!bankName || !branch || !accountNumber) { alert('Please fill in all required fields'); return; }
 
-      document.getElementById('no-accounts').style.display = 'none';
-      const accountsList = document.querySelector('.bank-accounts-list');
-      const newAccount = document.createElement('div');
-      newAccount.className = 'bank-account';
-      newAccount.innerHTML = `
-        <div class="bank-info">
-          <div class="bank-name">${document.querySelector('#bank-name option:checked').textContent}</div>
-          <div class="bank-details">Account: ******${accountNumber.slice(-4)} • Branch: ${branch}</div>
-        </div>
-        <div class="bank-actions"><button title="Edit"><i class="fas fa-edit"></i></button><button title="Delete"><i class="fas fa-trash-alt"></i></button></div>
-      `;
-      accountsList.appendChild(newAccount);
+      bankAccounts.push({
+        bankName: document.querySelector('#bank-name option:checked').textContent,
+        branch,
+        accountNumber,
+        accountType: document.getElementById('account-type').value
+      });
       bankModal.style.display = 'none';
       document.getElementById('bank-name').value = '';
       document.getElementById('branch').value = '';
       document.getElementById('account-number').value = '';
       document.getElementById('account-type').value = '';
-      alert('Bank account added successfully!');
+      saveBankAccounts('Bank account added successfully!');
     });
 
     document.querySelector('.user-info button').addEventListener('click', function() {
       if (confirm('Are you sure you want to logout?')) window.location.href = 'index.html';
     });
 
-    document.querySelector('.address-form').addEventListener('submit', function(e) {
-      e.preventDefault();
-      alert('Work address saved successfully!');
+    function collectAddresses() {
+      return {
+        workAddress: {
+          company: document.getElementById('company').value.trim(),
+          jobTitle: document.getElementById('job-title').value.trim(),
+          addressLine1: document.getElementById('address-line1').value.trim(),
+          addressLine2: document.getElementById('address-line2').value.trim(),
+          city: document.getElementById('work-city').value.trim(),
+          parish: document.getElementById('work-parish').value
+        },
+        residentialAddress: {
+          addressLine1: document.getElementById('res-address-line1').value.trim(),
+          addressLine2: document.getElementById('res-address-line2').value.trim(),
+          city: document.getElementById('res-city').value.trim(),
+          parish: document.getElementById('res-parish').value,
+          residenceType: document.getElementById('residence-type').value,
+          yearsAtAddress: Number(document.getElementById('years-at-address').value) || 0
+        },
+        dob: document.getElementById('dob').value
+      };
+    }
+
+    async function saveFullProfile() {
+      const btn = document.getElementById('save-profile-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving…';
+      try {
+        await patchProfile({ ...collectAddresses(), bankAccounts });
+        alert('Profile saved to your account.');
+      } catch (err) {
+        alert('Save failed: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save"></i> Save Profile';
+      }
+    }
+
+    document.getElementById('save-profile-btn').addEventListener('click', saveFullProfile);
+    document.getElementById('cancel-profile-btn').addEventListener('click', function() {
+      if (confirm('Discard unsaved changes?')) location.reload();
     });
+
+    document.querySelectorAll('.address-form').forEach(form => form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      saveFullProfile();
+    }));
 
     document.querySelectorAll('.card').forEach((card, index) => {
       card.style.opacity = '0';

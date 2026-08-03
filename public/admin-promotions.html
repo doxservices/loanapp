@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
   <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -230,12 +231,13 @@
 
       <div class="card">
         <div class="card-header">
-          <div class="card-title"><i class="fas fa-plus-circle"></i> Create New Promotion</div>
+          <div class="card-title" id="promoFormTitle"><i class="fas fa-plus-circle"></i> Create New Promotion</div>
           <div class="btn-group">
-            <button class="btn btn-primary"><i class="fas fa-save"></i> Save Promotion</button>
-            <button class="btn btn-secondary"><i class="fas fa-times"></i> Cancel</button>
+            <button class="btn btn-primary" id="savePromoBtn"><i class="fas fa-save"></i> Save Promotion</button>
+            <button class="btn btn-secondary" id="cancelPromoBtn"><i class="fas fa-times"></i> Cancel</button>
           </div>
         </div>
+        <div id="promoFormMsg" style="display:none; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;"></div>
 
         <div class="form-grid">
           <div class="form-group"><label for="name">Promotion Name</label><input type="text" id="name" placeholder="Enter promotion name"></div>
@@ -272,38 +274,14 @@
       <div class="card">
         <div class="card-header">
           <div class="card-title"><i class="fas fa-list"></i> Promotion Templates</div>
-          <div><button class="btn btn-secondary"><i class="fas fa-sync"></i> Refresh</button></div>
+          <div><button class="btn btn-secondary" id="refreshPromosBtn"><i class="fas fa-sync"></i> Refresh</button></div>
         </div>
 
         <div class="table-container">
           <table class="promo-table">
-            <thead><tr><th>Name</th><th>Principal</th><th>Interest %</th><th>Term Mode</th><th>Status</th><th>Actions</th></tr></thead>
-            <tbody>
-              <tr>
-                <td>Starter 30</td><td>JMD 30,000</td><td>10%</td><td>Selectable</td>
-                <td><span class="status-badge status-active">Active</span></td>
-                <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-edit"></i> Edit</button> <button class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-trash"></i> Delete</button></td>
-              </tr>
-              <tr>
-                <td>Premium Promotion</td><td>JMD 250,000</td><td>8%</td><td>Selectable</td>
-                <td><span class="status-badge status-active">Active</span></td>
-                <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-edit"></i> Edit</button> <button class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-trash"></i> Delete</button></td>
-              </tr>
-              <tr>
-                <td>Back to School 2025</td><td>JMD 50,000</td><td>12%</td><td>Fixed</td>
-                <td><span class="status-badge status-pending">Pending</span></td>
-                <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-edit"></i> Edit</button> <button class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-trash"></i> Delete</button></td>
-              </tr>
-              <tr>
-                <td>Payday Loan</td><td>JMD 100,000</td><td>20%</td><td>Fixed</td>
-                <td><span class="status-badge status-active">Active</span></td>
-                <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-edit"></i> Edit</button> <button class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-trash"></i> Delete</button></td>
-              </tr>
-              <tr>
-                <td>Home Improvement Loan</td><td>JMD 150,000</td><td>9%</td><td>Selectable</td>
-                <td><span class="status-badge status-active">Active</span></td>
-                <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-edit"></i> Edit</button> <button class="btn btn-danger" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-trash"></i> Delete</button></td>
-              </tr>
+            <thead><tr><th>Name</th><th>Principal</th><th>Interest %</th><th>Term Mode</th><th>Terms</th><th>Actions</th></tr></thead>
+            <tbody id="promoTableBody">
+              <tr><td colspan="6" style="text-align:center; padding: 20px;">Loading promotions…</td></tr>
             </tbody>
           </table>
         </div>
@@ -354,6 +332,154 @@
 
       if (termMode.value === 'fixed') allowedTerms.style.display = 'none';
       else fixedTerm.style.display = 'none';
+
+      // ---- Promotions API wiring (Firestore `promotions` via /api/promotions) ----
+      const API_BASE = window.LOANIT_API_BASE || '';
+      let editingId = null;
+
+      function esc(s) {
+        if (s == null) return '';
+        return s.toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+      }
+
+      function showFormMsg(text, ok) {
+        const el = document.getElementById('promoFormMsg');
+        el.textContent = text;
+        el.style.display = 'block';
+        el.style.background = ok ? 'rgba(39,174,96,0.22)' : 'rgba(192,57,43,0.22)';
+        el.style.color = ok ? '#8deebc' : '#ff9a9a';
+        clearTimeout(showFormMsg._t);
+        showFormMsg._t = setTimeout(() => { el.style.display = 'none'; }, 3500);
+      }
+
+      function readForm() {
+        const mode = termMode.value;
+        return {
+          name: document.getElementById('name').value.trim(),
+          description: document.getElementById('description').value.trim(),
+          currency: document.getElementById('currency').value,
+          principal: Number(document.getElementById('principal').value) || 0,
+          monthlyInterestPct: Number(document.getElementById('interest').value) || 0,
+          termMode: mode,
+          fixedTermMonths: mode === 'fixed' ? Number(document.getElementById('fixedTerm').value) : null,
+          allowedTerms: mode === 'selectable'
+            ? Array.from(document.querySelectorAll('.term-check-input:checked')).map(cb => Number(cb.value))
+            : []
+        };
+      }
+
+      function resetForm() {
+        editingId = null;
+        ['name', 'description', 'principal', 'interest'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('currency').value = 'JMD';
+        termMode.value = 'fixed';
+        termMode.dispatchEvent(new Event('change'));
+        document.getElementById('fixedTerm').value = '6';
+        document.querySelectorAll('.term-check-input').forEach(cb => { cb.checked = false; });
+        document.getElementById('promoFormTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Create New Promotion';
+        document.getElementById('savePromoBtn').innerHTML = '<i class="fas fa-save"></i> Save Promotion';
+      }
+
+      function fillForm(p) {
+        editingId = p.id;
+        document.getElementById('name').value = p.name || '';
+        document.getElementById('description').value = p.description || '';
+        document.getElementById('currency').value = p.currency || 'JMD';
+        document.getElementById('principal').value = p.principal ?? '';
+        document.getElementById('interest').value = p.monthlyInterestPct ?? '';
+        termMode.value = p.termMode === 'fixed' ? 'fixed' : 'selectable';
+        termMode.dispatchEvent(new Event('change'));
+        if (p.termMode === 'fixed' && p.fixedTermMonths != null) document.getElementById('fixedTerm').value = String(p.fixedTermMonths);
+        document.querySelectorAll('.term-check-input').forEach(cb => { cb.checked = (p.allowedTerms || []).includes(Number(cb.value)); });
+        document.getElementById('promoFormTitle').innerHTML = '<i class="fas fa-edit"></i> Edit Promotion — ' + esc(p.name);
+        document.getElementById('savePromoBtn').innerHTML = '<i class="fas fa-save"></i> Update Promotion';
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      let promos = [];
+      async function loadPromotions() {
+        const tbody = document.getElementById('promoTableBody');
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">Loading promotions…</td></tr>';
+        try {
+          const res = await fetch(API_BASE + '/api/promotions');
+          promos = await res.json();
+          if (!promos.length) {
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No promotions yet — create one above.</td></tr>';
+            return;
+          }
+          tbody.innerHTML = promos.map(p => {
+            const terms = p.termMode === 'fixed'
+              ? (p.fixedTermMonths != null ? p.fixedTermMonths + ' months (fixed)' : '—')
+              : (p.allowedTerms || []).join(', ') + ' months';
+            return `
+              <tr>
+                <td>${esc(p.name)}</td>
+                <td>${esc(p.currency)} ${Number(p.principal).toLocaleString()}</td>
+                <td>${esc(p.monthlyInterestPct)}%</td>
+                <td>${p.termMode === 'fixed' ? 'Fixed' : 'Selectable'}</td>
+                <td>${esc(terms)}</td>
+                <td>
+                  <button class="btn btn-secondary promo-edit" data-id="${esc(p.id)}" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-edit"></i> Edit</button>
+                  <button class="btn btn-danger promo-delete" data-id="${esc(p.id)}" style="padding: 6px 12px; font-size: 13px;"><i class="fas fa-trash"></i> Delete</button>
+                </td>
+              </tr>`;
+          }).join('');
+        } catch (err) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px; color:#ff9a9a;">Failed to load promotions.</td></tr>';
+        }
+      }
+
+      document.getElementById('promoTableBody').addEventListener('click', async function(e) {
+        const editBtn = e.target.closest('.promo-edit');
+        const deleteBtn = e.target.closest('.promo-delete');
+        if (editBtn) {
+          const p = promos.find(x => x.id === editBtn.dataset.id);
+          if (p) fillForm(p);
+        }
+        if (deleteBtn) {
+          const p = promos.find(x => x.id === deleteBtn.dataset.id);
+          if (!p || !confirm('Delete promotion "' + p.name + '"? This cannot be undone.')) return;
+          try {
+            const res = await window.adminAuth.fetch('/api/promotions/' + encodeURIComponent(p.id), { method: 'DELETE' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            if (editingId === p.id) resetForm();
+            showFormMsg('Promotion "' + p.name + '" deleted.', true);
+            loadPromotions();
+          } catch (err) {
+            showFormMsg('Delete failed: ' + err.message, false);
+          }
+        }
+      });
+
+      document.getElementById('savePromoBtn').addEventListener('click', async function() {
+        const data = readForm();
+        if (!data.name) { showFormMsg('Promotion name is required.', false); return; }
+        if (!data.principal) { showFormMsg('Principal amount is required.', false); return; }
+        if (data.termMode === 'selectable' && !data.allowedTerms.length) { showFormMsg('Select at least one allowed term.', false); return; }
+        const btn = this;
+        btn.disabled = true;
+        try {
+          const path = editingId ? '/api/promotions/' + encodeURIComponent(editingId) : '/api/promotions';
+          const res = await window.adminAuth.fetch(path, {
+            method: editingId ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          });
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          showFormMsg(editingId ? 'Promotion updated.' : 'Promotion created.', true);
+          resetForm();
+          loadPromotions();
+        } catch (err) {
+          showFormMsg('Save failed: ' + err.message, false);
+        } finally {
+          btn.disabled = false;
+        }
+      });
+
+      document.getElementById('cancelPromoBtn').addEventListener('click', resetForm);
+      document.getElementById('refreshPromosBtn').addEventListener('click', loadPromotions);
+
+      loadPromotions();
     });
   </script>
 </body>

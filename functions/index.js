@@ -155,12 +155,56 @@ app.get('/api/users', async (req, res) => {
   const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
   res.json(snap.docs.map(userToApi));
 });
+app.post('/api/users', requireGoogleAuth, async (req, res) => {
+  const u = req.body || {};
+  if (!u.firstName || !u.lastName || !u.email) return res.status(400).json({ error: 'firstName, lastName and email are required' });
+  const ref = await db.collection('users').add({
+    firstName: u.firstName, lastName: u.lastName, email: u.email, phone: u.phone || '',
+    role: u.role || 'Applicant', status: u.status || 'pending', lastLogin: 'Never',
+    addressLine1: u.addressLine1 || '', addressLine2: u.addressLine2 || '', parish: u.parish || '',
+    isDummy: !!u.isDummy, createdAt: FieldValue.serverTimestamp()
+  });
+  res.status(201).json(userToApi(await ref.get()));
+});
+app.put('/api/users/:id', requireGoogleAuth, async (req, res) => {
+  const u = req.body || {};
+  const ref = db.collection('users').doc(req.params.id);
+  const doc = await ref.get();
+  if (!doc.exists) return res.status(404).json({ error: 'User not found' });
+  const patch = {};
+  for (const k of ['firstName', 'lastName', 'email', 'phone', 'role', 'status', 'addressLine1', 'addressLine2', 'parish']) {
+    if (u[k] !== undefined) patch[k] = u[k];
+  }
+  await ref.update(patch);
+  res.json(userToApi(await ref.get()));
+});
+app.delete('/api/users/:id', requireGoogleAuth, async (req, res) => {
+  await db.collection('users').doc(req.params.id).delete();
+  res.json({ ok: true });
+});
+// Self-service profile save from the applicant-facing pages (no admin login
+// there) — restricted to a whitelist of profile fields, keyed by email.
+app.patch('/api/users/by-email/:email', async (req, res) => {
+  const email = String(req.params.email || '').toLowerCase();
+  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
+  if (snap.empty) return res.status(404).json({ error: 'No user with that email' });
+  const u = req.body || {};
+  const patch = {};
+  for (const k of ['firstName', 'lastName', 'phone', 'addressLine1', 'addressLine2', 'parish', 'trn', 'emailNotifications',
+    'workAddress', 'residentialAddress', 'bankAccounts', 'dob']) {
+    if (u[k] !== undefined) patch[k] = u[k];
+  }
+  if (!Object.keys(patch).length) return res.status(400).json({ error: 'No updatable fields provided' });
+  await snap.docs[0].ref.update(patch);
+  res.json(userToApi(await snap.docs[0].ref.get()));
+});
 
 function loanToApi(doc) {
   const d = doc.data();
   return {
     id: doc.id, applicationCode: d.applicationCode || null, userEmail: d.userEmail, userName: d.userName,
     loanType: d.loanType, principal: d.principal, termMonths: d.termMonths, status: d.status,
+    monthlyInterestPct: d.monthlyInterestPct ?? null,
     isDummy: !!d.isDummy,
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
@@ -171,6 +215,50 @@ app.get('/api/loans', async (req, res) => {
   query = email ? query.where('userEmail', '==', email).orderBy('createdAt', 'desc') : query.orderBy('createdAt', 'desc');
   const snap = await query.get();
   res.json(snap.docs.map(loanToApi));
+});
+app.get('/api/loans/:id', async (req, res) => {
+  const doc = await db.collection('loans').doc(req.params.id).get();
+  if (!doc.exists) return res.status(404).json({ error: 'Loan not found' });
+  res.json(loanToApi(doc));
+});
+
+// =========================================================================
+// Payments — written by the Make a Payment page, read by Loan Statements
+// =========================================================================
+function paymentToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, loanId: d.loanId, applicationCode: d.applicationCode || null,
+    userEmail: d.userEmail || '', userName: d.userName || '',
+    amount: d.amount, method: d.method || 'bank-transfer', reference: d.reference || '', note: d.note || '',
+    isDummy: !!d.isDummy,
+    createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
+  };
+}
+app.get('/api/payments', async (req, res) => {
+  const { loanId, email } = req.query;
+  let query = db.collection('payments');
+  if (loanId) query = query.where('loanId', '==', loanId).orderBy('createdAt', 'desc');
+  else if (email) query = query.where('userEmail', '==', email).orderBy('createdAt', 'desc');
+  else query = query.orderBy('createdAt', 'desc');
+  const snap = await query.get();
+  res.json(snap.docs.map(paymentToApi));
+});
+app.post('/api/payments', async (req, res) => {
+  const p = req.body || {};
+  const amount = Number(p.amount);
+  if (!p.loanId || !amount || amount <= 0) return res.status(400).json({ error: 'loanId and a positive amount are required' });
+  const loanDoc = await db.collection('loans').doc(String(p.loanId)).get();
+  if (!loanDoc.exists) return res.status(400).json({ error: 'Unknown loan' });
+  const loan = loanDoc.data();
+  const reference = `PAY-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+  const ref = await db.collection('payments').add({
+    loanId: loanDoc.id, applicationCode: loan.applicationCode || null,
+    userEmail: loan.userEmail || '', userName: loan.userName || '',
+    amount, method: p.method || 'bank-transfer', reference, note: p.note || '',
+    createdAt: FieldValue.serverTimestamp()
+  });
+  res.status(201).json(paymentToApi(await ref.get()));
 });
 
 function promoToApi(doc) {
@@ -348,7 +436,12 @@ app.patch('/api/applications/:id', async (req, res) => {
     messages.push({ role: body.newMessage.role || 'applicant', text: body.newMessage.text, timestamp: new Date().toISOString() });
   }
 
-  await ref.update({ applicant, status, reason, reviewFlags, attachments, messages });
+  const update = { applicant, status, reason, reviewFlags, attachments, messages };
+  if (body.selectedTermMonths !== undefined) update.selectedTermMonths = Number(body.selectedTermMonths) || null;
+  if (body.loanAmount !== undefined) {
+    update.promoSnapshot = { ...(current.promoSnapshot || {}), principal: Number(body.loanAmount) || 0 };
+  }
+  await ref.update(update);
   res.json(appToApi(await ref.get()));
 });
 

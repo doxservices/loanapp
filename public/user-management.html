@@ -3,6 +3,7 @@
 <head>
   <script src="analytics.js"></script>
   <script src="api-base.js"></script>
+  <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User Management | Loan System</title>
@@ -216,6 +217,10 @@
     .close-modal:hover { color: #ff9a9a; }
     .modal-body { margin-bottom: 20px; color: var(--text-soft); font-size: 14px; line-height: 1.6; }
     .modal-footer { display: flex; justify-content: flex-end; gap: 12px; }
+    .modal-field {
+      width: 100%; padding: 10px 12px; border-radius: 8px; font-family: inherit; font-size: 13px;
+      background: rgba(255,255,255,0.92); border: 1px solid rgba(255,255,255,0.5); color: #16202a;
+    }
 
     @media (max-width: 768px) {
       .controls { flex-direction: column; }
@@ -275,8 +280,8 @@
           <div class="section-title"><i class="fas fa-table"></i> User List <span class="dummy-badge">Dummy Data</span></div>
           <div class="controls">
             <div class="search-bar"><i class="fas fa-search"></i><input type="text" placeholder="Search users..."></div>
-            <button class="btn btn-primary"><i class="fas fa-plus"></i> Add User</button>
-            <button class="btn"><i class="fas fa-download"></i> Export</button>
+            <button class="btn btn-primary" id="add-user-btn"><i class="fas fa-plus"></i> Add User</button>
+            <button class="btn" id="export-btn"><i class="fas fa-download"></i> Export</button>
           </div>
         </div>
 
@@ -308,12 +313,45 @@
         <button class="close-modal">&times;</button>
       </div>
       <div class="modal-body">
-        <p>Are you sure you want to delete the user <strong>Jane Doe (jane.doe@example.com)</strong>?</p>
+        <p>Are you sure you want to delete the user <strong id="delete-user-label"></strong>?</p>
         <p style="margin-top:8px;">This action cannot be undone and will permanently remove all user data and records.</p>
       </div>
       <div class="modal-footer">
         <button class="btn close-modal"><i class="fas fa-times"></i> Cancel</button>
-        <button class="btn btn-danger"><i class="fas fa-trash-alt"></i> Delete User</button>
+        <button class="btn btn-danger" id="confirm-delete-btn"><i class="fas fa-trash-alt"></i> Delete User</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="user-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <div class="modal-title" id="user-modal-title"><i class="fas fa-user-plus"></i> Add User</div>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">First Name</label><input id="um-first" class="modal-field"></div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Last Name</label><input id="um-last" class="modal-field"></div>
+          <div style="grid-column:1/-1;"><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Email</label><input id="um-email" type="email" class="modal-field"></div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Phone</label><input id="um-phone" class="modal-field"></div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Role</label>
+            <select id="um-role" class="modal-field">
+              <option>Applicant</option><option>Administrator</option><option>Loan Officer</option><option>Underwriter</option><option>Customer Support</option>
+            </select>
+          </div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Status</label>
+            <select id="um-status" class="modal-field"><option value="active">Active</option><option value="pending">Pending</option><option value="inactive">Inactive</option></select>
+          </div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Parish</label><input id="um-parish" class="modal-field"></div>
+          <div style="grid-column:1/-1;"><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Address Line 1</label><input id="um-address1" class="modal-field"></div>
+          <div style="grid-column:1/-1;"><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Address Line 2</label><input id="um-address2" class="modal-field"></div>
+        </div>
+        <div id="user-modal-msg" style="display:none; margin-top: 12px; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;"></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn close-modal"><i class="fas fa-times"></i> Cancel</button>
+        <button class="btn btn-primary" id="save-user-btn"><i class="fas fa-save"></i> Save User</button>
       </div>
     </div>
   </div>
@@ -351,13 +389,127 @@
     })();
 
     const deleteModal = document.getElementById('delete-modal');
-    const closeModalButtons = document.querySelectorAll('.close-modal');
-    closeModalButtons.forEach(btn => btn.addEventListener('click', () => { deleteModal.style.display = 'none'; }));
-    window.addEventListener('click', (e) => { if (e.target === deleteModal) deleteModal.style.display = 'none'; });
+    const userModal = document.getElementById('user-modal');
+    document.querySelectorAll('.close-modal').forEach(btn => btn.addEventListener('click', () => {
+      deleteModal.style.display = 'none';
+      userModal.style.display = 'none';
+    }));
+    window.addEventListener('click', (e) => {
+      if (e.target === deleteModal) deleteModal.style.display = 'none';
+      if (e.target === userModal) userModal.style.display = 'none';
+    });
 
-    // Delete buttons are rendered dynamically (real data), so use delegation.
+    let pendingDeleteId = null;
+    let editingUserId = null; // null -> Add User mode
+
+    function showUserModalMsg(text, ok) {
+      const el = document.getElementById('user-modal-msg');
+      el.textContent = text;
+      el.style.display = 'block';
+      el.style.background = ok ? 'rgba(39,174,96,0.22)' : 'rgba(192,57,43,0.22)';
+      el.style.color = ok ? '#8deebc' : '#ff9a9a';
+    }
+
+    function openUserModal(user) {
+      editingUserId = user ? user.id : null;
+      document.getElementById('user-modal-title').innerHTML = user
+        ? '<i class="fas fa-user-edit"></i> Edit User'
+        : '<i class="fas fa-user-plus"></i> Add User';
+      document.getElementById('um-first').value = user ? user.firstName : '';
+      document.getElementById('um-last').value = user ? user.lastName : '';
+      document.getElementById('um-email').value = user ? user.email : '';
+      document.getElementById('um-phone').value = user ? (user.phone || '') : '';
+      document.getElementById('um-role').value = user ? (user.role || 'Applicant') : 'Applicant';
+      document.getElementById('um-status').value = user ? (user.status || 'active') : 'active';
+      document.getElementById('um-parish').value = user ? (user.parish || '') : '';
+      document.getElementById('um-address1').value = user ? (user.addressLine1 || '') : '';
+      document.getElementById('um-address2').value = user ? (user.addressLine2 || '') : '';
+      document.getElementById('user-modal-msg').style.display = 'none';
+      userModal.style.display = 'flex';
+      document.getElementById('um-first').focus();
+    }
+
+    // Edit/Delete buttons are rendered dynamically (real data), so use delegation.
     document.getElementById('user-table-body').addEventListener('click', (e) => {
-      if (e.target.closest('.action-btn.delete')) deleteModal.style.display = 'flex';
+      const editBtn = e.target.closest('.action-btn.edit');
+      const deleteBtn = e.target.closest('.action-btn.delete');
+      if (editBtn) {
+        const user = allUsers.find(u => u.id === editBtn.dataset.id);
+        if (user) openUserModal(user);
+      }
+      if (deleteBtn) {
+        const user = allUsers.find(u => u.id === deleteBtn.dataset.id);
+        if (!user) return;
+        pendingDeleteId = user.id;
+        document.getElementById('delete-user-label').textContent = `${user.firstName} ${user.lastName} (${user.email})`;
+        deleteModal.style.display = 'flex';
+      }
+    });
+
+    document.getElementById('confirm-delete-btn').addEventListener('click', async function() {
+      if (!pendingDeleteId) return;
+      this.disabled = true;
+      try {
+        const res = await window.adminAuth.fetch('/api/users/' + encodeURIComponent(pendingDeleteId), { method: 'DELETE' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        deleteModal.style.display = 'none';
+        pendingDeleteId = null;
+        fetchUsers();
+      } catch (err) {
+        alert('Delete failed: ' + err.message);
+      } finally {
+        this.disabled = false;
+      }
+    });
+
+    document.getElementById('add-user-btn').addEventListener('click', () => openUserModal(null));
+
+    document.getElementById('save-user-btn').addEventListener('click', async function() {
+      const payload = {
+        firstName: document.getElementById('um-first').value.trim(),
+        lastName: document.getElementById('um-last').value.trim(),
+        email: document.getElementById('um-email').value.trim(),
+        phone: document.getElementById('um-phone').value.trim(),
+        role: document.getElementById('um-role').value,
+        status: document.getElementById('um-status').value,
+        parish: document.getElementById('um-parish').value.trim(),
+        addressLine1: document.getElementById('um-address1').value.trim(),
+        addressLine2: document.getElementById('um-address2').value.trim()
+      };
+      if (!payload.firstName || !payload.lastName || !payload.email) {
+        showUserModalMsg('First name, last name and email are required.', false);
+        return;
+      }
+      this.disabled = true;
+      try {
+        const path = editingUserId ? '/api/users/' + encodeURIComponent(editingUserId) : '/api/users';
+        const res = await window.adminAuth.fetch(path, {
+          method: editingUserId ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        userModal.style.display = 'none';
+        fetchUsers();
+      } catch (err) {
+        showUserModalMsg('Save failed: ' + err.message, false);
+      } finally {
+        this.disabled = false;
+      }
+    });
+
+    document.getElementById('export-btn').addEventListener('click', () => {
+      const cols = ['firstName', 'lastName', 'email', 'phone', 'role', 'status', 'parish', 'addressLine1', 'addressLine2', 'lastLogin', 'createdAt'];
+      const csvCell = v => '"' + String(v ?? '').replaceAll('"', '""') + '"';
+      const csv = [cols.join(',')]
+        .concat(allUsers.map(u => cols.map(c => csvCell(u[c])).join(',')))
+        .join('\r\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'loanit-users.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
     });
 
     function esc(s) {
@@ -415,7 +567,7 @@
           <td><span class="status ${statusClass}">${esc(statusLabel)}</span></td>
           <td>${esc(u.lastLogin || '')}</td>
           <td>${fmtDate(u.createdAt)}</td>
-          <td><div class="actions"><button class="action-btn edit" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
+          <td><div class="actions"><button class="action-btn edit" data-id="${esc(u.id)}" title="Edit"><i class="fas fa-edit"></i></button><button class="action-btn delete" data-id="${esc(u.id)}" title="Delete"><i class="fas fa-trash-alt"></i></button></div></td>
         `;
         tbody.appendChild(tr);
       }

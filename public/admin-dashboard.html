@@ -154,6 +154,12 @@
     }
     .card-links a:hover { background: rgba(255,255,255,0.1); padding-left: 14px; color: #fff; }
     .card-links a i { width: 20px; text-align: center; color: var(--gold); }
+    /* Links that don't have a page built yet — greyed out so remaining work
+       is easy to spot at a glance. */
+    .card-links a.dead-link { color: rgba(160,170,190,0.55); cursor: not-allowed; }
+    .card-links a.dead-link i { color: rgba(160,170,190,0.45); }
+    .card-links a.dead-link:hover { background: transparent; padding-left: 8px; color: rgba(160,170,190,0.55); }
+    .card-links a.dead-link::after { content: 'coming soon'; margin-left: auto; font-size: 10px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: rgba(160,170,190,0.5); }
 
     footer { text-align: center; padding-top: 20px; margin-top: 26px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(234,243,255,0.84); font-size: 13px; position: relative; z-index: 2; }
     footer a { color: var(--gold); text-decoration: none; font-weight: 600; }
@@ -214,17 +220,17 @@
             <li><a href="user-apply.html"><i class="fas fa-file-alt"></i> Apply for Loan</a></li>
             <li><a href="user-profile.html"><i class="fas fa-id-card"></i> My Profile</a></li>
             <li><a href="applicant-edit.html"><i class="fas fa-edit"></i> Edit Application</a></li>
-            <li><a href="#"><i class="fas fa-history"></i> Application History</a></li>
+            <li><a href="#" class="dead-link"><i class="fas fa-history"></i> Application History</a></li>
           </ul>
         </div>
 
         <div class="card">
           <div class="card-title"><i class="fas fa-hand-holding-usd"></i> Loan Management</div>
           <ul class="card-links">
-            <li><a href="#"><i class="fas fa-list"></i> My Active Loans</a></li>
-            <li><a href="#"><i class="fas fa-file-invoice-dollar"></i> Loan Statements</a></li>
-            <li><a href="#"><i class="fas fa-money-check-alt"></i> Make a Payment</a></li>
-            <li><a href="#"><i class="fas fa-chart-line"></i> Loan Calculator</a></li>
+            <li><a href="my-active-loans.html"><i class="fas fa-list"></i> My Active Loans</a></li>
+            <li><a href="loan-statement.html"><i class="fas fa-file-invoice-dollar"></i> Loan Statements</a></li>
+            <li><a href="make-a-payment.html"><i class="fas fa-money-check-alt"></i> Make a Payment</a></li>
+            <li><a href="loan-calculator.html"><i class="fas fa-chart-line"></i> Loan Calculator</a></li>
           </ul>
         </div>
 
@@ -243,8 +249,8 @@
           <ul class="card-links">
             <li><a href="status.html"><i class="fas fa-info-circle"></i> Application Status</a></li>
             <li><a href="index.html"><i class="fas fa-home"></i> Standing Order Form</a></li>
-            <li><a href="#"><i class="fas fa-question-circle"></i> Help Center</a></li>
-            <li><a href="#"><i class="fas fa-envelope"></i> Contact Support</a></li>
+            <li><a href="#" class="dead-link"><i class="fas fa-question-circle"></i> Help Center</a></li>
+            <li><a href="#" class="dead-link"><i class="fas fa-envelope"></i> Contact Support</a></li>
           </ul>
         </div>
       </div>
@@ -262,6 +268,9 @@
       var current = location.pathname.split('/').pop();
       document.querySelectorAll('.nav-links a').forEach(function(link) {
         if (link.getAttribute('href') === current) link.classList.add('active');
+      });
+      document.querySelectorAll('.card-links a.dead-link').forEach(function(link) {
+        link.addEventListener('click', function(e) { e.preventDefault(); });
       });
       const sidebarModeSwitch = document.getElementById('sidebarModeSwitch');
       const sidebarModeLabel = document.getElementById('sidebarModeLabel');

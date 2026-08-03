@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan Statement</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --text-main: rgba(255,255,255,0.97);
+      --text-soft: rgba(239,245,255,0.92);
+      --text-muted: rgba(228,237,255,0.78);
+      --gold: #efc352;
+      --gold-deep: #d9a230;
+      --panel-strong-1: rgba(13, 62, 164, 0.70);
+      --panel-strong-2: rgba(7, 50, 145, 0.82);
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0; font-family: var(--font); color: var(--text-main);
+      background: url('assets/banking-background.jpg') center center / cover no-repeat fixed;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.14); position: relative; overflow-x: hidden;
+    }
+    .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
+    .container {
+      max-width: 960px; margin: 32px auto 0;
+      background: linear-gradient(135deg, rgba(5, 48, 132, 0.78) 0%, rgba(31, 91, 190, 0.48) 45%, rgba(105, 151, 226, 0.26) 100%);
+      border: 1px solid rgba(255,255,255,0.26); border-radius: 24px; padding: 24px 26px 26px;
+      backdrop-filter: blur(10px) saturate(115%); -webkit-backdrop-filter: blur(10px) saturate(115%);
+      box-shadow: 0 22px 50px rgba(3, 25, 89, 0.20); position: relative; overflow: hidden;
+    }
+    .container::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,0.20); pointer-events: none; }
+
+    .top-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; position: relative; z-index: 2; }
+    .page-title { font-size: 24px; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+    .page-title i { color: var(--gold); }
+    .page-subtitle { color: var(--text-soft); font-size: 14px; margin: 0; }
+    .user-info { display: flex; gap: 14px; flex-wrap: wrap; }
+    .nav-btn, .btn {
+      border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; text-decoration: none; cursor: pointer;
+      transition: all .18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      line-height: 1; font-family: inherit;
+    }
+    .nav-btn {
+      padding: 12px 18px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20);
+      backdrop-filter: blur(4px); color: var(--text-main); font-size: 13px; font-weight: 600;
+    }
+    .btn { padding: 12px 18px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20); color: var(--text-main); font-size: 13px; font-weight: 600; }
+    .btn-primary { background: linear-gradient(180deg, #f1c75a, #dfa938); color: #172033; border-color: rgba(255,255,255,0.18); box-shadow: 0 8px 18px rgba(96, 65, 8, 0.18); }
+    .nav-btn:hover, .btn:hover { transform: translateY(-1px); }
+
+    .card {
+      background: transparent; border-radius: 18px; padding: 20px; border: 1px solid rgba(190, 218, 255, 0.20);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); margin-bottom: 18px; position: relative; z-index: 2;
+    }
+    .card-title { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.12); font-size: 18px; font-weight: 600; }
+    .card-title i { color: var(--gold); }
+
+    .form-group label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .form-group select {
+      width: 100%; padding: 12px 14px; border-radius: 10px; font-family: inherit; font-size: 15px;
+      background: rgba(13, 62, 164, 0.60); border: 1px solid rgba(165, 203, 255, 0.24); color: var(--text-main);
+    }
+    .form-group select option { background: #0d3ea4; color: #fff; }
+
+    .statement-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; }
+    .statement-item { background: rgba(13, 62, 164, 0.55); border: 1px solid rgba(165, 203, 255, 0.22); border-left: 2px solid rgba(239, 195, 82, 0.86); border-radius: 12px; padding: 14px 16px; }
+    .statement-item h4 { margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+    .statement-item div { font-size: 16px; font-weight: 600; }
+    .statement-item.balance div { color: var(--gold); }
+
+    .status-badge { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-transform: capitalize; }
+    .status-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+    .status-approved, .status-completed { background: rgba(39, 174, 96, 0.22); color: #8deebc; }
+    .status-pending, .status-submitted { background: rgba(243, 156, 18, 0.22); color: #ffcb51; }
+    .status-rejected { background: rgba(192, 57, 43, 0.22); color: #ff9a9a; }
+
+    .pay-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .pay-table th { text-align: left; padding: 12px; background: rgba(0,0,0,0.18); color: var(--gold); font-weight: 600; border-bottom: 1px solid rgba(255,255,255,0.1); }
+    .pay-table td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .pay-table tfoot td { font-weight: 700; color: var(--gold); border-top: 1px solid rgba(255,255,255,0.16); }
+    .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); background: rgba(0,0,0,0.14); }
+
+    footer { text-align: center; padding-top: 20px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(234,243,255,0.84); font-size: 13px; position: relative; z-index: 2; }
+    footer a { color: var(--gold); text-decoration: none; font-weight: 600; }
+    footer p { margin: 6px 0; }
+
+    @media print {
+      body { background: #fff; color: #111; text-shadow: none; }
+      .container { background: #fff; border: none; box-shadow: none; backdrop-filter: none; }
+      .user-info, .statement-actions, footer { display: none !important; }
+      .card, .statement-item { border-color: #ccc; }
+      .pay-table th { background: #eee; color: #333; }
+      .statement-item, .card-title, .page-title, .page-subtitle, .pay-table td, .statement-item div, .statement-item h4 { color: #111 !important; }
+    }
+
+    @media (max-width: 768px) {
+      .top-bar { flex-direction: column; align-items: center; text-align: center; }
+      .user-info { justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="container">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-file-invoice-dollar"></i> Loan Statement</h1>
+          <p class="page-subtitle">A full record of your loan and every payment made against it</p>
+        </div>
+        <div class="user-info">
+          <a href="my-active-loans.html" class="nav-btn"><i class="fas fa-list"></i> My Loans</a>
+          <a href="make-a-payment.html" class="nav-btn"><i class="fas fa-money-check-alt"></i> Make a Payment</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-hand-holding-usd"></i> Select a Loan</div>
+        <div class="form-group">
+          <label for="loan-select">Loan</label>
+          <select id="loan-select"><option value="">Loading your loans…</option></select>
+        </div>
+      </div>
+
+      <div id="statement" style="display:none;">
+        <div class="card">
+          <div class="card-title" style="justify-content: space-between;">
+            <span style="display:flex; align-items:center; gap:10px;"><i class="fas fa-info-circle"></i> Loan Summary</span>
+            <span class="status-badge" id="st-status">—</span>
+          </div>
+          <div class="statement-grid">
+            <div class="statement-item"><h4>Borrower</h4><div id="st-borrower">—</div></div>
+            <div class="statement-item"><h4>Application</h4><div id="st-code">—</div></div>
+            <div class="statement-item"><h4>Loan Type</h4><div id="st-type">—</div></div>
+            <div class="statement-item"><h4>Principal</h4><div id="st-principal">—</div></div>
+            <div class="statement-item"><h4>Monthly Interest</h4><div id="st-rate">—</div></div>
+            <div class="statement-item"><h4>Term</h4><div id="st-term">—</div></div>
+            <div class="statement-item"><h4>Monthly Installment</h4><div id="st-monthly">—</div></div>
+            <div class="statement-item"><h4>Total Repayable</h4><div id="st-total">—</div></div>
+            <div class="statement-item"><h4>Paid To Date</h4><div id="st-paid">—</div></div>
+            <div class="statement-item balance"><h4>Outstanding Balance</h4><div id="st-balance">—</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title"><i class="fas fa-history"></i> Payment History</div>
+          <div class="table-wrap">
+            <table class="pay-table">
+              <thead><tr><th>Date</th><th>Reference</th><th>Method</th><th>Note</th><th>Amount</th></tr></thead>
+              <tbody id="payments-body"></tbody>
+              <tfoot><tr><td colspan="4">Total Paid</td><td id="payments-total">—</td></tr></tfoot>
+            </table>
+          </div>
+          <div class="statement-actions" style="display:flex; gap:12px; flex-wrap:wrap; margin-top: 18px;">
+            <button class="btn btn-primary" type="button" onclick="window.print()"><i class="fas fa-print"></i> Print Statement</button>
+            <button class="btn" type="button" id="download-csv-btn"><i class="fas fa-download"></i> Download CSV</button>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+        <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const PROFILE_EMAIL = 'alex.j@example.com'; // demo profile identity (dummy data)
+    const API = window.LOANIT_API_BASE;
+    const fmt = n => 'JMD ' + Number(n).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    const esc = s => (s ?? '').toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    const fmtDate = v => { if (!v) return ''; try { return new Date(v).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' }); } catch { return v; } };
+
+    let loans = [];
+    let currentPayments = [];
+    let currentLoan = null;
+
+    function statusClassOf(status) {
+      const s = (status || '').toLowerCase();
+      if (['approved', 'completed', 'rejected', 'submitted'].includes(s)) return 'status-' + s;
+      return 'status-pending';
+    }
+
+    // Flat add-on interest, matching the promotion model used app-wide.
+    function loanTotals(loan) {
+      const rate = Number(loan.monthlyInterestPct) || 0;
+      const total = loan.principal + loan.principal * (rate / 100) * loan.termMonths;
+      return { total, monthly: total / loan.termMonths };
+    }
+
+    async function loadLoans() {
+      const sel = document.getElementById('loan-select');
+      try {
+        const res = await fetch(API + '/api/loans?email=' + encodeURIComponent(PROFILE_EMAIL));
+        loans = await res.json();
+        if (!loans.length) { sel.innerHTML = '<option value="">No loans on record</option>'; return; }
+        sel.innerHTML = '<option value="">— Select a loan —</option>' + loans.map(l =>
+          `<option value="${esc(l.id)}">${esc(l.applicationCode)} — ${esc(l.loanType)}</option>`
+        ).join('');
+        const preselect = new URLSearchParams(location.search).get('loan');
+        if (preselect && loans.some(l => l.id === preselect)) {
+          sel.value = preselect;
+          renderStatement();
+        }
+      } catch (err) {
+        sel.innerHTML = '<option value="">Failed to load loans</option>';
+      }
+    }
+
+    async function renderStatement() {
+      const id = document.getElementById('loan-select').value;
+      const wrap = document.getElementById('statement');
+      if (!id) { wrap.style.display = 'none'; return; }
+      currentLoan = loans.find(l => l.id === id);
+      if (!currentLoan) return;
+      const { total, monthly } = loanTotals(currentLoan);
+
+      try {
+        const res = await fetch(API + '/api/payments?loanId=' + encodeURIComponent(id));
+        currentPayments = await res.json();
+      } catch (err) { currentPayments = []; }
+      const paid = currentPayments.reduce((s, p) => s + (Number(p.amount) || 0), 0);
+      const completed = (currentLoan.status || '').toLowerCase() === 'completed';
+
+      const badge = document.getElementById('st-status');
+      badge.textContent = currentLoan.status;
+      badge.className = 'status-badge ' + statusClassOf(currentLoan.status);
+      document.getElementById('st-borrower').textContent = currentLoan.userName;
+      document.getElementById('st-code').textContent = currentLoan.applicationCode;
+      document.getElementById('st-type').textContent = currentLoan.loanType;
+      document.getElementById('st-principal').textContent = fmt(currentLoan.principal);
+      document.getElementById('st-rate').textContent = (currentLoan.monthlyInterestPct ?? 0) + '% / month';
+      document.getElementById('st-term').textContent = currentLoan.termMonths + ' months';
+      document.getElementById('st-monthly').textContent = fmt(monthly);
+      document.getElementById('st-total').textContent = fmt(total);
+      document.getElementById('st-paid').textContent = fmt(paid);
+      document.getElementById('st-balance').textContent = fmt(completed ? 0 : Math.max(0, total - paid));
+
+      document.getElementById('payments-body').innerHTML = currentPayments.length
+        ? currentPayments.map(p => `<tr><td>${fmtDate(p.createdAt)}</td><td>${esc(p.reference)}</td><td>${esc(p.method)}</td><td>${esc(p.note || '—')}</td><td>${fmt(p.amount)}</td></tr>`).join('')
+        : '<tr><td colspan="5" style="text-align:center; padding: 18px; color: var(--text-muted);">No payments recorded on this loan yet</td></tr>';
+      document.getElementById('payments-total').textContent = fmt(paid);
+      wrap.style.display = 'block';
+    }
+
+    document.getElementById('loan-select').addEventListener('change', renderStatement);
+
+    document.getElementById('download-csv-btn').addEventListener('click', () => {
+      if (!currentLoan) return;
+      const csvCell = v => '"' + String(v ?? '').replaceAll('"', '""') + '"';
+      const lines = [
+        ['Loan', currentLoan.applicationCode, currentLoan.loanType].map(csvCell).join(','),
+        '',
+        ['Date', 'Reference', 'Method', 'Note', 'Amount'].join(',')
+      ].concat(currentPayments.map(p => [fmtDate(p.createdAt), p.reference, p.method, p.note, p.amount].map(csvCell).join(',')));
+      const blob = new Blob([lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'statement-' + currentLoan.applicationCode + '.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+
+    loadLoans();
+  </script>
+</body>
+</html>

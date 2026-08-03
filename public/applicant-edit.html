@@ -1,53 +1,186 @@
 <!doctype html>
 <html lang="en">
   <head>
+    <script src="analytics.js"></script>
+    <script src="api-base.js"></script>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Applicant – Edit Your Details</title>
-    <link rel="stylesheet" href="styles.css">
-    <script src="api-base.js"></script>
+    <title>Edit Your Application</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+      :root {
+        --text-main: rgba(255,255,255,0.97);
+        --text-soft: rgba(239,245,255,0.92);
+        --text-muted: rgba(228,237,255,0.78);
+        --gold: #efc352;
+        --gold-deep: #d9a230;
+        --panel-strong-1: rgba(13, 62, 164, 0.70);
+        --panel-strong-2: rgba(7, 50, 145, 0.82);
+        --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      }
+      * { box-sizing: border-box; }
+      html, body { min-height: 100%; }
+      body {
+        margin: 0; font-family: var(--font); color: var(--text-main);
+        background: url('assets/banking-background.jpg') center center / cover no-repeat fixed;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.14); position: relative; overflow-x: hidden;
+      }
+      .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
+      .container {
+        max-width: 860px; margin: 32px auto 0;
+        background: linear-gradient(135deg, rgba(5, 48, 132, 0.78) 0%, rgba(31, 91, 190, 0.48) 45%, rgba(105, 151, 226, 0.26) 100%);
+        border: 1px solid rgba(255,255,255,0.26); border-radius: 24px; padding: 24px 26px 26px;
+        backdrop-filter: blur(10px) saturate(115%); -webkit-backdrop-filter: blur(10px) saturate(115%);
+        box-shadow: 0 22px 50px rgba(3, 25, 89, 0.20); position: relative; overflow: hidden;
+      }
+      .container::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,0.20); pointer-events: none; }
+
+      .top-bar { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; position: relative; z-index: 2; }
+      .page-title { font-size: 24px; font-weight: 600; margin: 0 0 6px; display: flex; align-items: center; gap: 10px; }
+      .page-title i { color: var(--gold); }
+      .page-subtitle { color: var(--text-soft); font-size: 14px; margin: 0; }
+      .user-info { display: flex; gap: 14px; flex-wrap: wrap; }
+      .nav-btn, .btn {
+        border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; text-decoration: none; cursor: pointer;
+        transition: all .18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+        line-height: 1; font-family: inherit;
+      }
+      .nav-btn {
+        padding: 12px 18px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20);
+        backdrop-filter: blur(4px); color: var(--text-main); font-size: 13px; font-weight: 600;
+      }
+      .btn { padding: 13px 20px; background: rgba(13, 62, 164, 0.70); border-color: rgba(205, 226, 255, 0.20); color: var(--text-main); font-size: 14px; font-weight: 600; }
+      .btn.primary, .btn[type="submit"] { background: linear-gradient(180deg, #f1c75a, #dfa938); color: #172033; border-color: rgba(255,255,255,0.18); box-shadow: 0 8px 18px rgba(96, 65, 8, 0.18); }
+      .nav-btn:hover, .btn:hover { transform: translateY(-1px); }
+
+      .card {
+        background: transparent; border-radius: 18px; padding: 20px; border: 1px solid rgba(190, 218, 255, 0.20);
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08); margin-bottom: 18px; position: relative; z-index: 2;
+      }
+      .card-title { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; padding-bottom: 14px; border-bottom: 1px solid rgba(255,255,255,0.12); font-size: 18px; font-weight: 600; }
+      .card-title i { color: var(--gold); }
+
+      #status-area { position: relative; z-index: 2; }
+      #status-area:not(:empty) {
+        border-radius: 12px; padding: 14px 16px; font-size: 14px; margin-bottom: 18px;
+        background: rgba(243, 156, 18, 0.18); border: 1px solid rgba(243,156,18,0.4); color: #ffcb51;
+      }
+
+      .promo-card-info {
+        background: rgba(13, 62, 164, 0.55); border: 1px solid rgba(165, 203, 255, 0.22);
+        border-left: 2px solid rgba(239, 195, 82, 0.86); border-radius: 12px; padding: 16px 18px;
+      }
+      .promo-card-info h3 { margin: 0 0 10px; font-size: 15px; color: var(--gold); }
+      .promo-card-info p { margin: 4px 0; font-size: 14px; color: var(--text-soft); }
+
+      .field-row { margin-bottom: 14px; }
+      .field-row label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; }
+      .field-row input, .field-row select, #messages-container textarea {
+        width: 100%; padding: 12px 14px; border-radius: 10px; font-family: inherit; font-size: 15px;
+        background: rgba(13, 62, 164, 0.60); border: 1px solid rgba(165, 203, 255, 0.24); color: var(--text-main);
+      }
+      .field-row input:focus, .field-row select:focus, #messages-container textarea:focus { outline: none; border-color: rgba(239, 195, 82, 0.60); }
+      .field-row select option { background: #0d3ea4; color: #fff; }
+      .field-row.flagged input, .field-row.flagged select { border-color: rgba(243, 156, 18, 0.75); box-shadow: 0 0 0 2px rgba(243, 156, 18, 0.18); }
+      .field-row.flagged label::after { content: ' — needs your attention'; color: #ffcb51; text-transform: none; letter-spacing: normal; }
+      .phone-group { display: flex; gap: 10px; }
+      .phone-group select { width: 96px; flex: 0 0 96px; }
+
+      .upload-label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin: 14px 0 7px; }
+      input[type="file"] { width: 100%; padding: 10px; border-radius: 10px; background: rgba(13, 62, 164, 0.45); border: 1px dashed rgba(165, 203, 255, 0.35); color: var(--text-soft); font-size: 13px; font-family: inherit; }
+      .attachment-item {
+        display: flex; align-items: center; justify-content: space-between; gap: 12px;
+        background: rgba(13, 62, 164, 0.45); border: 1px solid rgba(165, 203, 255, 0.22);
+        border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: 14px;
+      }
+      .attachment-item a { color: var(--gold); text-decoration: none; font-weight: 600; word-break: break-all; }
+      .remove-attachment {
+        background: rgba(192, 57, 43, 0.24); color: #ff9a9a; border: 1px solid rgba(192,57,43,0.4);
+        border-radius: 8px; padding: 7px 12px; cursor: pointer; font-family: inherit; font-size: 12px; font-weight: 600;
+      }
+      .remove-attachment:hover { background: rgba(192, 57, 43, 0.4); }
+
+      #messages-list { list-style: none; margin: 0 0 14px; padding: 0; }
+      #messages-list li {
+        background: rgba(13, 62, 164, 0.45); border: 1px solid rgba(165, 203, 255, 0.18);
+        border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; font-size: 13px; color: var(--text-soft);
+      }
+      #messages-container label { display: block; font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 7px; }
+      #send-message-btn {
+        margin-top: 10px; padding: 11px 18px; border-radius: 12px; cursor: pointer; font-family: inherit;
+        background: rgba(13, 62, 164, 0.70); border: 1px solid rgba(205, 226, 255, 0.20); color: var(--text-main); font-size: 13px; font-weight: 600;
+      }
+      #send-message-btn:hover { transform: translateY(-1px); }
+
+      .form-actions { display: flex; gap: 12px; flex-wrap: wrap; position: relative; z-index: 2; }
+
+      footer { text-align: center; padding-top: 20px; margin-top: 8px; border-top: 1px solid rgba(255,255,255,0.08); color: rgba(234,243,255,0.84); font-size: 13px; position: relative; z-index: 2; }
+      footer a { color: var(--gold); text-decoration: none; font-weight: 600; }
+      footer p { margin: 6px 0; }
+
+      @media (max-width: 768px) {
+        .top-bar { flex-direction: column; align-items: center; text-align: center; }
+        .user-info { justify-content: center; }
+      }
+    </style>
   </head>
   <body>
-    <!-- Top navigation similar to admin pages -->
-    <nav class="top-nav">
-      <span class="nav-title">Loan Applicant</span>
-      <div class="nav-links">
-        <a href="status.html" id="status-page-link">Status</a>
-        <a href="index.html" id="logout-link">Logout</a>
+    <div class="page">
+      <div class="container">
+        <div class="top-bar">
+          <div>
+            <h1 class="page-title"><i class="fas fa-edit"></i> Edit Your Application</h1>
+            <p class="page-subtitle">Update flagged details, manage attachments, and message our team</p>
+          </div>
+          <div class="user-info">
+            <a href="status.html" class="nav-btn" id="status-page-link"><i class="fas fa-info-circle"></i> Status</a>
+            <a href="index.html" class="nav-btn" id="logout-link"><i class="fas fa-sign-out-alt"></i> Logout</a>
+          </div>
+        </div>
+
+        <div id="status-area"></div>
+
+        <form id="applicant-form" style="display:none;">
+          <input type="hidden" name="id">
+
+          <div id="promo-info" class="card" style="padding: 0; border: 0; box-shadow: none;"></div>
+
+          <div class="card">
+            <div class="card-title"><i class="fas fa-user"></i> Your Details</div>
+            <div id="flagged-container"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-title"><i class="fas fa-paperclip"></i> Attachments</div>
+            <div id="existing-attachments"></div>
+            <label class="upload-label" for="photoId">Upload Photo ID</label>
+            <input type="file" id="photoId" accept="image/*">
+            <label class="upload-label" for="payslips">Upload Payslips</label>
+            <input type="file" id="payslips" multiple accept="application/pdf,image/*">
+          </div>
+
+          <div class="card">
+            <div class="card-title"><i class="fas fa-envelope"></i> Mailbox</div>
+            <div id="messages-container">
+              <ul id="messages-list"></ul>
+              <label for="message-body">New Message</label>
+              <textarea id="message-body" rows="2"></textarea>
+              <button type="button" id="send-message-btn"><i class="fas fa-paper-plane"></i> Send Message</button>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="submit" class="btn"><i class="fas fa-save"></i> Save Changes</button>
+            <a href="index.html" class="btn back-btn" style="background: rgba(255,255,255,0.10);"><i class="fas fa-times"></i> Cancel</a>
+          </div>
+        </form>
+
+        <footer>
+          <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+          <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
+        </footer>
       </div>
-    </nav>
-    <h1>Edit Your Application</h1>
-    <!-- Area to display status and reason -->
-    <div id="status-area"></div>
-    <form id="applicant-form" style="display:none;">
-      <input type="hidden" name="id">
-      <!-- Display selected promotion/loan terms -->
-      <div id="promo-info" class="promo-info" style="margin-bottom: 16px;"></div>
-      <div id="flagged-container"></div>
-      <!-- Attachments upload section -->
-      <h3>Attachments</h3>
-      <div id="existing-attachments"></div>
-      <label>
-        Upload Photo ID
-        <input type="file" id="photoId" accept="image/*">
-      </label>
-      <label>
-        Upload Payslips
-        <input type="file" id="payslips" multiple accept="application/pdf,image/*">
-      </label>
-      <!-- Messaging section for applicant to communicate with admin/loan officer -->
-      <h3>Mailbox</h3>
-      <div id="messages-container">
-        <ul id="messages-list"></ul>
-        <label>
-          New Message
-          <textarea id="message-body" rows="2"></textarea>
-        </label>
-        <button type="button" id="send-message-btn">Send Message</button>
-      </div>
-      <button type="submit" class="btn">Save Changes</button>
-      <a href="index.html" class="btn back-btn">Cancel</a>
-    </form>
+    </div>
 
     <script>
       // Load parishes for dropdown
@@ -84,7 +217,7 @@
 
       async function loadApplication() {
         if (!trn) {
-          statusArea.textContent = 'No TRN provided';
+          statusArea.textContent = 'No TRN provided. Follow the link from your status page to edit your application.';
           return;
         }
         try {
