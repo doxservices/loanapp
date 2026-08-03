@@ -115,19 +115,18 @@
     }
     .container::before { display: none; }
 
-    .user-info { display: flex; align-items: center; justify-content: flex-end; gap: 12px; position: relative; z-index: 2; }
-    .user-info span { color: var(--text-soft); }
+    .top-bar { display: flex; justify-content: space-between; align-items: center; padding: 8px 0 16px; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.12); flex-wrap: wrap; gap: 12px; position: relative; z-index: 2; }
+    .page-title { font-size: 24px; font-weight: 600; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+    .page-title i { color: var(--gold); }
+    .page-subtitle { color: var(--text-soft); font-size: 14px; }
+    .user-info { display: flex; align-items: center; gap: 12px; }
+    .user-avatar { width: 42px; height: 42px; border-radius: 50%; background: rgba(239,195,82,0.22); border: 1px solid rgba(239,195,82,0.5); display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 16px; color: var(--gold); }
     .nav-btn {
       padding: 10px 16px; border: 1px solid rgba(255,255,255,0.16); border-radius: 12px; cursor: pointer;
       background: rgba(13, 62, 164, 0.70); color: var(--text-main); font-size: 13px; font-weight: 600;
       display: inline-flex; align-items: center; gap: 8px; font-family: inherit; transition: all .18s ease;
     }
     .nav-btn:hover { transform: translateY(-1px); }
-
-    header { text-align: center; padding: 16px 0 10px; position: relative; z-index: 2; }
-    .logo { font-size: 34px; color: var(--gold); margin-bottom: 8px; }
-    h1 { font-size: 29px; font-weight: 600; margin-bottom: 6px; }
-    .subtitle { color: var(--text-soft); font-size: 14px; margin-bottom: 10px; }
 
     .quick-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 24px 0; position: relative; z-index: 2; }
     .stat-card {
@@ -190,16 +189,16 @@
     <main class="main-content">
     <div class="page">
     <div class="container">
-      <div class="user-info">
-        <span>Welcome, Jane Doe</span>
-        <button class="nav-btn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      <div class="top-bar">
+        <div>
+          <div class="page-title"><i class="fas fa-map"></i> Loan Application System</div>
+          <div class="page-subtitle">Navigate to any section of the loan application platform</div>
+        </div>
+        <div class="user-info">
+          <div class="user-avatar">JD</div>
+          <div><div>Jane Doe</div><div style="font-size: 13px; color: var(--text-soft);">Administrator</div></div>
+        </div>
       </div>
-
-      <header>
-        <div class="logo"><i class="fas fa-map"></i></div>
-        <h1>Loan Application System</h1>
-        <p class="subtitle">Navigate to any section of the loan application platform</p>
-      </header>
 
       <div class="quick-stats">
         <div class="stat-card"><div class="stat-value">3</div><div class="stat-label">Active Applications</div></div>
@@ -259,9 +258,6 @@
   </div>
 
   <script>
-    document.querySelector('.user-info button').addEventListener('click', function() {
-      if (confirm('Are you sure you want to logout?')) window.location.href = 'index.html';
-    });
     (function() {
       var current = location.pathname.split('/').pop();
       document.querySelectorAll('.nav-links a').forEach(function(link) {
