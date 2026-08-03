@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Profile</title>
+  <style>
+    :root {
+      --white: #ffffff;
+      --text-main: rgba(255,255,255,0.97);
+      --text-soft: rgba(239,245,255,0.92);
+      --text-muted: rgba(228,237,255,0.78);
+      --line-soft: rgba(255,255,255,0.16);
+      --gold: #efc352;
+      --gold-deep: #d9a230;
+      --panel-blue-1: rgba(178, 204, 255, 0.18);
+      --panel-blue-2: rgba(12, 72, 186, 0.38);
+      --panel-strong-1: rgba(13, 62, 164, 0.70);
+      --panel-strong-2: rgba(7, 50, 145, 0.82);
+      --field-top: rgba(61, 108, 214, 0.48);
+      --field-bottom: rgba(28, 73, 177, 0.46);
+      --shadow: 0 24px 52px rgba(3, 25, 89, 0.24);
+      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      color: var(--text-main);
+      background: url('assets/banking-background.jpg') center center / cover no-repeat fixed;
+      text-shadow: 0 1px 2px rgba(0,0,0,0.14);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 18px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .notification {
+      position: fixed;
+      top: 16px;
+      right: 18px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 15px 22px;
+      border-radius: 12px;
+      background: linear-gradient(180deg, #f1c75a, #e5b23d);
+      color: #1e2430;
+      font-size: 15px;
+      font-weight: 600;
+      box-shadow: 0 14px 28px rgba(88, 58, 11, 0.22);
+      transform: translateX(130%);
+      transition: transform .28s ease;
+      z-index: 15;
+    }
+    .notification.show { transform: translateX(0); }
+    .notification-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(10, 24, 57, 0.96);
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 700;
+      flex: 0 0 22px;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 32px auto 0;
+      background: linear-gradient(135deg,
+        rgba(5, 48, 132, 0.78) 0%,
+        rgba(31, 91, 190, 0.48) 45%,
+        rgba(105, 151, 226, 0.26) 100%);
+      border: 1px solid rgba(255,255,255,0.26);
+      border-radius: 24px;
+      padding: 24px 26px 26px;
+      backdrop-filter: blur(10px) saturate(115%);
+      -webkit-backdrop-filter: blur(10px) saturate(115%);
+      box-shadow: 0 22px 50px rgba(3, 25, 89, 0.20);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .container::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.20);
+      pointer-events: none;
+    }
+
+    .user-info {
+      display: flex;
+      justify-content: flex-end;
+      gap: 14px;
+      margin-bottom: 12px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .nav-btn,
+    .btn {
+      border: 1px solid rgba(255,255,255,0.16);
+      border-radius: 12px;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all .18s ease;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      line-height: 1;
+      font-family: inherit;
+    }
+
+    .nav-btn {
+      padding: 12px 18px;
+      background: rgba(13, 62, 164, 0.70);
+      border-color: rgba(205, 226, 255, 0.20);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      color: var(--text-main);
+      font-size: 13px;
+      font-weight: 600;
+      min-width: 112px;
+    }
+
+    .nav-btn:hover, .btn:hover { transform: translateY(-1px); }
+
+    .icon,
+    .section-icon,
+    .logo,
+    .profile-pic,
+    .notification-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .icon { width: 18px; height: 18px; flex: 0 0 18px; color: currentColor; }
+    .icon svg,
+    .section-icon svg,
+    .logo svg,
+    .profile-pic svg { width: 100%; height: 100%; fill: currentColor; }
+
+    header {
+      text-align: center;
+      padding: 12px 0 26px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .logo {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 13px;
+      border-radius: 50%;
+      border: 2px solid rgba(239,195,82,0.88);
+      background: rgba(255,255,255,0.05);
+      box-shadow: 0 10px 24px rgba(5, 29, 84, 0.18);
+      color: #ffffff;
+      padding: 17px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 29px;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--text-soft);
+      font-size: 14px;
+      font-weight: 400;
+    }
+
+    .profile-header {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 26px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .profile-pic {
+      width: 118px;
+      height: 118px;
+      flex: 0 0 118px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 34% 30%, rgba(156,211,255,0.35), rgba(56,106,225,0.10));
+      border: 2px solid rgba(239,195,82,0.88);
+      box-shadow: 0 16px 30px rgba(6, 33, 97, 0.16);
+      color: #7ec3ff;
+      padding: 26px;
+    }
+
+    .profile-copy h2 {
+      margin: 0 0 5px;
+      font-size: 24px;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+
+    .member {
+      margin: 0;
+      font-size: 14px;
+      font-weight: 400;
+      color: var(--text-soft);
+    }
+
+    .profile-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .btn {
+      padding: 13px 20px;
+      background: rgba(13, 62, 164, 0.70);
+      border-color: rgba(205, 226, 255, 0.20);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      color: var(--text-main);
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    .btn-primary {
+      background: linear-gradient(180deg, #f1c75a, #dfa938);
+      color: #172033;
+      border-color: rgba(255,255,255,0.18);
+      box-shadow: 0 8px 18px rgba(96, 65, 8, 0.18);
+    }
+
+    .card {
+      background: transparent;
+      border-radius: 18px;
+      padding: 20px 20px 20px;
+      border: 1px solid rgba(190, 218, 255, 0.20);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      margin-bottom: 18px;
+      position: relative;
+      z-index: 2;
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.12);
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .card-edit-btn {
+      margin-left: auto;
+      width: 30px;
+      height: 30px;
+      flex: 0 0 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(13, 62, 164, 0.60);
+      border: 1px solid rgba(205, 226, 255, 0.20);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background-color .15s ease, border-color .15s ease;
+    }
+    .card-edit-btn svg { width: 15px; height: 15px; fill: var(--gold); }
+    .card-edit-btn:hover { background: rgba(13, 62, 164, 0.85); border-color: rgba(239,195,82,0.55); }
+
+    .section-icon {
+      width: 21px;
+      height: 21px;
+      color: var(--gold);
+      flex: 0 0 21px;
+    }
+
+    .profile-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-item.full-width { grid-column: 1 / -1; }
+
+    .address-row {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-item {
+      background: rgba(13, 62, 164, 0.60);
+      border: 1px solid rgba(165, 203, 255, 0.24);
+      border-left: 2px solid rgba(239, 195, 82, 0.86);
+      border-radius: 14px;
+      padding: 16px 18px 15px 17px;
+      position: relative;
+      min-height: 86px;
+      min-width: 0;
+      overflow: hidden;
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(3px);
+      box-shadow:
+        inset 0 1px 0 rgba(255,255,255,0.06),
+        0 8px 18px rgba(3,31,98,0.10);
+      transition: border-color .15s ease;
+    }
+
+    .info-item:focus-within {
+      border-color: rgba(239, 195, 82, 0.60);
+    }
+
+    .info-item.locked {
+      border-left-color: rgba(200, 216, 245, 0.35);
+    }
+    .info-item.locked .field {
+      cursor: default;
+      color: rgba(255,255,255,0.82);
+    }
+    .info-item.locked select.field {
+      cursor: default;
+      opacity: 0.75;
+      background-color: rgba(255,255,255,0.05);
+    }
+
+    .info-item h4 {
+      margin: 0 0 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: rgba(224, 235, 255, 0.88);
+    }
+
+    .field,
+    .info-value {
+      width: 100%;
+      background: transparent;
+      border: 0;
+      outline: 0;
+      padding: 0;
+      color: #ffffff;
+      font-size: 16px;
+      font-weight: 400;
+      line-height: 1.35;
+      font-family: inherit;
+      resize: none;
+    }
+
+    .field::placeholder { color: rgba(255, 215, 0, 0.45); }
+
+    select.field {
+      appearance: none;
+      -webkit-appearance: none;
+      cursor: pointer;
+      background-color: rgba(255,255,255,0.09);
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23efc352' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 9px center;
+      background-size: 13px;
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 9px;
+      padding: 8px 30px 8px 11px;
+      transition: border-color .15s ease, background-color .15s ease;
+    }
+    select.field:hover { border-color: rgba(239,195,82,0.55); background-color: rgba(255,255,255,0.13); }
+    select.field:focus { outline: none; border-color: var(--gold); }
+    select.field option { background: #0d3ea4; color: #fff; }
+
+    .formatted-input-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .formatted-input-group .field { text-align: center; min-width: 0; }
+    .formatted-input-group input.field {
+      flex: 0 1 76px;
+      background: rgba(255,255,255,0.09);
+      border: 1px solid rgba(255,255,255,0.22);
+      border-radius: 9px;
+      padding: 8px 6px;
+    }
+    .hyphen { color: var(--text-soft); }
+
+    .loan-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .loan-table th {
+      text-align: left;
+      padding: 12px 12px;
+      background: rgba(120,165,245,0.12);
+      color: rgba(255,255,255,0.89);
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .loan-table td {
+      padding: 12px 12px;
+      color: rgba(255,255,255,0.92);
+      font-size: 14px;
+      font-weight: 400;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+
+    .loan-table tr:last-child td { border-bottom: none; }
+    .loan-table tr:hover { background: rgba(255,255,255,0.035); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 6px 11px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .status-pending { background: rgba(255,193,7,0.16); color: #ffcb51; }
+    .status-approved { background: rgba(118,224,172,0.16); color: #8deebc; }
+    .status-rejected { background: rgba(255,111,111,0.16); color: #ff9a9a; }
+    .status-completed { background: rgba(126,194,255,0.16); color: #92ccff; }
+    .dummy-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; background: rgba(255,167,38,0.22); color: #ffb74d; border: 1px solid rgba(255,167,38,0.4); vertical-align: middle; margin-left: 8px; }
+
+    .actions-bar {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .security-settings {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 15px 16px;
+      background: rgba(255,255,255,0.055);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      margin-bottom: 12px;
+    }
+    .security-settings:last-child { margin-bottom: 0; }
+
+    .setting-info h4 {
+      margin: 0 0 5px;
+      font-size: 15px;
+      font-weight: 600;
+      color: rgba(255,255,255,0.95);
+    }
+    .setting-info p {
+      margin: 0;
+      font-size: 13px;
+      font-weight: 400;
+      color: var(--text-muted);
+    }
+
+    .switch {
+      position: relative;
+      width: 52px;
+      height: 30px;
+      display: inline-block;
+      flex: 0 0 52px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.18);
+      transition: .24s ease;
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 4px;
+      top: 3px;
+      background: #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.16);
+      transition: .24s ease;
+    }
+    .switch input:checked + .slider {
+      background: rgba(239,195,82,0.32);
+      border-color: rgba(239,195,82,0.48);
+    }
+    .switch input:checked + .slider::before { transform: translateX(22px); }
+
+    footer {
+      text-align: center;
+      padding-top: 6px;
+      margin-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      color: rgba(234,243,255,0.84);
+      font-size: 13px;
+      line-height: 1.65;
+      position: relative;
+      z-index: 2;
+    }
+    footer a {
+      color: var(--gold);
+      text-decoration: none;
+      font-weight: 600;
+    }
+    footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 920px) {
+      .notification {
+        position: static;
+        transform: none;
+        margin: 0 auto 16px;
+        width: fit-content;
+      }
+      .container { margin-top: 8px; }
+    }
+
+    @media (max-width: 768px) {
+      .page { padding: 14px; }
+      .container { padding: 20px 16px 22px; }
+      .user-info { justify-content: center; flex-wrap: wrap; }
+      .profile-header { flex-direction: column; text-align: center; }
+      .profile-actions { justify-content: center; }
+      .profile-info-grid { grid-template-columns: 1fr; }
+      .info-item.full-width { grid-column: auto; }
+      .address-row { grid-template-columns: 1fr; grid-column: auto; }
+      .loan-table { display: block; overflow-x: auto; }
+      .actions-bar { flex-direction: column; }
+      h1 { font-size: 26px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="notification" id="notification">
+      <span class="notification-icon">✓</span>
+      <span id="notificationText">Welcome back, Alexandra!</span>
+    </div>
+
+    <div class="container">
+      <div class="user-info">
+        <a href="index.html" class="nav-btn">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M12 3 3 10h2v10h5v-6h4v6h5V10h2z"/></svg></span>
+          Dashboard
+        </a>
+        <button id="logoutBtn" class="nav-btn" type="button">
+          <span class="icon"><svg viewBox="0 0 24 24"><path d="M10 17v-3H3v-4h7V7l5 5zm2-12h7v14h-7v-2h5V7h-5z"/></svg></span>
+          Logout
+        </button>
+      </div>
+
+      <header>
+        <div class="logo" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/></svg>
+        </div>
+        <h1>User Profile</h1>
+        <p class="subtitle">Manage your account and track your loan applications</p>
+      </header>
+
+      <section class="profile-header">
+        <div class="profile-pic" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 12c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm0 2c-3.33 0-10 1.67-10 5v3h20v-3c0-3.33-6.67-5-10-5z"/></svg>
+        </div>
+        <div class="profile-copy">
+          <h2>Alexandra Johnson</h2>
+          <p class="member">Member since: August 2024</p>
+          <div class="profile-actions">
+            <button class="btn" id="editProfileBtn" type="button">
+              <span class="icon"><svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.3a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg></span>
+              <span id="editProfileBtnLabel">Edit Profile</span>
+            </button>
+            <button class="btn btn-primary" id="newApplicationBtn" type="button">
+              <span class="icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zm0 2.5L18.5 9H14zM8 13h8v1.75H8zm0 4h8v1.75H8zm0-8h4v1.75H8z"/></svg></span>
+              New Application
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">
+          <span class="section-icon"><svg viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.79 2.99-4S17.66 3 16 3s-3 1.34-3 4 1.34 4 3 4M8 11c1.66 0 2.99-1.79 2.99-4S9.66 3 8 3 5 4.34 5 7s1.34 4 3 4m0 2c-2.33 0-7 1.17-7 3.5V20h14v-3.5C15 14.17 10.33 13 8 13m8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.96 1.97 3.45V20h7v-3.5c0-2.33-4.67-3.5-7-3.5"/></svg></span>
+          Personal Information
+          <button class="card-edit-btn" id="editPersonalInfoBtn" type="button" title="Edit personal information" aria-label="Edit personal information">
+            <svg viewBox="0 0 24 24"><path d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75zM20.71 7.04a1 1 0 0 0 0-1.41L18.37 3.3a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75z"/></svg>
+          </button>
+        </div>
+        <div class="profile-info-grid">
+          <div class="info-item">
+            <h4>Full Name</h4>
+            <input class="field" id="fullName" type="text" value="Alexandra Johnson" />
+          </div>
+          <div class="info-item">
+            <h4>TRN</h4>
+            <input class="field" id="trn" type="text" value="123-456-789" />
+          </div>
+          <div class="info-item">
+            <h4>Email Address</h4>
+            <input class="field" id="emailAddress" type="email" value="alex.j@example.com" />
+          </div>
+          <div class="info-item">
+            <h4>Phone Number</h4>
+            <div class="formatted-input-group">
+              <select id="phoneArea" class="field" style="flex: 0 0 78px;">
+                <option value="876" selected>(876)</option>
+                <option value="658">(658)</option>
+              </select>
+              <div class="hyphen">-</div>
+              <input type="text" id="phoneMid" class="field" maxlength="3" placeholder="555" value="555" />
+              <div class="hyphen">-</div>
+              <input type="text" id="phoneLast" class="field" maxlength="4" placeholder="1234" value="1234" />
+            </div>
+          </div>
+          <div class="address-row">
+            <div class="info-item">
+              <h4>Address Line 1</h4>
+              <input class="field" id="addressLine1" type="text" value="42 Hope Road" />
+            </div>
+            <div class="info-item">
+              <h4>Address Line 2</h4>
+              <input class="field" id="addressLine2" type="text" value="Kingston 10" />
+            </div>
+            <div class="info-item">
+              <h4>Parish</h4>
+              <select class="field" id="parish">
+                <option value="">Select Parish</option>
+                <option value="kingston" selected>Kingston</option>
+                <option value="st-andrew">St. Andrew</option>
+                <option value="st-catherine">St. Catherine</option>
+                <option value="clarendon">Clarendon</option>
+                <option value="manchester">Manchester</option>
+                <option value="st-ann">St. Ann</option>
+                <option value="trelawny">Trelawny</option>
+                <option value="st-james">St. James</option>
+                <option value="hanover">Hanover</option>
+                <option value="westmoreland">Westmoreland</option>
+                <option value="st-elizabeth">St. Elizabeth</option>
+                <option value="st-mary">St. Mary</option>
+                <option value="st-thomas">St. Thomas</option>
+                <option value="portland">Portland</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">
+          Loan Application History <span class="dummy-badge">Dummy Data</span>
+        </div>
+        <table class="loan-table">
+          <thead>
+            <tr>
+              <th>Application ID</th>
+              <th>Date Applied</th>
+              <th>Loan Type</th>
+              <th>Amount</th>
+              <th>Term</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="loan-table-body">
+            <tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">Loading…</td></tr>
+          </tbody>
+        </table>
+        <div class="actions-bar">
+          <button class="btn" type="button" id="downloadHistoryBtn">Download History</button>
+          <button class="btn btn-primary" type="button" id="viewApplicationsBtn">View All Applications</button>
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-title">
+          <span class="section-icon"><svg viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5zm0 11h7c-.53 4.11-3.28 7.79-7 8.93zm0-9.88L19 5.23V10h-7z"/></svg></span>
+          Security &amp; Preferences
+        </div>
+        <div class="security-settings">
+          <div class="setting-info">
+            <h4>Password</h4>
+            <p>Last changed: July 15, 2025</p>
+          </div>
+          <button class="btn" type="button" id="changePasswordBtn">Change Password</button>
+        </div>
+        <div class="security-settings">
+          <div class="setting-info">
+            <h4>Two-Factor Authentication</h4>
+            <p>Add an extra layer of security to your account</p>
+          </div>
+          <button class="btn btn-primary" type="button" id="enable2FABtn">Enable 2FA</button>
+        </div>
+        <div class="security-settings">
+          <div class="setting-info">
+            <h4>Email Notifications</h4>
+            <p>Receive updates about your applications</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="emailNotifications" checked />
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+        <p>Your data is protected with bank-level security</p>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const fields = ['fullName', 'emailAddress', 'phoneArea', 'phoneMid', 'phoneLast', 'trn', 'parish', 'addressLine1', 'addressLine2'];
+    const STORAGE_KEY = 'bankingProfileTemplateGoal1to1';
+    let profileEditing = false;
+
+    function setProfileEditable(state) {
+      profileEditing = state;
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el.tagName === 'SELECT') el.disabled = !state;
+        else el.readOnly = !state;
+        const item = el.closest('.info-item');
+        if (item) item.classList.toggle('locked', !state);
+      });
+      document.getElementById('editProfileBtnLabel').textContent = state ? 'Save Changes' : 'Edit Profile';
+    }
+
+    function toggleProfileEdit() {
+      if (profileEditing) {
+        setProfileEditable(false);
+        saveProfile();
+        showNotification('Profile changes saved');
+      } else {
+        setProfileEditable(true);
+        document.getElementById('fullName').focus();
+        showNotification('Profile fields are ready to edit');
+      }
+    }
+
+    function showNotification(message) {
+      const notification = document.getElementById('notification');
+      document.getElementById('notificationText').textContent = message;
+      notification.classList.add('show');
+      clearTimeout(showNotification._timer);
+      showNotification._timer = setTimeout(() => notification.classList.remove('show'), 2600);
+    }
+
+    function saveProfile() {
+      const data = {};
+      fields.forEach(id => data[id] = document.getElementById(id).value);
+      data.emailNotifications = document.getElementById('emailNotifications').checked;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+    function loadProfile() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (!saved) return;
+      try {
+        const data = JSON.parse(saved);
+        fields.forEach(id => { if (data[id] !== undefined) document.getElementById(id).value = data[id]; });
+        if (typeof data.emailNotifications === 'boolean') document.getElementById('emailNotifications').checked = data.emailNotifications;
+      } catch (e) {}
+    }
+
+    function esc(s) {
+      if (s == null) return '';
+      return s.toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
+    }
+    function fmtDate(v) { if (!v) return ''; try { return new Date(v).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }); } catch { return v; } }
+
+    async function loadLoans() {
+      const tbody = document.getElementById('loan-table-body');
+      try {
+        const res = await fetch(window.LOANIT_API_BASE + '/api/loans?email=alex.j@example.com');
+        const loans = await res.json();
+        if (!loans.length) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-muted);">No loans on record.</td></tr>';
+          return;
+        }
+        tbody.innerHTML = loans.map(l => `
+          <tr>
+            <td>${esc(l.applicationCode)}</td>
+            <td>${fmtDate(l.createdAt)}</td>
+            <td>${esc(l.loanType)}</td>
+            <td>$${Number(l.principal).toLocaleString()}</td>
+            <td>${esc(l.termMonths)} months</td>
+            <td><span class="status-badge status-${esc((l.status || '').toLowerCase())}">${esc(l.status)}</span></td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#ff9a9a;">Failed to load loan history.</td></tr>';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadProfile();
+      loadLoans();
+      setProfileEditable(false);
+      fields.forEach(id => {
+        const el = document.getElementById(id);
+        el.addEventListener('input', saveProfile);
+        el.addEventListener('change', saveProfile);
+      });
+      document.getElementById('emailNotifications').addEventListener('change', () => { saveProfile(); showNotification('Preferences updated'); });
+      document.getElementById('logoutBtn').addEventListener('click', () => showNotification('You have been logged out successfully'));
+      document.getElementById('editProfileBtn').addEventListener('click', toggleProfileEdit);
+      document.getElementById('editPersonalInfoBtn').addEventListener('click', toggleProfileEdit);
+      document.getElementById('newApplicationBtn').addEventListener('click', () => { window.location.href = 'user-apply.html'; });
+      document.getElementById('downloadHistoryBtn').addEventListener('click', () => showNotification('Loan history export prepared'));
+      document.getElementById('viewApplicationsBtn').addEventListener('click', () => showNotification('Displaying all applications'));
+      document.getElementById('changePasswordBtn').addEventListener('click', () => showNotification('Password update screen coming next'));
+      document.getElementById('enable2FABtn').addEventListener('click', () => showNotification('Two-factor authentication enabled'));
+      setTimeout(() => showNotification('Welcome back, Alexandra!'), 500);
+    });
+  </script>
+</body>
+</html>
