@@ -221,6 +221,11 @@
       width: 100%; padding: 10px 12px; border-radius: 8px; font-family: inherit; font-size: 13px;
       background: rgba(255,255,255,0.92); border: 1px solid rgba(255,255,255,0.5); color: #16202a;
     }
+    .phone-input-group { display: flex; align-items: center; gap: 6px; min-width: 0; }
+    .phone-input-group .modal-field { min-width: 0; padding: 10px 6px; }
+    .phone-input-group input { flex: 1 1 0; width: 0; }
+    .phone-input-group input#um-phone-last { flex-grow: 1.25; }
+    .phone-hyphen { color: var(--text-soft); font-weight: 600; }
 
     @media (max-width: 768px) {
       .controls { flex-direction: column; }
@@ -334,7 +339,18 @@
           <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">First Name</label><input id="um-first" class="modal-field"></div>
           <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Last Name</label><input id="um-last" class="modal-field"></div>
           <div style="grid-column:1/-1;"><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Email</label><input id="um-email" type="email" class="modal-field"></div>
-          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Phone</label><input id="um-phone" class="modal-field"></div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Phone</label>
+            <div class="phone-input-group">
+              <select id="um-phone-area" class="modal-field" style="flex: 0 0 82px;">
+                <option value="876" selected>(876)</option>
+                <option value="658">(658)</option>
+              </select>
+              <span class="phone-hyphen">-</span>
+              <input type="text" id="um-phone-mid" class="modal-field" maxlength="3" inputmode="numeric" placeholder="555" style="text-align:center;">
+              <span class="phone-hyphen">-</span>
+              <input type="text" id="um-phone-last" class="modal-field" maxlength="4" inputmode="numeric" placeholder="1234" style="text-align:center;">
+            </div>
+          </div>
           <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Role</label>
             <select id="um-role" class="modal-field">
               <option>Applicant</option><option>Administrator</option><option>Loan Officer</option><option>Underwriter</option><option>Customer Support</option>
@@ -343,7 +359,25 @@
           <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Status</label>
             <select id="um-status" class="modal-field"><option value="active">Active</option><option value="pending">Pending</option><option value="inactive">Inactive</option></select>
           </div>
-          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Parish</label><input id="um-parish" class="modal-field"></div>
+          <div><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Parish</label>
+            <select id="um-parish" class="modal-field">
+              <option value="">Select Parish</option>
+              <option value="kingston">Kingston</option>
+              <option value="st-andrew">St. Andrew</option>
+              <option value="st-catherine">St. Catherine</option>
+              <option value="clarendon">Clarendon</option>
+              <option value="manchester">Manchester</option>
+              <option value="st-ann">St. Ann</option>
+              <option value="trelawny">Trelawny</option>
+              <option value="st-james">St. James</option>
+              <option value="hanover">Hanover</option>
+              <option value="westmoreland">Westmoreland</option>
+              <option value="st-elizabeth">St. Elizabeth</option>
+              <option value="st-mary">St. Mary</option>
+              <option value="st-thomas">St. Thomas</option>
+              <option value="portland">Portland</option>
+            </select>
+          </div>
           <div style="grid-column:1/-1;"><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Address Line 1</label><input id="um-address1" class="modal-field"></div>
           <div style="grid-column:1/-1;"><label style="display:block; font-weight:600; font-size:12px; margin-bottom:6px; color:var(--text-soft);">Address Line 2</label><input id="um-address2" class="modal-field"></div>
         </div>
@@ -410,6 +444,13 @@
       el.style.color = ok ? '#8deebc' : '#ff9a9a';
     }
 
+    // Phone is stored as "(876) 555-1234" — same format the user profile
+    // page produces from its area/mid/last fields.
+    function parsePhone(phone) {
+      const m = /^\((\d{3})\)\s*(\d{3})-(\d{4})$/.exec((phone || '').trim());
+      return m ? { area: m[1], mid: m[2], last: m[3] } : { area: '876', mid: '', last: '' };
+    }
+
     function openUserModal(user) {
       editingUserId = user ? user.id : null;
       document.getElementById('user-modal-title').innerHTML = user
@@ -418,7 +459,10 @@
       document.getElementById('um-first').value = user ? user.firstName : '';
       document.getElementById('um-last').value = user ? user.lastName : '';
       document.getElementById('um-email').value = user ? user.email : '';
-      document.getElementById('um-phone').value = user ? (user.phone || '') : '';
+      const phone = parsePhone(user ? user.phone : '');
+      document.getElementById('um-phone-area').value = phone.area;
+      document.getElementById('um-phone-mid').value = phone.mid;
+      document.getElementById('um-phone-last').value = phone.last;
       document.getElementById('um-role').value = user ? (user.role || 'Applicant') : 'Applicant';
       document.getElementById('um-status').value = user ? (user.status || 'active') : 'active';
       document.getElementById('um-parish').value = user ? (user.parish || '') : '';
@@ -428,6 +472,13 @@
       userModal.style.display = 'flex';
       document.getElementById('um-first').focus();
     }
+
+    // Digits only in the phone part fields, like the profile page's rules.
+    ['um-phone-mid', 'um-phone-last'].forEach(id => {
+      document.getElementById(id).addEventListener('input', function() {
+        this.value = this.value.replace(/\D/g, '');
+      });
+    });
 
     // Edit/Delete buttons are rendered dynamically (real data), so use delegation.
     document.getElementById('user-table-body').addEventListener('click', (e) => {
@@ -465,14 +516,24 @@
     document.getElementById('add-user-btn').addEventListener('click', () => openUserModal(null));
 
     document.getElementById('save-user-btn').addEventListener('click', async function() {
+      const phoneMid = document.getElementById('um-phone-mid').value.trim();
+      const phoneLast = document.getElementById('um-phone-last').value.trim();
+      let phone = '';
+      if (phoneMid || phoneLast) {
+        if (phoneMid.length !== 3 || phoneLast.length !== 4) {
+          showUserModalMsg('Phone number must be 3 digits, then 4 digits (e.g. 555-1234).', false);
+          return;
+        }
+        phone = `(${document.getElementById('um-phone-area').value}) ${phoneMid}-${phoneLast}`;
+      }
       const payload = {
         firstName: document.getElementById('um-first').value.trim(),
         lastName: document.getElementById('um-last').value.trim(),
         email: document.getElementById('um-email').value.trim(),
-        phone: document.getElementById('um-phone').value.trim(),
+        phone,
         role: document.getElementById('um-role').value,
         status: document.getElementById('um-status').value,
-        parish: document.getElementById('um-parish').value.trim(),
+        parish: document.getElementById('um-parish').value,
         addressLine1: document.getElementById('um-address1').value.trim(),
         addressLine2: document.getElementById('um-address2').value.trim()
       };
