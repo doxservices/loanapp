@@ -415,11 +415,20 @@
       phoneLast.value = data.phoneLast || '';
       trn.value = data.trn || '';
 
+      // Everything above comes straight from the user's profile -- none of
+      // it should be editable here. Only loan-specific fields further down
+      // (term, uploads, promotion) stay editable.
+      firstName.readOnly = true;
+      lastName.readOnly = true;
+      email.readOnly = true;
+      addressLine1.readOnly = true;
+      addressLine2.readOnly = true;
+      parish.disabled = true;
       phoneArea.disabled = true;
       phoneMid.readOnly = true;
       phoneLast.readOnly = true;
       trn.readOnly = true;
-      [phoneArea, phoneMid, phoneLast, trn].forEach(el => {
+      [firstName, lastName, email, addressLine1, addressLine2, parish, phoneArea, phoneMid, phoneLast, trn].forEach(el => {
         const item = el.closest('.info-item');
         if (item) item.classList.add('locked');
       });
