@@ -39,9 +39,16 @@
     }
 
     .sidebar { background: rgba(0, 0, 0, 0.28); padding: 20px 0; border-right: 1px solid rgba(255, 255, 255, 0.1); }
-    .sidebar.attached { position: fixed; top: 0; left: 0; width: 250px; height: 100vh; overflow-y: auto; z-index: 10; }
-    .admin-container.attached-layout { grid-template-columns: 1fr; max-width: none; margin: 0; border-radius: 0; }
-    .admin-container.attached-layout .main-content { margin-left: 250px; }
+    .sidebar.attached {
+      position: fixed; top: 0; left: 0; width: 250px; height: 100vh; overflow-y: auto; z-index: 10;
+      background: rgba(8, 20, 52, 0.78); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    /* backdrop-filter on an ancestor makes it the containing block for
+       position:fixed descendants, which would drag the "fixed" sidebar
+       along with the page scroll — so attached mode moves the blur off
+       the container and onto main-content/sidebar instead. */
+    .admin-container.attached-layout { grid-template-columns: 1fr; max-width: none; margin: 0; border-radius: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+    .admin-container.attached-layout .main-content { margin-left: 250px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
     .logo { padding: 0 20px 18px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
     .logo i { font-size: 26px; color: var(--gold); }
     .logo h1 { font-size: 18px; font-weight: 600; }
@@ -147,7 +154,7 @@
       backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); user-select: none;
     }
     .sidebar-mode-toggle i { color: var(--gold); }
-    .sidebar-mode-toggle span { min-width: 52px; }
+    .sidebar-mode-toggle > span { min-width: 52px; }
     .mini-switch { position: relative; width: 36px; height: 20px; display: inline-block; flex: 0 0 36px; }
     .mini-switch input { opacity: 0; width: 0; height: 0; }
     .mini-slider {
@@ -165,8 +172,9 @@
       .sidebar-mode-toggle { display: none; }
       .admin-container, .admin-container.attached-layout {
         grid-template-columns: 1fr; margin: 0; border-radius: 0; max-width: none;
+        backdrop-filter: none; -webkit-backdrop-filter: none;
       }
-      .admin-container.attached-layout .main-content { margin-left: 0; }
+      .main-content, .admin-container.attached-layout .main-content { margin-left: 0; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
       .sidebar, .sidebar.attached { display: none; }
       .sidebar-toggle { display: flex; }
       .sidebar.mobile-open {
