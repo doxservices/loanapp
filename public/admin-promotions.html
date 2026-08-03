@@ -83,8 +83,13 @@
       border-radius: 8px; color: white; font-size: 14px; font-family: inherit;
     }
     .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 0 3px rgba(239,195,82,.2); }
-    .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255, 215, 0, 0.45); }
+    .form-group input::placeholder, .form-group textarea::placeholder { color: rgba(255,255,255,0.55); }
     .form-group select option { background: #0d3ea4; }
+
+    /* Once a field has a value, flip it to a filled-in look: white
+       background, dark text -- distinct from the empty blue/placeholder
+       state. Toggled by JS via the .filled class. */
+    .form-group input.filled, .form-group textarea.filled { background: #ffffff; color: #16202a; }
 
     .term-checklist {
       max-height: 150px; overflow-y: auto;
@@ -111,8 +116,8 @@
 
     .term-checklist::-webkit-scrollbar, .sidebar::-webkit-scrollbar, .main-content::-webkit-scrollbar { width: 9px; }
     .term-checklist::-webkit-scrollbar-track, .sidebar::-webkit-scrollbar-track, .main-content::-webkit-scrollbar-track { background: rgba(0,0,0,0.22); border-radius: 8px; }
-    .term-checklist::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb, .main-content::-webkit-scrollbar-thumb { background: rgba(255, 215, 0, 0.40); border-radius: 8px; }
-    .term-checklist::-webkit-scrollbar-thumb:hover, .sidebar::-webkit-scrollbar-thumb:hover, .main-content::-webkit-scrollbar-thumb:hover { background: rgba(255, 215, 0, 0.65); }
+    .term-checklist::-webkit-scrollbar-thumb, .sidebar::-webkit-scrollbar-thumb, .main-content::-webkit-scrollbar-thumb { background: rgba(126, 195, 255, 0.55); border-radius: 8px; }
+    .term-checklist::-webkit-scrollbar-thumb:hover, .sidebar::-webkit-scrollbar-thumb:hover, .main-content::-webkit-scrollbar-thumb:hover { background: rgba(126, 195, 255, 0.85); }
 
     .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
     .btn {
@@ -316,6 +321,13 @@
       const current = location.pathname.split('/').pop();
       document.querySelectorAll('.nav-links a').forEach(function(link) {
         if (link.getAttribute('href') === current) link.classList.add('active');
+      });
+
+      document.querySelectorAll('.form-group input, .form-group textarea').forEach(el => {
+        const update = () => el.classList.toggle('filled', !!el.value && el.value.trim() !== '');
+        update();
+        el.addEventListener('input', update);
+        el.addEventListener('change', update);
       });
       const sidebarModeSwitch = document.getElementById('sidebarModeSwitch');
       const sidebarModeLabel = document.getElementById('sidebarModeLabel');
