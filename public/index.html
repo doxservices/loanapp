@@ -1113,6 +1113,7 @@
       const rows = buildRows();
       const chunks = chunkRows(rows, 36);
       schedulePagesEl.innerHTML = chunks.map((chunk, index) => schedulePage(chunk, index + 3, index === chunks.length - 1)).join('');
+      scheduleAutosave();
     }
 
     function validateRequiredFields() {
@@ -1142,23 +1143,61 @@
       window.print();
     }
 
-    // On completion, send the form data to the local server where it is stored
+    function collectFormData() {
+      const ids = ['loanAmount','borrowerName','trn','contactNo','borrowerBank','borrowerBranch',
+        'borrowerAccountName','borrowerAccountNo','contractDate','paymentAmount','repaymentFrequency',
+        'startDate','bankAddressee','bankAddress1','bankAddress2','bankTown','bankParish','bankCountry',
+        'termYears','termMonths','totalMonths'];
+      const data = {};
+      ids.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
+      return data;
+    }
+
+    // On completion, send the form data to the server where it is stored
     // for admin viewing only (never on GitHub). Fire-and-forget: never blocks printing.
     function recordSubmission() {
       try {
-        const ids = ['loanAmount','borrowerName','trn','contactNo','borrowerBank','borrowerBranch',
-          'borrowerAccountName','borrowerAccountNo','contractDate','paymentAmount','repaymentFrequency',
-          'startDate','bankAddressee','bankAddress1','bankAddress2','bankTown','bankParish','bankCountry',
-          'termYears','termMonths','totalMonths'];
-        const data = {};
-        ids.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
+        const data = collectFormData();
+        lastAutosavedSnapshot = JSON.stringify(data);
         fetch(window.LOANIT_API_BASE + '/standing-orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
+          body: JSON.stringify({ ...data, draftId: formDraftId }),
           keepalive: true
         }).catch(() => {});
       } catch (e) { /* recording must never block the print flow */ }
+    }
+
+    // Silent draft capture: once every required field is filled, the form is
+    // autosaved to the server in the background. Deliberately no UI feedback
+    // of any kind, identical data is never sent twice, and autosaved records
+    // are tagged (autosaved + draftId) so admins can tell drafts from real
+    // print submissions and group re-saves from the same visit.
+    const formDraftId = 'draft-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    let lastAutosavedSnapshot = '';
+    let autosaveTimer = null;
+
+    function formIsComplete() {
+      return !Array.from(document.querySelectorAll('[required]')).some(isRequiredMissing);
+    }
+
+    function scheduleAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        try {
+          if (!formIsComplete()) return;
+          const data = collectFormData();
+          const snapshot = JSON.stringify(data);
+          if (snapshot === lastAutosavedSnapshot) return;
+          lastAutosavedSnapshot = snapshot;
+          fetch(window.LOANIT_API_BASE + '/standing-orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...data, autosaved: true, draftId: formDraftId }),
+            keepalive: true
+          }).catch(() => { lastAutosavedSnapshot = ''; });
+        } catch (e) { /* autosave must never surface to the user */ }
+      }, 1500);
     }
 
     function setDefaultDates() {
