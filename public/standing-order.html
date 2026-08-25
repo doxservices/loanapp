@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
   <script src="api-base.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Loan It Financing Ltd. - Salary Deduction Authorization</title>
+  <title>Loan It Financing Ltd. - Standing Order Authorization</title>
   <style>
     :root {
       --blue: #0f6fbe;
@@ -37,7 +37,6 @@
       z-index: 1000;
       display: flex;
       justify-content: center;
-      align-items: center;
       gap: 10px;
       padding: 10px 14px;
       background: #fff;
@@ -316,6 +315,19 @@
       line-height: 1.35;
     }
 
+    .letter-date {
+      margin: 0 0 22px;
+      text-align: left;
+      line-height: 1.55;
+    }
+
+    .letter-address {
+      margin: 0 0 22px;
+      line-height: 1.55;
+    }
+
+    .letter-address div { min-height: 16px; }
+
     .letter-body {
       font-size: 13px;
       line-height: 1.7;
@@ -326,6 +338,12 @@
       text-align: justify;
     }
 
+    .letter-subject {
+      margin: 14px 0 18px;
+      text-align: left;
+      line-height: 1.55;
+    }
+
     .section-title {
       color: var(--blue-dark);
       font-size: 13.8px;
@@ -333,8 +351,6 @@
       margin: 24px 0 10px;
       line-height: 1.35;
     }
-
-    .section-title:first-child { margin-top: 0; }
 
     table {
       width: 100%;
@@ -432,12 +448,12 @@
   </div>
   <script src="forms-nav.js"></script>
 
-  <form id="deductionForm">
+  <form id="agreementForm">
     <section class="page">
       <div class="page-inner">
         <div class="entry-header">
-          <h1 class="entry-page-title">Salary Deduction Details</h1>
-          <p class="entry-page-subtitle">Complete the data entry section below. The salary deduction authorization form and deduction schedule are generated on the following pages.</p>
+          <h1 class="entry-page-title">Standing Order Details</h1>
+          <p class="entry-page-subtitle">Complete the data entry section below. The formal letter and payment schedule are generated on the following pages.</p>
         </div>
 
         <div class="loan-hero">
@@ -456,54 +472,110 @@
               <input id="borrowerName" type="text" placeholder="Full Name" required />
             </div>
             <div class="field-row">
-              <label for="trn">TRN<span class="required-star">*</span></label>
-              <input id="trn" type="text" placeholder="000-000-000" required />
+              <label for="trn">TRN</label>
+              <input id="trn" type="text" />
             </div>
             <div class="field-row">
               <label for="contactNo">Contact No.</label>
-              <input id="contactNo" type="text" placeholder="876-000-0000" />
+              <input id="contactNo" type="text" />
             </div>
           </div>
 
           <div class="field-panel">
-            <h3>Employer Information</h3>
+            <h3>Account to be Debited</h3>
             <div class="field-row">
-              <label for="employer">Employer<span class="required-star">*</span></label>
-              <input id="employer" type="text" placeholder="Employer name" required />
+              <label for="borrowerBank">Bank Name<span class="required-star">*</span></label>
+              <select id="borrowerBank" data-default-value="Borrower's Bank" class="required-default" required>
+                <option value="Borrower's Bank" disabled selected>Borrower's Bank</option>
+                <option value="Scotia Bank Jamaica Limited">Scotia Bank Jamaica Limited</option>
+                <option value="National Commercial Bank Jamaica Limited">National Commercial Bank Jamaica Limited</option>
+                <option value="Sagicor Bank Jamaica Limited">Sagicor Bank Jamaica Limited</option>
+                <option value="CIBC Caribbean Bank Jamaica Limited">CIBC Caribbean Bank Jamaica Limited</option>
+                <option value="Jamaica National Bank">Jamaica National Bank</option>
+                <option value="First Global Bank Limited">First Global Bank Limited</option>
+              </select>
             </div>
             <div class="field-row">
-              <label for="position">Department / Position<span class="required-star">*</span></label>
-              <input id="position" type="text" placeholder="e.g. End User Support Officer (Level 6)" required />
+              <label for="borrowerBranch">Branch<span class="required-star">*</span></label>
+              <input id="borrowerBranch" type="text" required />
             </div>
             <div class="field-row">
-              <label for="payrollContact">Payroll Contact</label>
-              <input id="payrollContact" type="text" placeholder="Optional" />
+              <label for="borrowerAccountName">Account Name<span class="required-star">*</span></label>
+              <input id="borrowerAccountName" type="text" required />
+            </div>
+            <div class="field-row">
+              <label for="borrowerAccountNo">Account No.<span class="required-star">*</span></label>
+              <input id="borrowerAccountNo" type="text" required />
             </div>
           </div>
 
           <div class="field-panel">
-            <h3>Deduction Details</h3>
+            <h3>Repayment Details</h3>
             <div class="field-row">
               <label for="contractDate">Contract Date<span class="required-star">*</span></label>
               <input id="contractDate" type="date" required />
             </div>
             <div class="field-row">
-              <label for="deductionAmount">Deduction Amount<span class="required-star">*</span></label>
+              <label for="paymentAmount">Order Amount<span class="required-star">*</span></label>
               <div class="currency-field">
                 <span class="currency-prefix">J$</span>
-                <input id="deductionAmount" class="money-input" type="text" inputmode="decimal" placeholder="Auto-calculated" required />
+                <input id="paymentAmount" class="money-input" type="text" inputmode="decimal" placeholder="Auto-calculated" required />
               </div>
             </div>
             <div class="field-row">
-              <label for="payFrequency">Pay Period<span class="required-star">*</span></label>
-              <select id="payFrequency" required>
+              <label for="repaymentFrequency">Repayment Terms<span class="required-star">*</span></label>
+              <select id="repaymentFrequency" required>
                 <option value="monthly" selected>Monthly</option>
                 <option value="fortnightly">Fortnightly</option>
               </select>
             </div>
             <div class="field-row">
-              <label for="startDate">First Deduction Date<span class="required-star">*</span></label>
+              <label for="startDate">First Payment Date<span class="required-star">*</span></label>
               <input id="startDate" type="date" required />
+            </div>
+          </div>
+
+          <div class="field-panel">
+            <h3>Bank Address for Letter</h3>
+            <div class="field-row">
+              <label for="bankAddressee">Attn.<span class="required-star">*</span></label>
+              <input id="bankAddressee" type="text" value="The Manager" required />
+            </div>
+            <div class="field-row">
+              <label for="bankAddress1">Address Line 1<span class="required-star">*</span></label>
+              <input id="bankAddress1" type="text" required />
+            </div>
+            <div class="field-row">
+              <label for="bankAddress2">Address Line 2</label>
+              <input id="bankAddress2" type="text" />
+            </div>
+            <div class="field-row">
+              <label for="bankTown">Town / City<span class="required-star">*</span></label>
+              <input id="bankTown" type="text" required />
+            </div>
+            <div class="field-row">
+              <label for="bankParish">Parish<span class="required-star">*</span></label>
+              <select id="bankParish" required>
+                <option value="" disabled selected>Select Parish</option>
+                <option>Kingston</option>
+                <option>St. Andrew</option>
+                <option>St. Catherine</option>
+                <option>Clarendon</option>
+                <option>Manchester</option>
+                <option>St. Elizabeth</option>
+                <option>Westmoreland</option>
+                <option>Hanover</option>
+                <option>St. James</option>
+                <option>Trelawny</option>
+                <option>St. Ann</option>
+                <option>St. Mary</option>
+                <option>Portland</option>
+                <option>St. Thomas</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="bankCountry">Country<span class="required-star">*</span></label>
+              <input id="bankCountry" type="text" value="Jamaica" readonly required />
             </div>
           </div>
 
@@ -525,15 +597,10 @@
               <label for="paymentCountDisplay">Calculated Schedule</label>
               <input id="paymentCountDisplay" type="text" readonly />
             </div>
-            <div class="field-row">
-              <label for="repaymentPeriodDisplay">Repayment Period</label>
-              <input id="repaymentPeriodDisplay" type="text" readonly />
-            </div>
           </div>
-
           <div class="field-panel summary-panel">
             <h3>Calculated Agreement Summary</h3>
-            <div class="summary-box" id="termSummary">Formal Term: Six (6) months. Deductions shall be made monthly over 6 scheduled pay periods. Final scheduled deduction: __________.</div>
+            <div class="summary-box" id="termSummary">Formal Term: Six (6) months. Repayment shall be made monthly over 6 scheduled payments. Final scheduled payment: __________.</div>
           </div>
         </div>
       </div>
@@ -543,34 +610,42 @@
       <div class="page-inner">
         <div class="banner"><img src="assets/loan-it-banner.png" alt="Loan It Financing Banner" /></div>
 
-        <div class="doc-title">Salary Deduction Authorization Form</div>
+        <div class="doc-title">Standing Order Authorization Agreement</div>
+
+        <p class="letter-date">Date: <strong id="letterDate">__________</strong></p>
+
+        <div class="letter-address">
+          <div id="letterBankAddressee"><strong>The Manager</strong></div>
+          <div id="letterBorrowerBank"><strong>Borrower's Bank</strong></div>
+          <div id="letterBorrowerBranch"></div>
+          <div id="letterBankAddress1"></div>
+          <div id="letterBankAddress2"></div>
+          <div id="letterBankTownParish"></div>
+          <div id="letterBankCountry">Jamaica</div>
+        </div>
 
         <div class="letter-body">
-          <div class="section-title">Borrower Information</div>
-          <table class="account-table">
-            <tr><td>Full Name:</td><td id="docBorrowerName">[Full Name]</td></tr>
-            <tr><td>TRN:</td><td id="docTrn">[TRN]</td></tr>
-            <tr><td>Employer:</td><td id="docEmployer">[Employer]</td></tr>
-            <tr><td>Department/Position:</td><td id="docPosition">[Department / Position]</td></tr>
-            <tr><td>Contact No:</td><td id="docContactNo"></td></tr>
-          </table>
+          <p>Dear Sir/Madam,</p>
 
-          <div class="section-title">Loan Information</div>
-          <table class="account-table">
-            <tr><td>Loan Amount:</td><td id="docLoanAmount">J$ __________</td></tr>
-            <tr><td id="docDeductionLabel">Monthly Deduction Amount:</td><td id="docDeductionAmount">J$ __________</td></tr>
-            <tr><td>Repayment Period:</td><td id="docRepaymentPeriod">__________</td></tr>
-          </table>
+          <p class="letter-subject"><strong>Re: Standing Order Authorization for Loan Repayment</strong></p>
 
-          <div class="section-title">Authorization</div>
           <p>
-            I, the undersigned, hereby authorize my employer, <strong id="docEmployerInline">[Employer]</strong>, to deduct the sum of <strong id="docDeductionInline">J$ __________</strong> from my salary each pay period and remit the same directly to <strong>Loan It Financing Limited</strong> towards repayment of my loan referenced above. This authorization shall remain in effect until the loan is repaid in full or until revoked in writing by me, provided that such revocation will not relieve me of any outstanding obligations. I acknowledge that all deductions made under this authorization will be reflected on my payslip.
-          </p>
-          <p>
-            Deductions shall be made <strong id="docFrequency">monthly</strong> commencing on <strong id="docStartDate">__________</strong>. The repayment term shall be <strong id="docFormalTerm">Six (6) months</strong>, with repayment to be made over <strong id="docPaymentCount">6 scheduled pay periods</strong>. The final scheduled deduction date shall be <strong id="docFinalDate">__________</strong>.
+            I, <strong id="letterBorrowerName">[Full Name]</strong>, being the borrower and account holder identified herein, hereby authorize the bank addressed above to establish and process a standing order from my account in favour of <strong>Loan It Financing Ltd.</strong>.
           </p>
 
-          <div class="section-title">Remittance Account Details</div>
+          <p>
+            This standing order relates to the principal loan amount of <strong id="letterLoanAmount">J$ __________</strong>. The bank account to be debited is held in the name of <strong id="letterAccountName">[Account Name]</strong> under account number <strong id="letterAccountNo">[Account Number]</strong>.
+          </p>
+
+          <p>
+            I authorize the deduction of <strong id="letterPaymentAmount">J$ __________</strong> on a <strong id="letterFrequency">monthly</strong> basis commencing on <strong id="letterStartDate">__________</strong>. The repayment term shall be <strong id="letterFormalTerm">Six (6) months</strong>, with repayment to be made over <strong id="letterPaymentCount">6 scheduled payments</strong>. The final scheduled payment date shall be <strong id="letterFinalDate">__________</strong>.
+          </p>
+
+          <p>
+            Payments are to be remitted directly to <strong>Loan It Financing Ltd.</strong> using the beneficiary account details stated below. This authorization shall remain in effect until the scheduled term has expired, the loan has been repaid in full, or the instruction is revoked in writing in accordance with the bank's procedures. Any revocation shall not release me from any outstanding obligation owed to <strong>Loan It Financing Ltd.</strong>.
+          </p>
+
+          <div class="section-title">Beneficiary Account Details</div>
           <table class="account-table">
             <tr>
               <td>Business Name</td>
@@ -601,15 +676,11 @@
           <div class="section-title">Signatures</div>
           <table class="signature-table">
             <tr>
-              <td><span class="sig-label">Employee / Borrower Signature:</span></td>
+              <td><span class="sig-label">Borrower / Account Holder Signature:</span></td>
               <td><span class="date-label">Date:</span></td>
             </tr>
             <tr>
-              <td><span class="sig-label">Employer's Authorized Representative:</span></td>
-              <td><span class="date-label">Date:</span></td>
-            </tr>
-            <tr>
-              <td><span class="sig-label">For Loan It Financing Limited:</span></td>
+              <td><span class="sig-label">For Loan It Financing Ltd.:</span></td>
               <td><span class="date-label">Date:</span></td>
             </tr>
           </table>
@@ -626,26 +697,33 @@
     const borrowerNameEl = document.getElementById('borrowerName');
     const trnEl = document.getElementById('trn');
     const contactNoEl = document.getElementById('contactNo');
-    const employerEl = document.getElementById('employer');
-    const positionEl = document.getElementById('position');
-    const payrollContactEl = document.getElementById('payrollContact');
+    const borrowerBankEl = document.getElementById('borrowerBank');
+    const borrowerBranchEl = document.getElementById('borrowerBranch');
+    const borrowerAccountNameEl = document.getElementById('borrowerAccountName');
+    const borrowerAccountNoEl = document.getElementById('borrowerAccountNo');
 
     const contractDateEl = document.getElementById('contractDate');
     const loanAmountEl = document.getElementById('loanAmount');
-    const deductionAmountEl = document.getElementById('deductionAmount');
-    const payFrequencyEl = document.getElementById('payFrequency');
+    const paymentAmountEl = document.getElementById('paymentAmount');
+    const repaymentFrequencyEl = document.getElementById('repaymentFrequency');
     const startDateEl = document.getElementById('startDate');
+
+    const bankAddresseeEl = document.getElementById('bankAddressee');
+    const bankAddress1El = document.getElementById('bankAddress1');
+    const bankAddress2El = document.getElementById('bankAddress2');
+    const bankTownEl = document.getElementById('bankTown');
+    const bankParishEl = document.getElementById('bankParish');
+    const bankCountryEl = document.getElementById('bankCountry');
 
     const termYearsEl = document.getElementById('termYears');
     const termMonthsEl = document.getElementById('termMonths');
     const totalMonthsEl = document.getElementById('totalMonths');
     const paymentCountDisplayEl = document.getElementById('paymentCountDisplay');
-    const repaymentPeriodDisplayEl = document.getElementById('repaymentPeriodDisplay');
     const termSummaryEl = document.getElementById('termSummary');
     const schedulePagesEl = document.getElementById('schedulePages');
 
     let activeTermInput = 'pair';
-    let deductionAmountOverridden = false;
+    let orderAmountOverridden = false;
 
     const numberFormatter = new Intl.NumberFormat('en-US', {
       minimumFractionDigits: 2,
@@ -657,9 +735,6 @@
       'ten', 'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen',
       'seventeen', 'eighteen', 'nineteen'
     ];
-
-    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
-      'August', 'September', 'October', 'November', 'December'];
 
     function escapeHtml(value) {
       return String(value)
@@ -704,11 +779,6 @@
     function formatDate(date) {
       if (!date || isNaN(date)) return '__________';
       return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
-    }
-
-    function formatMonthYear(date) {
-      if (!date || isNaN(date)) return '__________';
-      return `${monthNames[date.getMonth()]} ${date.getFullYear()}`;
     }
 
     function formatInputDate(date) {
@@ -819,16 +889,16 @@
 
     function getPaymentCount() {
       const totalMonths = getTotalMonths();
-      if (payFrequencyEl.value === 'monthly') return totalMonths;
+      if (repaymentFrequencyEl.value === 'monthly') return totalMonths;
       return Math.max(1, Math.ceil((totalMonths / 12) * 26));
     }
 
     function frequencyLabel() {
-      return payFrequencyEl.value === 'monthly' ? 'Monthly' : 'Fortnightly';
+      return repaymentFrequencyEl.value === 'monthly' ? 'Monthly' : 'Fortnightly';
     }
 
     function frequencyAdverb() {
-      return payFrequencyEl.value === 'monthly' ? 'monthly' : 'fortnightly';
+      return repaymentFrequencyEl.value === 'monthly' ? 'monthly' : 'fortnightly';
     }
 
     function termFormalText() {
@@ -848,26 +918,57 @@
       return totalPhrase;
     }
 
-    function calculatedDeductionAmountNumber() {
+    function calculatedPaymentAmountNumber() {
       const loanAmount = parseMoneyValue(loanAmountEl.value);
       const count = getPaymentCount();
       if (!Number.isFinite(loanAmount) || loanAmount <= 0 || !Number.isFinite(count) || count <= 0) return NaN;
       return loanAmount / count;
     }
 
-    function updateCalculatedDeductionAmount(force = false) {
-      const currentValue = String(deductionAmountEl.value || '').trim();
-      if (!currentValue) deductionAmountOverridden = false;
-      if (deductionAmountOverridden && !force) return;
+    function updateCalculatedPaymentAmount(force = false) {
+      const currentValue = String(paymentAmountEl.value || '').trim();
+      if (!currentValue) orderAmountOverridden = false;
+      if (orderAmountOverridden && !force) return;
 
-      const payment = calculatedDeductionAmountNumber();
-      deductionAmountEl.value = Number.isFinite(payment) && payment > 0 ? formatMoneyEntry(payment) : '';
-      deductionAmountOverridden = false;
+      const payment = calculatedPaymentAmountNumber();
+      paymentAmountEl.value = Number.isFinite(payment) && payment > 0 ? formatMoneyEntry(payment) : '';
+      orderAmountOverridden = false;
     }
 
     function setText(id, value) {
       const el = document.getElementById(id);
       if (el) el.textContent = value;
+    }
+
+    function setAddressLine(id, value, options = {}) {
+      const el = document.getElementById(id);
+      if (!el) return;
+
+      const clean = String(value || '').trim();
+      const defaultValue = String(options.defaultValue || '').trim();
+      const finalValue = clean || defaultValue;
+
+      if (!finalValue) {
+        el.textContent = '';
+        el.style.display = 'none';
+        return;
+      }
+
+      el.style.display = 'block';
+      if (options.bold) {
+        el.innerHTML = `<strong>${escapeHtml(finalValue)}</strong>`;
+      } else {
+        el.textContent = finalValue;
+      }
+    }
+
+    function jamaicaTownParishLine() {
+      const town = String(bankTownEl.value || '').trim();
+      const parish = String(bankParishEl.value || '').trim();
+      if (town && parish) return `${town}, ${parish}`;
+      if (town) return town;
+      if (parish) return parish;
+      return '';
     }
 
     function requiredFieldLabel(field) {
@@ -894,79 +995,72 @@
       const startDate = parseDateInput(startDateEl.value);
       const count = getPaymentCount();
       if (!startDate) return null;
-      if (payFrequencyEl.value === 'monthly') return addMonths(startDate, count - 1);
+      if (repaymentFrequencyEl.value === 'monthly') return addMonths(startDate, count - 1);
       return addDays(startDate, (count - 1) * 14);
     }
 
-    function repaymentPeriodText() {
-      const startDate = parseDateInput(startDateEl.value);
-      const finalDate = finalScheduledDate();
-      if (!startDate || !finalDate) return '__________';
-      return `${formatMonthYear(startDate)} to ${formatMonthYear(finalDate)}`;
-    }
-
-    function updateSummaryAndDocument() {
+    function updateSummaryAndLetter() {
       updateDefaultRequiredVisuals();
-      if (!String(deductionAmountEl.value || '').trim()) deductionAmountOverridden = false;
-      updateCalculatedDeductionAmount();
+      if (!String(paymentAmountEl.value || '').trim()) orderAmountOverridden = false;
+      updateCalculatedPaymentAmount();
 
       const count = getPaymentCount();
+      const contractDate = parseDateInput(contractDateEl.value);
       const startDate = parseDateInput(startDateEl.value);
+      const contractText = formatDate(contractDate);
       const startText = formatDate(startDate);
       const finalText = formatDate(finalScheduledDate());
-      const periodText = repaymentPeriodText();
-      const periodNoun = `pay period${count === 1 ? '' : 's'}`;
 
-      paymentCountDisplayEl.value = `${count} ${frequencyAdverb()} deduction${count === 1 ? '' : 's'}`;
-      repaymentPeriodDisplayEl.value = periodText === '__________' ? '' : periodText;
-      termSummaryEl.textContent = `Formal Term: ${termFormalText()}. Deductions shall be made ${frequencyAdverb()} over ${count} scheduled ${periodNoun}. Final scheduled deduction: ${finalText}.`;
+      paymentCountDisplayEl.value = `${count} ${frequencyAdverb()} payment${count === 1 ? '' : 's'}`;
+      termSummaryEl.textContent = `Formal Term: ${termFormalText()}. Repayment shall be made ${frequencyAdverb()} over ${count} scheduled payment${count === 1 ? '' : 's'}. Final scheduled payment: ${finalText}.`;
 
-      setText('docBorrowerName', borrowerNameEl.value || '[Full Name]');
-      setText('docTrn', trnEl.value || '[TRN]');
-      setText('docEmployer', employerEl.value || '[Employer]');
-      setText('docPosition', positionEl.value || '[Department / Position]');
-      setText('docContactNo', contactNoEl.value || '');
+      setText('letterDate', contractText);
+      setAddressLine('letterBankAddressee', bankAddresseeEl.value, { defaultValue: 'The Manager', bold: true });
+      setAddressLine('letterBorrowerBank', borrowerBankEl.value || "Borrower's Bank", { defaultValue: "Borrower's Bank", bold: true });
+      setAddressLine('letterBorrowerBranch', borrowerBranchEl.value ? `${borrowerBranchEl.value} Branch` : '');
+      setAddressLine('letterBankAddress1', bankAddress1El.value);
+      setAddressLine('letterBankAddress2', bankAddress2El.value);
+      setAddressLine('letterBankTownParish', jamaicaTownParishLine());
+      setAddressLine('letterBankCountry', bankCountryEl.value, { defaultValue: 'Jamaica' });
 
-      setText('docLoanAmount', moneyValue(loanAmountEl));
-      setText('docDeductionLabel', `${frequencyLabel()} Deduction Amount:`);
-      setText('docDeductionAmount', moneyValue(deductionAmountEl));
-      setText('docRepaymentPeriod', periodText);
-
-      setText('docEmployerInline', employerEl.value || '[Employer]');
-      setText('docDeductionInline', moneyValue(deductionAmountEl));
-      setText('docFrequency', frequencyAdverb());
-      setText('docStartDate', startText);
-      setText('docFormalTerm', termFormalText());
-      setText('docPaymentCount', `${count} scheduled ${periodNoun}`);
-      setText('docFinalDate', finalText);
+      setText('letterBorrowerName', borrowerNameEl.value || '[Full Name]');
+      setText('letterLoanAmount', moneyValue(loanAmountEl));
+      setText('letterAccountName', borrowerAccountNameEl.value || '[Account Name]');
+      setText('letterAccountNo', borrowerAccountNoEl.value || '[Account Number]');
+      setText('letterPaymentAmount', moneyValue(paymentAmountEl));
+      setText('letterFrequency', frequencyAdverb());
+      setText('letterStartDate', startText);
+      setText('letterFormalTerm', termFormalText());
+      setText('letterPaymentCount', `${count} scheduled payment${count === 1 ? '' : 's'}`);
+      setText('letterFinalDate', finalText);
     }
 
     function buildRows() {
       const count = getPaymentCount();
       const startDate = parseDateInput(startDateEl.value);
-      const amount = moneyValue(deductionAmountEl);
+      const amount = moneyValue(paymentAmountEl);
       const loanAmountNum = parseMoneyValue(loanAmountEl.value);
-      const deductionAmountNum = parseMoneyValue(deductionAmountEl.value);
+      const paymentAmountNum = parseMoneyValue(paymentAmountEl.value);
       const rows = [];
 
       for (let i = 0; i < count; i++) {
-        const deductionDate = !startDate
+        const paymentDate = !startDate
           ? '__________'
-          : payFrequencyEl.value === 'monthly'
+          : repaymentFrequencyEl.value === 'monthly'
             ? formatDate(addMonths(startDate, i))
             : formatDate(addDays(startDate, i * 14));
 
         let balance;
-        if (!Number.isFinite(loanAmountNum) || !Number.isFinite(deductionAmountNum)) {
+        if (!Number.isFinite(loanAmountNum) || !Number.isFinite(paymentAmountNum)) {
           balance = 'J$ __________';
         } else {
-          const remaining = i === count - 1 ? 0 : Math.max(0, loanAmountNum - deductionAmountNum * (i + 1));
+          const remaining = i === count - 1 ? 0 : Math.max(0, loanAmountNum - paymentAmountNum * (i + 1));
           balance = remaining === 0 ? 'J$0.00' : `J$${numberFormatter.format(remaining)}`;
         }
 
         rows.push({
           number: i + 1,
-          date: deductionDate,
+          date: paymentDate,
           terms: frequencyLabel(),
           amount,
           balance
@@ -996,19 +1090,15 @@
       const finalSignature = isFinal ? `
         <div class="section-title">Schedule Confirmation</div>
         <p style="margin:0 0 10px; text-align:justify;">
-          The borrower confirms that the deduction schedule below forms part of the salary deduction authorization and shall apply together with the terms of the authorization. The employer's authorized representative acknowledges the schedule for payroll processing.
+          The borrower confirms that the payment schedule below forms part of the standing order authorization and shall apply together with the terms of the agreement.
         </p>
         <table class="signature-table">
           <tr>
-            <td><span class="sig-label">Employee / Borrower Signature:</span></td>
+            <td><span class="sig-label">Borrower / Account Holder Signature:</span></td>
             <td><span class="date-label">Date:</span></td>
           </tr>
           <tr>
-            <td><span class="sig-label">Employer's Authorized Representative:</span></td>
-            <td><span class="date-label">Date:</span></td>
-          </tr>
-          <tr>
-            <td><span class="sig-label">For Loan It Financing Limited:</span></td>
+            <td><span class="sig-label">For Loan It Financing Ltd.:</span></td>
             <td><span class="date-label">Date:</span></td>
           </tr>
         </table>
@@ -1020,11 +1110,11 @@
             <div class="banner"><img src="${bannerSrc}" alt="Loan It Financing Banner" /></div>
 
             <div class="schedule-heading-row">
-              <div class="schedule-title">Salary Deduction Schedule</div>
+              <div class="schedule-title">Standing Order Payment Schedule</div>
               <div class="schedule-meta">
                 Term: ${termFormalText()}<br />
-                Pay Period: ${frequencyLabel()}<br />
-                First Deduction Date: ${startText}
+                Repayment Terms: ${frequencyLabel()}<br />
+                First Payment Date: ${startText}
               </div>
             </div>
 
@@ -1032,9 +1122,9 @@
               <thead>
                 <tr>
                   <th style="width: 8%;">No.</th>
-                  <th style="width: 23%;">Deduction Date</th>
-                  <th style="width: 23%;">Pay Period</th>
-                  <th style="width: 23%;">Deduction Amount</th>
+                  <th style="width: 23%;">Payment Date</th>
+                  <th style="width: 23%;">Repayment Terms</th>
+                  <th style="width: 23%;">Payment Amount</th>
                   <th style="width: 23%;">Remaining Balance</th>
                 </tr>
               </thead>
@@ -1048,7 +1138,7 @@
     }
 
     function updateSchedule() {
-      updateSummaryAndDocument();
+      updateSummaryAndLetter();
       const rows = buildRows();
       const chunks = chunkRows(rows, 36);
       schedulePagesEl.innerHTML = chunks.map((chunk, index) => schedulePage(chunk, index + 3, index === chunks.length - 1)).join('');
@@ -1070,8 +1160,8 @@
 
     function formatMoneyFields() {
       formatMoneyInput(loanAmountEl);
-      if (deductionAmountOverridden) formatMoneyInput(deductionAmountEl);
-      else updateCalculatedDeductionAmount(true);
+      if (orderAmountOverridden) formatMoneyInput(paymentAmountEl);
+      else updateCalculatedPaymentAmount(true);
       updateSchedule();
     }
 
@@ -1083,11 +1173,12 @@
     }
 
     function collectFormData() {
-      const ids = ['loanAmount','borrowerName','trn','contactNo','employer','position','payrollContact',
-        'contractDate','deductionAmount','payFrequency','startDate','termYears','termMonths','totalMonths'];
+      const ids = ['loanAmount','borrowerName','trn','contactNo','borrowerBank','borrowerBranch',
+        'borrowerAccountName','borrowerAccountNo','contractDate','paymentAmount','repaymentFrequency',
+        'startDate','bankAddressee','bankAddress1','bankAddress2','bankTown','bankParish','bankCountry',
+        'termYears','termMonths','totalMonths'];
       const data = {};
       ids.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
-      data.repaymentPeriod = repaymentPeriodText();
       return data;
     }
 
@@ -1097,7 +1188,7 @@
       try {
         const data = collectFormData();
         lastAutosavedSnapshot = JSON.stringify(data);
-        fetch(window.LOANIT_API_BASE + '/salary-deductions', {
+        fetch(window.LOANIT_API_BASE + '/standing-orders', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...data, draftId: formDraftId }),
@@ -1106,9 +1197,11 @@
       } catch (e) { /* recording must never block the print flow */ }
     }
 
-    // Silent draft capture, identical to the standing order form: once every
-    // required field is filled, autosave in the background with no UI
-    // feedback; identical data is never sent twice; drafts are tagged.
+    // Silent draft capture: once every required field is filled, the form is
+    // autosaved to the server in the background. Deliberately no UI feedback
+    // of any kind, identical data is never sent twice, and autosaved records
+    // are tagged (autosaved + draftId) so admins can tell drafts from real
+    // print submissions and group re-saves from the same visit.
     const formDraftId = 'draft-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
     let lastAutosavedSnapshot = '';
     let autosaveTimer = null;
@@ -1126,7 +1219,7 @@
           const snapshot = JSON.stringify(data);
           if (snapshot === lastAutosavedSnapshot) return;
           lastAutosavedSnapshot = snapshot;
-          fetch(window.LOANIT_API_BASE + '/salary-deductions', {
+          fetch(window.LOANIT_API_BASE + '/standing-orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, autosaved: true, draftId: formDraftId }),
@@ -1143,16 +1236,21 @@
     }
 
     function resetForm() {
-      document.getElementById('deductionForm').reset();
+      document.getElementById('agreementForm').reset();
       activeTermInput = 'pair';
-      deductionAmountOverridden = false;
+      orderAmountOverridden = false;
+
+      borrowerBankEl.value = "Borrower's Bank";
+      bankAddresseeEl.value = 'The Manager';
+      bankCountryEl.value = 'Jamaica';
+      bankParishEl.value = '';
 
       termYearsEl.value = 0;
       termMonthsEl.value = 6;
       totalMonthsEl.value = 6;
-      payFrequencyEl.value = 'monthly';
+      repaymentFrequencyEl.value = 'monthly';
 
-      deductionAmountEl.value = '';
+      paymentAmountEl.value = '';
       setDefaultDates();
       updateSchedule();
     }
@@ -1176,29 +1274,36 @@
       borrowerNameEl,
       trnEl,
       contactNoEl,
-      employerEl,
-      positionEl,
-      payrollContactEl,
+      borrowerBankEl,
+      borrowerBranchEl,
+      borrowerAccountNameEl,
+      borrowerAccountNoEl,
       contractDateEl,
-      payFrequencyEl,
-      startDateEl
+      repaymentFrequencyEl,
+      startDateEl,
+      bankAddresseeEl,
+      bankAddress1El,
+      bankAddress2El,
+      bankTownEl,
+      bankParishEl,
+      bankCountryEl
     ].forEach(el => {
       el.addEventListener('input', updateSchedule);
       el.addEventListener('change', updateSchedule);
     });
 
-    deductionAmountEl.addEventListener('input', () => {
-      formatMoneyWhileTyping(deductionAmountEl);
-      deductionAmountOverridden = String(deductionAmountEl.value || '').trim() !== '';
+    paymentAmountEl.addEventListener('input', () => {
+      formatMoneyWhileTyping(paymentAmountEl);
+      orderAmountOverridden = String(paymentAmountEl.value || '').trim() !== '';
       updateSchedule();
     });
 
-    deductionAmountEl.addEventListener('blur', () => {
-      if (String(deductionAmountEl.value || '').trim()) {
-        deductionAmountOverridden = true;
-        formatMoneyInput(deductionAmountEl);
+    paymentAmountEl.addEventListener('blur', () => {
+      if (String(paymentAmountEl.value || '').trim()) {
+        orderAmountOverridden = true;
+        formatMoneyInput(paymentAmountEl);
       } else {
-        deductionAmountOverridden = false;
+        orderAmountOverridden = false;
       }
       updateSchedule();
     });
@@ -1247,12 +1352,12 @@
             formatMoneyInput(loanAmountEl);
           }
 
-          if (field === deductionAmountEl) {
-            if (String(deductionAmountEl.value || '').trim()) {
-              deductionAmountOverridden = true;
-              formatMoneyInput(deductionAmountEl);
+          if (field === paymentAmountEl) {
+            if (String(paymentAmountEl.value || '').trim()) {
+              orderAmountOverridden = true;
+              formatMoneyInput(paymentAmountEl);
             } else {
-              deductionAmountOverridden = false;
+              orderAmountOverridden = false;
             }
           }
 
@@ -1269,3 +1374,4 @@
   </script>
 </body>
 </html>
+
