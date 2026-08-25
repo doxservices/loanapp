@@ -91,6 +91,30 @@ app.get('/standing-orders', requireGoogleAuth, async (req, res) => {
 });
 
 // =========================================================================
+// Salary deduction authorizations — public submit (print + silent autosave
+// from salary-deduction.html), admin-gated list (Firestore: salaryDeductions)
+// =========================================================================
+app.post('/salary-deductions', async (req, res) => {
+  try {
+    const rec = { submittedAt: FieldValue.serverTimestamp(), ...(req.body || {}) };
+    const ref = await db.collection('salaryDeductions').add(rec);
+    res.json({ ok: true, id: ref.id });
+  } catch (e) {
+    console.error('[salary-deductions] write error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to save record' });
+  }
+});
+app.get('/salary-deductions', requireGoogleAuth, async (req, res) => {
+  try {
+    const snap = await db.collection('salaryDeductions').orderBy('submittedAt', 'desc').get();
+    res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+  } catch (e) {
+    console.error('[salary-deductions] read error:', e.message);
+    res.status(500).json({ ok: false, error: 'Query failed' });
+  }
+});
+
+// =========================================================================
 // Legacy flat applications listing (Firestore: applications) — feeds
 // admin.html + admin-applications.html unchanged
 // =========================================================================
