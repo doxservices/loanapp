@@ -6,48 +6,72 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Standing Orders (Admin)</title>
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;background:linear-gradient(rgba(255,255,255,.93),rgba(255,255,255,.93)),url('assets/bg-corporate-blue.jpg') center/cover fixed no-repeat}
-    h1{margin:0 0 4px}
-    .muted{color:#666;font-size:12px}
-    .bar{display:flex;gap:8px;align-items:center;margin:12px 0}
-    button{padding:8px 10px;font-size:14px}
-    table{border-collapse:collapse;width:100%;font-size:13px;background:#fff}
-    th,td{border:1px solid #ddd;padding:6px 8px;vertical-align:top;text-align:left}
-    th{background:#f5f5f7;position:sticky;top:0;white-space:nowrap}
-    tr:hover td{background:#f8faff}
-    details{cursor:pointer}
-    pre{margin:6px 0 0;font-size:11px;background:#f7f7f9;padding:8px;border-radius:6px;max-width:480px;overflow:auto}
-  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-theme.css">
 </head>
 <body>
-  <h1>Standing Order Submissions</h1>
-  <div class="muted">Records are stored locally on this machine only and are visible to the doxservices admin account only. Nothing is saved to GitHub.</div>
-  <div class="bar"><button id="refresh">Refresh</button><span id="status" class="muted"></span><a href="admin.html" style="margin-left:auto">← Admin navigation</a></div>
-  <div style="overflow:auto">
-    <table id="tbl">
-      <thead><tr>
-        <th>Submitted</th><th>Borrower</th><th>Contact</th><th>Loan Amount</th><th>Payment</th>
-        <th>Frequency</th><th>Start</th><th>Term (months)</th><th>Bank</th><th>Full record</th>
-      </tr></thead>
-      <tbody></tbody>
-    </table>
+  <div class="page">
+    <div class="container wide">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-file-invoice"></i> Standing Order Submissions</h1>
+          <p class="page-subtitle">Every completed standing order form, including silent autosaves (tagged <code>autosaved</code>). Stored in Firestore and visible to the doxservices admin account only.</p>
+        </div>
+        <div class="user-info">
+          <a href="admin.html" class="nav-btn"><i class="fas fa-compass"></i> Admin Navigation</a>
+          <a href="admin-dashboard.html" class="nav-btn"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-table"></i> Submissions</div>
+        <div class="bar">
+          <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <span id="status" class="status"></span>
+          <a href="standing-order.html" class="nav-btn push-right"><i class="fas fa-external-link-alt"></i> Open the form</a>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead><tr>
+              <th>Submitted</th><th>Type</th><th>Borrower</th><th>Contact</th><th>Loan Amount</th><th>Payment</th>
+              <th>Frequency</th><th>Start</th><th>Term (months)</th><th>Bank</th><th>Full record</th>
+            </tr></thead>
+            <tbody><tr><td colspan="11" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+      </footer>
+    </div>
   </div>
+
   <script type="module">
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const fmtWhen = v => {
+      if (!v) return '';
+      if (typeof v === 'object' && v._seconds) return new Date(v._seconds * 1000).toLocaleString();
+      try { return new Date(v).toLocaleString(); } catch { return String(v); }
+    };
+
     async function load() {
       const status = document.getElementById('status');
+      const tbody = document.querySelector('#tbl tbody');
       status.textContent = 'Loading…';
       try {
         const res = await window.adminAuth.fetch('/standing-orders');
         const json = await res.json();
         if (!json.ok) { status.textContent = 'Error: ' + (json.error || res.status); return; }
-        const tbody = document.querySelector('#tbl tbody');
         tbody.innerHTML = '';
+        if (!json.rows.length) {
+          tbody.innerHTML = '<tr><td colspan="11" class="muted" style="text-align:center; padding: 20px;">No submissions yet.</td></tr>';
+        }
         for (const r of json.rows) {
           const tr = document.createElement('tr');
-          const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
           tr.innerHTML = `
-            <td>${esc((r.submittedAt || '').replace('T',' ').slice(0,19))}</td>
+            <td>${esc(fmtWhen(r.submittedAt))}</td>
+            <td>${r.autosaved ? '<span class="pill" style="margin:0;">autosaved</span>' : 'printed'}</td>
             <td>${esc(r.borrowerName)}</td>
             <td>${esc(r.contactNo)}</td>
             <td>${esc(r.loanAmount)}</td>

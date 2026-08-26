@@ -1,29 +1,84 @@
-<!doctype html><html lang="en">
+<!doctype html>
+<html lang="en">
 <head>
-  <script src="analytics.js"></script><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Applications</title>
+  <script src="analytics.js"></script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Applications</title>
   <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
-<style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:24px;background:linear-gradient(rgba(255,255,255,.93),rgba(255,255,255,.93)),url('assets/bg-corporate-blue.jpg') center/cover fixed no-repeat}h1{margin:0 0 12px}.bar{display:flex;gap:8px;align-items:center;margin-bottom:12px}input,button,select{padding:8px 10px;font-size:14px}table{border-collapse:collapse;width:100%;font-size:14px;background:#fff}th,td{border:1px solid #ddd;padding:8px;vertical-align:top}th{background:#f5f5f7;text-align:left;position:sticky;top:0}.muted{color:#666;font-size:12px}</style></head>
-<body><h1>Applications</h1><div class="bar"><label for="limit">Limit</label><select id="limit"><option>25</option><option selected>100</option><option>200</option><option>500</option></select><button id="refresh">Refresh</button><button id="signout" style="margin-left:auto">Sign out</button><span id="status" class="muted"></span></div>
-<div style="overflow:auto"><table id="tbl"><thead><tr><th>Application ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Parish</th><th>Term</th><th>Promotion</th><th>Created</th></tr></thead><tbody></tbody></table></div>
-<script type="module">
-async function fetchRows(){const limit=document.getElementById('limit').value||100;const status=document.getElementById('status');status.textContent='Loading…';
-  const res=await window.adminAuth.fetch(`/applications?limit=${encodeURIComponent(limit)}`,{headers:{'Accept':'application/json'}});
-  if(!res.ok){status.textContent=`Error ${res.status}`;return;}
-  const json=await res.json();if(!json.ok){status.textContent=`Error: ${json.error||'unknown'}`;return;}
-  const tbody=document.querySelector('#tbl tbody');tbody.innerHTML='';
-  for(const r of json.rows){const tr=document.createElement('tr');tr.innerHTML=`
-    <td>${esc(r.application_id)}</td>
-    <td>${esc(r.first_name)} ${esc(r.last_name)}</td>
-    <td>${esc(r.email)}</td>
-    <td>${esc(r.phone_full||'')}</td>
-    <td>${esc(r.address1)}${r.address2?'<br/><span class="muted">'+esc(r.address2)+'</span>':''}</td>
-    <td>${esc(r.parish||'')}</td>
-    <td>${esc(r.term_months??'')}</td>
-    <td>${esc(r.promotion_id??'')}</td>
-    <td>${fmtDate(r.created_at)}</td>`;tbody.appendChild(tr);}
-  status.textContent=`Loaded ${json.rows.length} row(s).`;}
-function esc(s){return (s??'').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
-function fmtDate(v){if(!v)return'';try{return new Date(v).toLocaleString()}catch{return v}}
-document.getElementById('refresh').addEventListener('click',fetchRows);window.adminAuth.ready().then(fetchRows);
-document.getElementById('signout').addEventListener('click',()=>window.adminAuth.signOut());
-</script></body></html>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-theme.css">
+</head>
+<body>
+  <div class="page">
+    <div class="container wide">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-file-contract"></i> Applications</h1>
+          <p class="page-subtitle">Flat table of every loan application in Firestore, newest first.</p>
+        </div>
+        <div class="user-info">
+          <a href="applications-list.html" class="nav-btn"><i class="fas fa-list-alt"></i> Applications List</a>
+          <a href="admin.html" class="nav-btn"><i class="fas fa-compass"></i> Admin Navigation</a>
+          <button id="signout" class="nav-btn" type="button"><i class="fas fa-sign-out-alt"></i> Sign out</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-table"></i> Application records</div>
+        <div class="bar">
+          <label for="limit">Limit</label>
+          <select id="limit"><option>25</option><option selected>100</option><option>200</option><option>500</option></select>
+          <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <span id="status" class="status"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead><tr><th>Application ID</th><th>Name</th><th>Email</th><th>Phone</th><th>Address</th><th>Parish</th><th>Term</th><th>Promotion</th><th>Created</th></tr></thead>
+            <tbody><tr><td colspan="9" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module">
+    async function fetchRows() {
+      const limit = document.getElementById('limit').value || 100;
+      const status = document.getElementById('status');
+      const tbody = document.querySelector('#tbl tbody');
+      status.textContent = 'Loading…';
+      const res = await window.adminAuth.fetch(`/applications?limit=${encodeURIComponent(limit)}`, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) { status.textContent = `Error ${res.status}`; return; }
+      const json = await res.json();
+      if (!json.ok) { status.textContent = `Error: ${json.error || 'unknown'}`; return; }
+      tbody.innerHTML = '';
+      if (!json.rows.length) tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center; padding: 20px;">No applications yet.</td></tr>';
+      for (const r of json.rows) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(r.application_id)}</td>
+          <td>${esc(r.first_name)} ${esc(r.last_name)}</td>
+          <td>${esc(r.email)}</td>
+          <td>${esc(r.phone_full || '')}</td>
+          <td>${esc(r.address1)}${r.address2 ? '<br/><span class="muted">' + esc(r.address2) + '</span>' : ''}</td>
+          <td>${esc(r.parish || '')}</td>
+          <td>${esc(r.term_months ?? '')}</td>
+          <td>${esc(r.promotion_id ?? '')}</td>
+          <td>${fmtDate(r.created_at)}</td>`;
+        tbody.appendChild(tr);
+      }
+      status.textContent = `Loaded ${json.rows.length} row(s).`;
+    }
+    function esc(s) { return (s ?? '').toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
+    function fmtDate(v) { if (!v) return ''; try { return new Date(v).toLocaleString(); } catch { return v; } }
+    document.getElementById('refresh').addEventListener('click', fetchRows);
+    window.adminAuth.ready().then(fetchRows);
+    document.getElementById('signout').addEventListener('click', () => window.adminAuth.signOut());
+  </script>
+</body>
+</html>
