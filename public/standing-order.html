@@ -22,6 +22,12 @@
 
     * { box-sizing: border-box; }
 
+    /* Print exactly as designed: browsers can't have the dialog's
+       "Background graphics" box ticked programmatically, but this inherited
+       property forces every background color and tint to print as if it
+       were — no dialog settings needed. */
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
     body {
       margin: 0;
       background: var(--screen);
