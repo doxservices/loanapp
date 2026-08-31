@@ -437,6 +437,21 @@
         size: Legal;
         margin: 0;
       }
+
+      /* Printing is locked to the form's own Print button: only the button
+         flow sets .print-authorized on <body> (after validation and record
+         submission). A print started through browser functions instead
+         renders this notice, never the document. */
+      body:not(.print-authorized) .page { display: none !important; }
+      body:not(.print-authorized)::before {
+        content: 'Printing is disabled here. Please complete the form and use its "Print / Save as PDF" button.';
+        display: block;
+        padding: 60px 40px;
+        font-size: 14px;
+        font-weight: 700;
+        color: #16202a;
+        text-align: center;
+      }
     }
   </style>
 </head>
@@ -1169,8 +1184,24 @@
       formatMoneyFields();
       if (!validateRequiredFields()) return;
       recordSubmission();
+      document.body.classList.add('print-authorized');
       window.print();
+      document.body.classList.remove('print-authorized');
     }
+
+    // Belt and braces: whatever path a print took, drop the authorization
+    // as soon as it finishes so the next one must come through the button.
+    window.addEventListener('afterprint', () => document.body.classList.remove('print-authorized'));
+
+    // Keyboard printing (Ctrl/Cmd+P) is rerouted through the same validated
+    // button flow instead of opening the browser's raw print dialog.
+    document.addEventListener('keydown', (event) => {
+      if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'p') {
+        event.preventDefault();
+        event.stopPropagation();
+        printIfValid();
+      }
+    });
 
     function collectFormData() {
       const ids = ['loanAmount','borrowerName','trn','contactNo','borrowerBank','borrowerBranch',
