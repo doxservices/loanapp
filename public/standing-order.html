@@ -441,18 +441,40 @@
       /* Printing is locked to the form's own Print button: only the button
          flow sets .print-authorized on <body> (after validation and record
          submission). A print started through browser functions instead
-         renders this notice, never the document. */
+         renders the Doxservices-branded interruption page, never the
+         document. */
       body:not(.print-authorized) .page { display: none !important; }
-      body:not(.print-authorized)::before {
-        content: 'Printing is disabled here. Please complete the form and use its "Print / Save as PDF" button.';
-        display: block;
-        padding: 60px 40px;
-        font-size: 14px;
-        font-weight: 700;
-        color: #16202a;
-        text-align: center;
+      body:not(.print-authorized) .print-interrupt {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 8.5in;
+        min-height: 14in;
+        margin: 0;
+        border: none;
+        box-shadow: none;
+        background: #fff;
       }
     }
+
+    /* Doxservices-branded print interruption — hidden on screen, shown only
+       for prints that didn't come through the form's own controls. Uses
+       borders and text colors so it renders even when background graphics
+       aren't printed. */
+    .print-interrupt { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pi-inner { text-align: center; max-width: 6.4in; padding: 0.3in; }
+    .pi-frame { border: 2.5px solid var(--blue-dark); border-radius: 6px; padding: 0.55in 0.45in 0.5in; position: relative; }
+    .pi-frame::before { content: ''; position: absolute; inset: 5px; border: 1px solid var(--blue-line); border-radius: 3px; pointer-events: none; }
+    .pi-mark { font-size: 40px; font-weight: 800; letter-spacing: 0.08em; line-height: 1; white-space: nowrap; text-indent: 0.08em; }
+    .pi-mark .pi-dox { color: var(--blue-dark); }
+    .pi-mark .pi-services { color: var(--gold); }
+    .pi-tagline { margin-top: 12px; font-size: 11.5px; font-weight: 700; letter-spacing: 0.34em; text-transform: uppercase; color: var(--muted); }
+    .pi-divider { display: flex; align-items: center; gap: 12px; margin: 30px 0.3in; }
+    .pi-divider .pi-line { flex: 1; border-top: 1.6px solid var(--blue-line); }
+    .pi-divider .pi-diamond { width: 9px; height: 9px; flex: 0 0 9px; background: var(--gold); border: 1px solid var(--gold-deep, #b8912f); transform: rotate(45deg); }
+    .pi-note { font-size: 13.5px; line-height: 1.85; color: #24313d; margin: 0 0 28px; }
+    .pi-note strong { color: var(--blue-dark); }
+    .pi-site { font-size: 12px; font-weight: 700; letter-spacing: 0.22em; color: var(--blue); text-transform: uppercase; }
   </style>
 </head>
 <body>
@@ -705,6 +727,18 @@
 
     <div id="schedulePages"></div>
   </form>
+
+  <section class="page print-interrupt" aria-hidden="true">
+    <div class="pi-inner">
+      <div class="pi-frame">
+        <div class="pi-mark"><span class="pi-dox">DOX</span><span class="pi-services">SERVICES</span></div>
+        <div class="pi-tagline">Software &amp; Technology Solutions</div>
+        <div class="pi-divider"><span class="pi-line"></span><span class="pi-diamond"></span><span class="pi-line"></span></div>
+        <p class="pi-note">This document is produced using the controls on the page.<br />Please use the <strong>Print / Save as PDF</strong> button on the form.</p>
+        <div class="pi-site">www.doxservices.com</div>
+      </div>
+    </div>
+  </section>
 
   <script>
     const bannerSrc = "assets/loan-it-banner.png";
