@@ -468,29 +468,22 @@
        borders and text colors so it renders even when background graphics
        aren't printed. */
     .print-interrupt { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .pi-widescreen {
-      width: 7.7in; aspect-ratio: 16 / 9;
-      background: radial-gradient(circle at 27% 50%, #081b3d 0%, #030e24 55%, #010513 100%);
-      border-radius: 16px; overflow: hidden;
+    .pi-band {
+      width: 8.5in; height: 9.6in;
+      background: radial-gradient(circle at 50% 46%, #081b3d 0%, #030e24 50%, #010513 100%);
       display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 14px 34px rgba(2, 12, 38, 0.35);
     }
-    .pi-frame {
-      border: 2px solid rgba(0, 180, 216, 0.65); border-radius: 10px;
-      margin: 0.28in; padding: 0.15in 0.4in; position: relative;
-      width: calc(100% - 0.56in); height: calc(100% - 0.56in);
-      display: flex; align-items: center; gap: 0.35in;
-    }
-    .pi-frame::before { content: ''; position: absolute; inset: 6px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 5px; pointer-events: none; }
+    .pi-inner { text-align: center; max-width: 6.6in; padding: 0.3in; }
+    .pi-frame { border: 2px solid rgba(0, 180, 216, 0.65); border-radius: 8px; padding: 0.4in 0.45in 0.55in; position: relative; }
+    .pi-frame::before { content: ''; position: absolute; inset: 6px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 4px; pointer-events: none; }
     .pi-logo {
-      display: block; flex: 0 0 3.1in; width: 3.1in; margin-left: -0.15in;
-      -webkit-mask-image: radial-gradient(circle, #000 60%, transparent 71%);
-      mask-image: radial-gradient(circle, #000 60%, transparent 71%);
+      display: block; width: 5in; max-width: 100%; margin: -0.25in auto -0.1in;
+      -webkit-mask-image: radial-gradient(circle, #000 58%, transparent 86%);
+      mask-image: radial-gradient(circle, #000 58%, transparent 86%);
     }
-    .pi-copy { flex: 1; text-align: left; }
-    .pi-note { font-size: 16px; line-height: 1.75; font-weight: 600; color: #ffffff; margin: 0 0 20px; }
+    .pi-note { font-size: 18px; line-height: 1.8; font-weight: 600; color: #ffffff; margin: 0 0 34px; }
     .pi-note strong { color: #00b4d8; }
-    .pi-site { font-size: 12px; font-weight: 700; letter-spacing: 0.24em; color: #00b4d8; text-transform: uppercase; }
+    .pi-site { font-size: 13px; font-weight: 700; letter-spacing: 0.24em; color: #00b4d8; text-transform: uppercase; }
   </style>
 </head>
 <body>
@@ -745,11 +738,11 @@
   </form>
 
   <section class="page print-interrupt" aria-hidden="true">
-    <div class="pi-widescreen">
-      <div class="pi-frame">
-        <img class="pi-logo" src="assets/dox-logo-lockup.jpg" alt="DoxServices — Intelligent DNA" />
-        <div class="pi-copy">
-          <p class="pi-note">This document is produced using the controls on the page. Please use the <strong>Print / Save as PDF</strong> button on the form.</p>
+    <div class="pi-band">
+      <div class="pi-inner">
+        <div class="pi-frame">
+          <img class="pi-logo" src="assets/dox-logo-lockup.jpg" alt="DoxServices — Intelligent DNA" />
+          <p class="pi-note">This document is produced using the controls on the page.<br />Please use the <strong>Print / Save as PDF</strong> button on the form.</p>
           <div class="pi-site">www.doxservices.com</div>
         </div>
       </div>
