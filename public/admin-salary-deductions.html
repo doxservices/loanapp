@@ -8,6 +8,7 @@
   <title>Salary Deductions (Admin)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="admin-theme.css">
+  <script src="record-actions.js" defer></script>
   <script src="theme.js"></script>
   <script src="admin-shell.js" defer></script>
 </head>
@@ -46,10 +47,10 @@
         <div class="table-wrap">
           <table id="tbl">
             <thead><tr>
-              <th>Submitted</th><th>Type</th><th>Borrower</th><th>TRN</th><th>Employer</th><th>Position</th>
-              <th>Loan Amount</th><th>Deduction</th><th>Pay Period</th><th>Repayment Period</th><th>Term</th><th>Record</th>
+              <th class="nowrap">Submitted</th><th>Type</th><th>Borrower</th><th>Employer</th>
+              <th class="nowrap">Loan Amount</th><th class="nowrap">Deduction</th><th class="nowrap">Term</th><th></th>
             </tr></thead>
-            <tbody><tr><td colspan="12" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
+            <tbody><tr><td colspan="8" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -93,26 +94,19 @@
       if (mode === 'latest') shown = latestPerSession(shown);
       tbody.innerHTML = '';
       if (!shown.length) {
-        tbody.innerHTML = '<tr><td colspan="12" class="muted" style="text-align:center; padding: 20px;">No submissions match this filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center; padding: 20px;">No submissions match this filter.</td></tr>';
       }
       for (const r of shown) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
-          <td>${esc(fmtWhen(r.submittedAt))}</td>
+          <td class="nowrap">${esc(fmtWhen(r.submittedAt))}</td>
           <td>${r.autosaved ? '<span class="pill" style="margin:0;">autosaved</span>' : 'printed'}</td>
           <td>${esc(r.borrowerName)}</td>
-          <td>${esc(r.trn)}</td>
           <td>${esc(r.employer)}</td>
-          <td>${esc(r.position)}</td>
-          <td>${esc(r.loanAmount)}</td>
-          <td>${esc(r.deductionAmount)}</td>
-          <td>${esc(r.payFrequency)}</td>
-          <td>${esc(r.repaymentPeriod)}</td>
-          <td>${esc(r.totalMonths)}</td>
-          <td>
-            <a class="btn btn-primary" style="padding:6px 11px; font-size:12px;" href="salary-deduction.html?record=${encodeURIComponent(r.id)}"><i class="fas fa-pen-to-square"></i> Open in form</a>
-            <details style="margin-top:6px;"><summary>raw</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details>
-          </td>`;
+          <td class="nowrap">${esc(r.loanAmount)}</td>
+          <td class="nowrap">${esc(r.deductionAmount)}</td>
+          <td class="nowrap">${esc(r.totalMonths)} mo</td>
+          <td class="actions-cell"><button type="button" class="row-menu-btn" data-id="${esc(r.id)}" aria-label="Record actions"><i class="fas fa-ellipsis-vertical"></i></button></td>`;
         tbody.appendChild(tr);
       }
       const printed = rows.filter(r => r.autosaved !== true).length;
@@ -132,6 +126,17 @@
         render();
       } catch (e) { status.textContent = 'Request failed'; }
     }
+
+    // One delegated handler, so rows re-render freely.
+    document.querySelector('#tbl tbody').addEventListener('click', (e) => {
+      const btn = e.target.closest('.row-menu-btn');
+      if (!btn) return;
+      e.stopPropagation();
+      const record = rows.find(r => r.id === btn.dataset.id);
+      if (record) window.RecordActions.menu(btn, record, {
+        formHref: r => 'salary-deduction.html?record=' + encodeURIComponent(r.id)
+      });
+    });
 
     document.getElementById('refresh').addEventListener('click', load);
     document.getElementById('type-filter').addEventListener('change', render);
