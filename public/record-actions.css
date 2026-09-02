@@ -83,3 +83,10 @@
 :root[data-theme="dark"] .record-modal-body h4 { color: var(--gold); border-bottom-color: rgba(255,255,255,0.12); }
 :root[data-theme="dark"] .record-modal-body dd { color: rgba(255,255,255,0.95); }
 :root[data-theme="dark"] .record-raw summary { color: var(--gold); }
+
+/* Shared cell presentation for the record tables */
+td.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+td.applicant { line-height: 1.35; }
+.applicant-name { display: block; font-weight: 600; }
+.applicant-sub { display: block; font-size: 11.5px; opacity: .75; }

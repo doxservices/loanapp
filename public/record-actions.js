@@ -35,7 +35,7 @@
 
   function fmt(key, value) {
     if (value == null || value === '') return '—';
-    if (key === 'submittedAt' || key === 'updatedAt') {
+    if (/(_at|At)$/.test(key)) {
       if (typeof value === 'object' && value._seconds) return new Date(value._seconds * 1000).toLocaleString();
       try { return new Date(value).toLocaleString(); } catch (e) { return String(value); }
     }
@@ -91,11 +91,16 @@
     if (m) m.remove();
   }
 
+  // A page can describe its own records with opts.groups / opts.labels /
+  // opts.titleOf / opts.subtitleOf; the submission tables use the defaults.
   function details(record, opts) {
+    opts = opts || {};
     closeModal();
-    const sections = GROUPS.map(g => {
-      const rows = g.keys.filter(k => record[k] !== undefined && record[k] !== '')
-        .map(k => '<dt>' + esc(LABELS[k] || k) + '</dt><dd>' + esc(fmt(k, record[k])) + '</dd>').join('');
+    const groups = opts.groups || GROUPS;
+    const labels = opts.labels || LABELS;
+    const sections = groups.map(g => {
+      const rows = g.keys.filter(k => record[k] !== undefined && record[k] !== '' && record[k] !== null)
+        .map(k => '<dt>' + esc(labels[k] || k) + '</dt><dd>' + esc(fmt(k, record[k])) + '</dd>').join('');
       return rows ? '<section><h4>' + esc(g.title) + '</h4><dl>' + rows + '</dl></section>' : '';
     }).join('');
 
@@ -103,18 +108,21 @@
     const el = document.createElement('div');
     el.className = 'record-modal';
     el.id = 'record-modal';
+    const title = opts.titleOf ? opts.titleOf(record) : (record.borrowerName || 'Record');
+    const subtitle = opts.subtitleOf ? opts.subtitleOf(record)
+      : (type + ' · ' + fmt('submittedAt', record.submittedAt));
     el.innerHTML =
       '<div class="record-modal-card" role="dialog" aria-modal="true" aria-label="Record details">' +
         '<header>' +
-          '<div><h3>' + esc(record.borrowerName || 'Record') + '</h3>' +
-          '<p>' + esc(type) + ' · ' + esc(fmt('submittedAt', record.submittedAt)) + '</p></div>' +
+          '<div><h3>' + esc(title) + '</h3>' +
+          '<p>' + esc(subtitle) + '</p></div>' +
           '<button type="button" class="record-modal-close" aria-label="Close">&times;</button>' +
         '</header>' +
         '<div class="record-modal-body">' + sections +
           '<details class="record-raw"><summary>Raw record</summary><pre>' + esc(JSON.stringify(record, null, 2)) + '</pre></details>' +
         '</div>' +
         '<footer>' +
-          '<a class="btn btn-primary" href="' + opts.formHref(record) + '"><i class="fas fa-pen-to-square"></i> Open in form</a>' +
+          (opts.formHref ? '<a class="btn btn-primary" href="' + opts.formHref(record) + '"><i class="fas fa-pen-to-square"></i> Open in form</a>' : '') +
           '<button type="button" class="btn record-modal-close">Close</button>' +
         '</footer>' +
       '</div>';

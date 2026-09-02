@@ -8,6 +8,8 @@
   <title>Applications (Admin)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="admin-theme.css">
+  <link rel="stylesheet" href="record-actions.css">
+  <script src="record-actions.js" defer></script>
   <script src="theme.js"></script>
   <script src="admin-shell.js" defer></script>
 </head>
@@ -37,11 +39,11 @@
           <table id="tbl">
             <thead>
               <tr>
-                <th>Application ID</th><th>Name</th><th>Email</th><th>Phone</th>
-                <th>Address</th><th>Parish</th><th>Term</th><th>Promotion</th><th>Created</th>
+                <th class="nowrap">Application ID</th><th>Applicant</th><th>Promotion</th>
+                <th class="nowrap">Term</th><th class="nowrap">Created</th><th></th>
               </tr>
             </thead>
-            <tbody><tr><td colspan="9" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
+            <tbody><tr><td colspan="6" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -53,6 +55,8 @@
   </div>
 
 <script type="module">
+let lastRows = [];
+
 async function fetchRows() {
   const limit = document.getElementById('limit').value || 100;
   const status = document.getElementById('status');
@@ -66,20 +70,18 @@ async function fetchRows() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Query failed');
+    lastRows = json.rows;
     tbody.innerHTML = '';
-    if (!json.rows.length) tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center; padding: 20px;">No applications yet.</td></tr>';
+    if (!json.rows.length) tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding: 20px;">No applications yet.</td></tr>';
     for (const r of json.rows) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
-        <td>${esc(r.application_id)}</td>
-        <td>${esc(r.first_name)} ${esc(r.last_name)}</td>
-        <td>${esc(r.email)}</td>
-        <td>${esc(r.phone_full || '')}</td>
-        <td>${esc(r.address1)}${r.address2 ? '<br/><span class="muted">'+esc(r.address2)+'</span>' : ''}</td>
-        <td>${esc(r.parish || '')}</td>
-        <td>${esc(r.term_months ?? '')}</td>
-        <td>${esc(r.promotion || '—')}</td>
-        <td>${fmtDate(r.created_at)}</td>`;
+        <td class="nowrap mono">${esc(r.application_id)}</td>
+        <td class="applicant"><span class="applicant-name">${esc(r.first_name)} ${esc(r.last_name)}</span><span class="applicant-sub">${esc(r.email)}</span></td>
+        <td class="nowrap">${esc(r.promotion || '—')}</td>
+        <td class="nowrap">${r.term_months != null ? esc(r.term_months) + ' mo' : '—'}</td>
+        <td class="nowrap">${fmtDay(r.created_at)}</td>
+        <td class="actions-cell"><button type="button" class="row-menu-btn" data-id="${esc(r.application_id)}" aria-label="Record actions"><i class="fas fa-ellipsis-vertical"></i></button></td>`;
       tbody.appendChild(tr);
     }
     status.textContent = `Loaded ${json.rows.length} row(s).`;
@@ -87,8 +89,49 @@ async function fetchRows() {
     status.textContent = 'Error: ' + e.message;
   }
 }
+
+// Only the columns worth scanning stay in the table; everything else is one
+// click away in the record dialog.
+const RECORD_LABELS = {
+  application_id: 'Application ID', first_name: 'First name', last_name: 'Last name',
+  email: 'Email', phone_full: 'Phone', address1: 'Address line 1', address2: 'Address line 2',
+  parish: 'Parish', promotion: 'Promotion', term_months: 'Term (months)', created_at: 'Created'
+};
+const RECORD_GROUPS = [
+  { title: 'Applicant', keys: ['first_name', 'last_name', 'email', 'phone_full'] },
+  { title: 'Address', keys: ['address1', 'address2', 'parish'] },
+  { title: 'Loan', keys: ['promotion', 'term_months'] },
+  { title: 'Record', keys: ['application_id', 'created_at'] }
+];
+function fmtDay(v) {
+  if (!v) return '';
+  try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+  catch { return v; }
+}
+function openRecordMenu(btn) {
+  const r = lastRows.find(x => String(x.application_id) === btn.dataset.id);
+  if (!r) return;
+  window.RecordActions.menu(btn, { id: r.application_id }, {
+    items: [
+      { label: 'View full record', icon: 'fa-list-ul', onClick: () => window.RecordActions.details(r, {
+          groups: RECORD_GROUPS, labels: RECORD_LABELS,
+          titleOf: x => `${x.first_name} ${x.last_name}`.trim() || 'Application',
+          subtitleOf: x => `${x.application_id} · ${x.promotion || 'No promotion'}`
+        }) },
+      { label: 'Copy application ID', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(r.application_id) }
+    ]
+  });
+}
+
 function esc(s){return (s ?? '').toString().replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
 function fmtDate(v){if(!v)return'';try{return new Date(v).toLocaleString()}catch{return v}}
+
+document.querySelector('#tbl tbody').addEventListener('click', (e) => {
+  const btn = e.target.closest('.row-menu-btn');
+  if (!btn) return;
+  e.stopPropagation();
+  openRecordMenu(btn);
+});
 
 document.getElementById('refresh').addEventListener('click', fetchRows);
 window.adminAuth.ready().then(fetchRows);
