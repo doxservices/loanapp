@@ -182,6 +182,12 @@
     th { background: rgba(0,0,0,0.22); color: var(--gold); font-weight: 600; position: sticky; top: 0; font-size: 12px; }
     tr:hover { background: rgba(255,255,255,0.04); }
 
+    td.mono { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+    th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; }
+    td.applicant { line-height: 1.35; }
+    .applicant-name { display: block; font-weight: 600; }
+    .applicant-sub { display: block; font-size: 11.5px; color: var(--text-soft); opacity: .85; }
+
     .status-badge { padding: 5px 11px; border-radius: 6px; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-transform: capitalize; }
     .status-badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; display: inline-block; }
     .status-approved, .status-completed { background: rgba(39, 174, 96, 0.22); color: #8deebc; }
@@ -302,7 +308,7 @@
         <div class="table-container">
           <table id="applications-table">
             <thead>
-              <tr><th class="nowrap">App ID</th><th>Name</th><th>Email</th><th class="nowrap">Term</th><th class="nowrap">Amount</th><th>Status</th><th class="nowrap">Created</th><th></th></tr>
+              <tr><th class="nowrap">App ID</th><th>Applicant</th><th>Promotion</th><th class="nowrap">Term</th><th class="num">Amount</th><th class="nowrap">Status</th><th class="nowrap">Created</th><th></th></tr>
             </thead>
             <tbody id="table-body"></tbody>
           </table>
@@ -337,6 +343,7 @@
           <dt>Phone</dt><dd id="vm-phone"></dd>
           <dt>Address</dt><dd id="vm-address"></dd>
           <dt>Parish</dt><dd id="vm-parish"></dd>
+          <dt>Promotion</dt><dd id="vm-promotion"></dd>
           <dt>Term</dt><dd id="vm-term"></dd>
           <dt>Amount</dt><dd id="vm-amount"></dd>
           <dt>Status</dt><dd id="vm-status"></dd>
@@ -386,6 +393,12 @@
       return s.toString().replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;');
     }
     function fmtDate(v) { if (!v) return ''; try { return new Date(v).toLocaleString(); } catch { return v; } }
+    // The table only needs the day; the full timestamp is in the detail view.
+    function fmtDay(v) {
+      if (!v) return '';
+      try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
+      catch { return v; }
+    }
     function statusClassOf(status) {
       const s = (status || '').toLowerCase();
       if (s === 'approved' || s === 'completed') return 'status-' + s;
@@ -407,6 +420,7 @@
         email: ap.email || '', phone: ap.phone || '',
         address1: ap.addressLine1 || '', address2: ap.addressLine2 || '',
         parish: ap.parish || '',
+        promotion: (a.promoSnapshot && a.promoSnapshot.name) || '',
         term: a.selectedTermMonths ?? '',
         amount: (a.promoSnapshot && a.promoSnapshot.principal) ?? '',
         status: a.status || 'Submitted',
@@ -469,13 +483,13 @@
         const tr = document.createElement('tr');
         tr.dataset.appId = r.id;
         tr.innerHTML = `
-          <td class="nowrap">${esc(r.code)}</td>
-          <td>${esc(r.firstName)} ${esc(r.lastName)}</td>
-          <td>${esc(r.email)}</td>
+          <td class="nowrap mono">${esc(r.code)}</td>
+          <td class="applicant"><span class="applicant-name">${esc(r.firstName)} ${esc(r.lastName)}</span><span class="applicant-sub">${esc(r.email)}</span></td>
+          <td class="nowrap">${esc(r.promotion) || '—'}</td>
           <td class="nowrap">${r.term !== '' ? esc(r.term) + ' mo' : '—'}</td>
-          <td class="nowrap">${r.amount !== '' ? 'JMD ' + Number(r.amount).toLocaleString() : '—'}</td>
-          <td><span class="status-badge ${statusClassOf(r.status)}">${esc(r.status)}</span></td>
-          <td class="nowrap">${fmtDate(r.createdAt)}</td>
+          <td class="nowrap num">${r.amount !== '' ? 'JMD ' + Number(r.amount).toLocaleString() : '—'}</td>
+          <td class="nowrap"><span class="status-badge ${statusClassOf(r.status)}">${esc(r.status)}</span></td>
+          <td class="nowrap">${fmtDay(r.createdAt)}</td>
           <td class="actions-cell"><button type="button" class="row-menu-btn" data-id="${esc(r.id)}" aria-label="Application actions"><i class="fas fa-ellipsis-vertical"></i></button></td>
         `;
         tbody.appendChild(tr);
@@ -497,6 +511,7 @@
       document.getElementById('vm-phone').textContent = app.phone || '—';
       document.getElementById('vm-address').textContent = (app.address1 || '—') + (app.address2 ? ', ' + app.address2 : '');
       document.getElementById('vm-parish').textContent = app.parish || '—';
+      document.getElementById('vm-promotion').textContent = app.promotion || '—';
       document.getElementById('vm-term').textContent = app.term !== '' ? `${app.term} months` : '—';
       document.getElementById('vm-amount').textContent = app.amount !== '' ? 'JMD ' + Number(app.amount).toLocaleString() : '—';
       document.getElementById('vm-status').textContent = app.status;
