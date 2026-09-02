@@ -215,14 +215,30 @@ formRoutes('/salary-deductions', 'salaryDeductions', 'salary-deductions');
 function toFlatRow(doc, promoNames) {
   const d = doc.data();
   const a = d.applicant || {};
-  const snapshotName = d.promoSnapshot && d.promoSnapshot.name;
+  const snap = d.promoSnapshot || {};
+
+  // Money is what these tables are actually scanned for, so the row carries
+  // the amount and the resulting instalment rather than making each page
+  // recompute it. Flat add-on interest, matching the promotion model used
+  // across the app.
+  const principal = Number(snap.principal) || null;
+  const rate = Number(snap.monthlyInterestPct) || 0;
+  const term = Number(d.selectedTermMonths) || 0;
+  const total = principal && term ? principal + principal * (rate / 100) * term : null;
+
   return {
     application_id: d.applicationCode || doc.id,
     first_name: a.firstName || '', last_name: a.lastName || '', email: a.email || '',
     phone_full: a.phone || '', address1: a.addressLine1 || '', address2: a.addressLine2 || '',
     parish: a.parish || '', term_months: d.selectedTermMonths ?? null,
-    promotion: snapshotName || (promoNames && promoNames.get(d.promotionId)) || '',
+    promotion: snap.name || (promoNames && promoNames.get(d.promotionId)) || '',
     promotion_id: d.promotionId ?? null,
+    currency: snap.currency || 'JMD',
+    loan_amount: principal,
+    monthly_interest_pct: snap.monthlyInterestPct ?? null,
+    monthly_payment: total ? Math.round((total / term) * 100) / 100 : null,
+    total_repayable: total ? Math.round(total * 100) / 100 : null,
+    status: d.status || 'Submitted',
     created_at: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }

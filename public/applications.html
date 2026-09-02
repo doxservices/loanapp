@@ -40,7 +40,7 @@
           <table id="tbl">
             <thead><tr>
                 <th class="nowrap">Application ID</th><th>Applicant</th><th>Promotion</th>
-                <th class="nowrap">Term</th><th class="nowrap">Created</th><th></th>
+                <th class="num nowrap">Loan Amount</th><th class="num nowrap">Monthly Payment</th><th></th>
               </tr></thead>
             <tbody><tr><td colspan="6" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
           </table>
@@ -74,8 +74,8 @@ async function fetchRows() {
         <td class="nowrap mono">${esc(r.application_id)}</td>
         <td class="applicant"><span class="applicant-name">${esc(r.first_name)} ${esc(r.last_name)}</span><span class="applicant-sub">${esc(r.email)}</span></td>
         <td class="nowrap">${esc(r.promotion || '—')}</td>
-        <td class="nowrap">${r.term_months != null ? esc(r.term_months) + ' mo' : '—'}</td>
-        <td class="nowrap">${fmtDay(r.created_at)}</td>
+        <td class="nowrap num">${money(r.loan_amount, r.currency)}</td>
+        <td class="nowrap num">${money(r.monthly_payment, r.currency)}</td>
         <td class="actions-cell"><button type="button" class="row-menu-btn" data-id="${esc(r.application_id)}" aria-label="Record actions"><i class="fas fa-ellipsis-vertical"></i></button></td>`;
         tbody.appendChild(tr);
       }
@@ -87,14 +87,20 @@ async function fetchRows() {
 const RECORD_LABELS = {
   application_id: 'Application ID', first_name: 'First name', last_name: 'Last name',
   email: 'Email', phone_full: 'Phone', address1: 'Address line 1', address2: 'Address line 2',
-  parish: 'Parish', promotion: 'Promotion', term_months: 'Term (months)', created_at: 'Created'
+  parish: 'Parish', promotion: 'Promotion', term_months: 'Term (months)',
+  loan_amount: 'Loan amount', monthly_payment: 'Monthly payment',
+  total_repayable: 'Total repayable', monthly_interest_pct: 'Monthly interest (%)', status: 'Status', created_at: 'Application date'
 };
 const RECORD_GROUPS = [
   { title: 'Applicant', keys: ['first_name', 'last_name', 'email', 'phone_full'] },
   { title: 'Address', keys: ['address1', 'address2', 'parish'] },
-  { title: 'Loan', keys: ['promotion', 'term_months'] },
-  { title: 'Record', keys: ['application_id', 'created_at'] }
+  { title: 'Loan', keys: ['promotion', 'loan_amount', 'monthly_payment', 'total_repayable', 'monthly_interest_pct', 'term_months'] },
+  { title: 'Record', keys: ['application_id', 'status', 'created_at'] }
 ];
+function money(v, cur) {
+  if (v == null || v === '') return '—';
+  return (cur || 'JMD') + ' ' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+}
 function fmtDay(v) {
   if (!v) return '';
   try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }

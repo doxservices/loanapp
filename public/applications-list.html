@@ -302,7 +302,7 @@
         <div class="table-container">
           <table id="applications-table">
             <thead>
-              <tr><th class="nowrap">App ID</th><th>Applicant</th><th>Promotion</th><th class="nowrap">Term</th><th class="num">Amount</th><th class="nowrap">Status</th><th class="nowrap">Created</th><th></th></tr>
+              <tr><th class="nowrap">App ID</th><th>Applicant</th><th>Promotion</th><th class="num nowrap">Loan Amount</th><th class="num nowrap">Monthly Payment</th><th class="nowrap">Status</th><th></th></tr>
             </thead>
             <tbody id="table-body"></tbody>
           </table>
@@ -339,9 +339,10 @@
           <dt>Parish</dt><dd id="vm-parish"></dd>
           <dt>Promotion</dt><dd id="vm-promotion"></dd>
           <dt>Term</dt><dd id="vm-term"></dd>
+          <dt>Monthly payment</dt><dd id="vm-monthly"></dd>
           <dt>Amount</dt><dd id="vm-amount"></dd>
           <dt>Status</dt><dd id="vm-status"></dd>
-          <dt>Created</dt><dd id="vm-created"></dd>
+          <dt>Application date</dt><dd id="vm-created"></dd>
         </dl>
       </div>
       <div class="modal-footer">
@@ -393,6 +394,21 @@
       try { return new Date(v).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }); }
       catch { return v; }
     }
+    // Flat add-on interest, the promotion model used across the app.
+    function monthlyPayment(a) {
+      const snap = a.promoSnapshot || {};
+      const principal = Number(snap.principal) || 0;
+      const term = Number(a.selectedTermMonths) || 0;
+      if (!principal || !term) return '';
+      const total = principal + principal * ((Number(snap.monthlyInterestPct) || 0) / 100) * term;
+      return Math.round((total / term) * 100) / 100;
+    }
+
+    function money(v) {
+      if (v === '' || v == null) return '—';
+      return 'JMD ' + Number(v).toLocaleString(undefined, { maximumFractionDigits: 2 });
+    }
+
     function statusClassOf(status) {
       const s = (status || '').toLowerCase();
       if (s === 'approved' || s === 'completed') return 'status-' + s;
@@ -417,6 +433,7 @@
         promotion: (a.promoSnapshot && a.promoSnapshot.name) || '',
         term: a.selectedTermMonths ?? '',
         amount: (a.promoSnapshot && a.promoSnapshot.principal) ?? '',
+        monthly: monthlyPayment(a),
         status: a.status || 'Submitted',
         createdAt: a.createdAt
       };
@@ -480,10 +497,9 @@
           <td class="nowrap mono">${esc(r.code)}</td>
           <td class="applicant"><span class="applicant-name">${esc(r.firstName)} ${esc(r.lastName)}</span><span class="applicant-sub">${esc(r.email)}</span></td>
           <td class="nowrap">${esc(r.promotion) || '—'}</td>
-          <td class="nowrap">${r.term !== '' ? esc(r.term) + ' mo' : '—'}</td>
-          <td class="nowrap num">${r.amount !== '' ? 'JMD ' + Number(r.amount).toLocaleString() : '—'}</td>
+          <td class="nowrap num">${money(r.amount)}</td>
+          <td class="nowrap num">${money(r.monthly)}</td>
           <td class="nowrap"><span class="status-badge ${statusClassOf(r.status)}">${esc(r.status)}</span></td>
-          <td class="nowrap">${fmtDay(r.createdAt)}</td>
           <td class="actions-cell"><button type="button" class="row-menu-btn" data-id="${esc(r.id)}" aria-label="Application actions"><i class="fas fa-ellipsis-vertical"></i></button></td>
         `;
         tbody.appendChild(tr);
@@ -508,6 +524,7 @@
       document.getElementById('vm-promotion').textContent = app.promotion || '—';
       document.getElementById('vm-term').textContent = app.term !== '' ? `${app.term} months` : '—';
       document.getElementById('vm-amount').textContent = app.amount !== '' ? 'JMD ' + Number(app.amount).toLocaleString() : '—';
+      document.getElementById('vm-monthly').textContent = app.monthly !== '' ? money(app.monthly) : '—';
       document.getElementById('vm-status').textContent = app.status;
       document.getElementById('vm-created').textContent = fmtDate(app.createdAt);
       document.getElementById('view-modal').style.display = 'flex';
@@ -534,7 +551,7 @@
       editRow.className = 'edit-row';
       editRow.dataset.appId = appId;
       editRow.innerHTML = `
-        <td colspan="8">
+        <td colspan="7">
           <div class="edit-form-grid">
             <div><label>First Name</label><input class="edit-field" id="ef-first" value="${esc(app.firstName)}"></div>
             <div><label>Last Name</label><input class="edit-field" id="ef-last" value="${esc(app.lastName)}"></div>
