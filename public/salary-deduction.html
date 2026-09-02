@@ -1078,9 +1078,29 @@
       return rows;
     }
 
-    function chunkRows(rows, size) {
+    // Rows that fit a Legal (8.5x14in) schedule page. The final page also
+    // carries the signature block, so it takes fewer rows — without this the
+    // schedule ran past the page and was silently clipped.
+    const ROWS_PER_PAGE = 34;
+    const ROWS_FINAL_PAGE = 26;
+
+    function chunkRows(rows, size, lastSize) {
       const chunks = [];
       for (let i = 0; i < rows.length; i += size) chunks.push(rows.slice(i, i + size));
+      const last = chunks[chunks.length - 1];
+      if (last && last.length > lastSize) {
+        chunks.pop();
+        chunks.push(last.slice(0, last.length - lastSize));
+        chunks.push(last.slice(last.length - lastSize));
+      }
+      // Even out a final page left with only a row or two.
+      if (chunks.length >= 2 && chunks[chunks.length - 1].length < 6) {
+        const merged = chunks[chunks.length - 2].concat(chunks[chunks.length - 1]);
+        const half = Math.ceil(merged.length / 2);
+        if (half <= size && merged.length - half <= lastSize) {
+          chunks.splice(chunks.length - 2, 2, merged.slice(0, half), merged.slice(half));
+        }
+      }
       return chunks;
     }
 
@@ -1153,7 +1173,7 @@
     function updateSchedule() {
       updateSummaryAndDocument();
       const rows = buildRows();
-      const chunks = chunkRows(rows, 36);
+      const chunks = chunkRows(rows, ROWS_PER_PAGE, ROWS_FINAL_PAGE);
       schedulePagesEl.innerHTML = chunks.map((chunk, index) => schedulePage(chunk, index + 3, index === chunks.length - 1)).join('');
       scheduleAutosave();
     }

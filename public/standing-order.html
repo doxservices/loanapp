@@ -298,8 +298,8 @@
 
     .banner {
       width: calc(100% + 1.16in);
-      height: 1.95in;
-      margin: -0.42in 0 20px -0.58in;
+      height: 1.55in;
+      margin: -0.42in 0 12px -0.58in;
       overflow: hidden;
       display: block;
       background: #fff;
@@ -314,9 +314,9 @@
     }
 
     .doc-title {
-      margin: 6px 0 20px;
+      margin: 2px 0 13px;
       text-align: center;
-      font-size: 18px;
+      font-size: 17px;
       color: var(--blue-dark);
       font-weight: 700;
       text-decoration: underline;
@@ -324,39 +324,39 @@
     }
 
     .letter-date {
-      margin: 0 0 22px;
+      margin: 0 0 14px;
       text-align: left;
       line-height: 1.55;
     }
 
     .letter-address {
-      margin: 0 0 22px;
+      margin: 0 0 14px;
       line-height: 1.55;
     }
 
     .letter-address div { min-height: 16px; }
 
     .letter-body {
-      font-size: 13px;
-      line-height: 1.7;
+      font-size: 12.5px;
+      line-height: 1.5;
     }
 
     .letter-body p {
-      margin: 0 0 15px;
+      margin: 0 0 9px;
       text-align: justify;
     }
 
     .letter-subject {
-      margin: 14px 0 18px;
+      margin: 10px 0 12px;
       text-align: left;
       line-height: 1.55;
     }
 
     .section-title {
       color: var(--blue-dark);
-      font-size: 13.8px;
+      font-size: 13px;
       font-weight: 700;
-      margin: 24px 0 10px;
+      margin: 13px 0 5px;
       line-height: 1.35;
     }
 
@@ -367,9 +367,9 @@
 
     th, td {
       border: 1.1px solid #86b8e2;
-      padding: 8px 9px;
+      padding: 5px 9px;
       vertical-align: middle;
-      line-height: 1.45;
+      line-height: 1.35;
     }
 
     th {
@@ -385,10 +385,10 @@
       background: #f9fcff;
     }
 
-    .signature-table { margin-top: 16px; }
+    .signature-table { margin-top: 10px; }
 
     .signature-table td {
-      height: 62px;
+      height: 46px;
       width: 50%;
       vertical-align: top;
     }
@@ -396,7 +396,7 @@
     .sig-label, .date-label {
       display: block;
       font-weight: 700;
-      margin-bottom: 34px;
+      margin-bottom: 20px;
     }
 
     .schedule-heading-row {
@@ -1170,9 +1170,29 @@
       return rows;
     }
 
-    function chunkRows(rows, size) {
+    // Rows that fit a Legal (8.5x14in) schedule page. The final page also
+    // carries the signature block, so it takes fewer rows — without this the
+    // schedule ran past the page and was silently clipped.
+    const ROWS_PER_PAGE = 34;
+    const ROWS_FINAL_PAGE = 26;
+
+    function chunkRows(rows, size, lastSize) {
       const chunks = [];
       for (let i = 0; i < rows.length; i += size) chunks.push(rows.slice(i, i + size));
+      const last = chunks[chunks.length - 1];
+      if (last && last.length > lastSize) {
+        chunks.pop();
+        chunks.push(last.slice(0, last.length - lastSize));
+        chunks.push(last.slice(last.length - lastSize));
+      }
+      // Even out a final page left with only a row or two.
+      if (chunks.length >= 2 && chunks[chunks.length - 1].length < 6) {
+        const merged = chunks[chunks.length - 2].concat(chunks[chunks.length - 1]);
+        const half = Math.ceil(merged.length / 2);
+        if (half <= size && merged.length - half <= lastSize) {
+          chunks.splice(chunks.length - 2, 2, merged.slice(0, half), merged.slice(half));
+        }
+      }
       return chunks;
     }
 
@@ -1241,7 +1261,7 @@
     function updateSchedule() {
       updateSummaryAndLetter();
       const rows = buildRows();
-      const chunks = chunkRows(rows, 36);
+      const chunks = chunkRows(rows, ROWS_PER_PAGE, ROWS_FINAL_PAGE);
       schedulePagesEl.innerHTML = chunks.map((chunk, index) => schedulePage(chunk, index + 3, index === chunks.length - 1)).join('');
       scheduleAutosave();
     }
