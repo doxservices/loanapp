@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salary Deductions (Admin)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-theme.css">
+</head>
+<body>
+  <div class="page">
+    <div class="container wide">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-file-signature"></i> Salary Deduction Submissions</h1>
+          <p class="page-subtitle">Every completed salary deduction form, including silent autosaves (tagged <code>autosaved</code>). Stored in Firestore and visible to the doxservices admin account only.</p>
+        </div>
+        <div class="user-info">
+          <a href="admin-standing-orders.html" class="nav-btn"><i class="fas fa-file-invoice"></i> Standing Orders</a>
+          <a href="admin.html" class="nav-btn"><i class="fas fa-compass"></i> Admin Navigation</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-table"></i> Submissions</div>
+        <div class="bar">
+          <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <label for="type-filter">Show</label>
+          <select id="type-filter">
+            <option value="all">All records</option>
+            <option value="printed">Printed only</option>
+            <option value="autosaved">Autosaved drafts only</option>
+          </select>
+          <span id="status" class="status"></span>
+          <a href="salary-deduction.html" class="nav-btn push-right"><i class="fas fa-external-link-alt"></i> Open the form</a>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead><tr>
+              <th>Submitted</th><th>Type</th><th>Borrower</th><th>TRN</th><th>Employer</th><th>Position</th>
+              <th>Loan Amount</th><th>Deduction</th><th>Pay Period</th><th>Repayment Period</th><th>Term</th><th>Full record</th>
+            </tr></thead>
+            <tbody><tr><td colspan="12" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module">
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const fmtWhen = v => {
+      if (!v) return '';
+      if (typeof v === 'object' && v._seconds) return new Date(v._seconds * 1000).toLocaleString();
+      try { return new Date(v).toLocaleString(); } catch { return String(v); }
+    };
+
+    let rows = [];
+
+    function render() {
+      const filter = document.getElementById('type-filter').value;
+      const tbody = document.querySelector('#tbl tbody');
+      const shown = rows.filter(r =>
+        filter === 'all' || (filter === 'autosaved' ? r.autosaved === true : r.autosaved !== true)
+      );
+      tbody.innerHTML = '';
+      if (!shown.length) {
+        tbody.innerHTML = '<tr><td colspan="12" class="muted" style="text-align:center; padding: 20px;">No submissions match this filter.</td></tr>';
+      }
+      for (const r of shown) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(fmtWhen(r.submittedAt))}</td>
+          <td>${r.autosaved ? '<span class="pill" style="margin:0;">autosaved</span>' : 'printed'}</td>
+          <td>${esc(r.borrowerName)}</td>
+          <td>${esc(r.trn)}</td>
+          <td>${esc(r.employer)}</td>
+          <td>${esc(r.position)}</td>
+          <td>${esc(r.loanAmount)}</td>
+          <td>${esc(r.deductionAmount)}</td>
+          <td>${esc(r.payFrequency)}</td>
+          <td>${esc(r.repaymentPeriod)}</td>
+          <td>${esc(r.totalMonths)}</td>
+          <td><details><summary>view</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>`;
+        tbody.appendChild(tr);
+      }
+      const printed = rows.filter(r => r.autosaved !== true).length;
+      document.getElementById('status').textContent =
+        `${shown.length} shown · ${rows.length} total (${printed} printed, ${rows.length - printed} autosaved)`;
+    }
+
+    async function load() {
+      const status = document.getElementById('status');
+      status.textContent = 'Loading…';
+      try {
+        const res = await window.adminAuth.fetch('/salary-deductions');
+        const json = await res.json();
+        if (!json.ok) { status.textContent = 'Error: ' + (json.error || res.status); return; }
+        rows = json.rows;
+        render();
+      } catch (e) { status.textContent = 'Request failed'; }
+    }
+
+    document.getElementById('refresh').addEventListener('click', load);
+    document.getElementById('type-filter').addEventListener('change', render);
+    window.adminAuth.ready().then(load);
+  </script>
+</body>
+</html>
