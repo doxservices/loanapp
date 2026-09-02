@@ -70,7 +70,7 @@
           <td>${esc(r.address1)}${r.address2 ? '<br/><span class="muted">' + esc(r.address2) + '</span>' : ''}</td>
           <td>${esc(r.parish || '')}</td>
           <td>${esc(r.term_months ?? '')}</td>
-          <td>${esc(r.promotion_id ?? '')}</td>
+          <td>${esc(r.promotion || '—')}</td>
           <td>${fmtDate(r.created_at)}</td>`;
         tbody.appendChild(tr);
       }

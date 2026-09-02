@@ -208,22 +208,33 @@ formRoutes('/salary-deductions', 'salaryDeductions', 'salary-deductions');
 // Legacy flat applications listing (Firestore: applications) — feeds
 // admin.html + admin-applications.html unchanged
 // =========================================================================
-function toFlatRow(doc) {
+// promoNames maps promotion id -> name, so rows carry the promotion's name
+// rather than its document id, which means nothing to a reader. The snapshot
+// taken when the application was submitted wins, since it is what the
+// applicant actually agreed to.
+function toFlatRow(doc, promoNames) {
   const d = doc.data();
   const a = d.applicant || {};
+  const snapshotName = d.promoSnapshot && d.promoSnapshot.name;
   return {
     application_id: d.applicationCode || doc.id,
     first_name: a.firstName || '', last_name: a.lastName || '', email: a.email || '',
     phone_full: a.phone || '', address1: a.addressLine1 || '', address2: a.addressLine2 || '',
-    parish: a.parish || '', term_months: d.selectedTermMonths ?? null, promotion_id: d.promotionId ?? null,
+    parish: a.parish || '', term_months: d.selectedTermMonths ?? null,
+    promotion: snapshotName || (promoNames && promoNames.get(d.promotionId)) || '',
+    promotion_id: d.promotionId ?? null,
     created_at: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }
 app.get('/applications', requireGoogleAuth, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
   try {
-    const snap = await db.collection('applications').orderBy('createdAt', 'desc').limit(limit).get();
-    res.json({ ok: true, rows: snap.docs.map(toFlatRow) });
+    const [snap, promos] = await Promise.all([
+      db.collection('applications').orderBy('createdAt', 'desc').limit(limit).get(),
+      db.collection('promotions').get()
+    ]);
+    const promoNames = new Map(promos.docs.map(p => [p.id, p.data().name]));
+    res.json({ ok: true, rows: snap.docs.map(doc => toFlatRow(doc, promoNames)) });
   } catch (e) {
     console.error('[applications] read error:', e.message);
     res.status(500).json({ ok: false, error: 'Query failed' });
