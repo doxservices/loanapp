@@ -234,6 +234,8 @@
 
     input:required, select:required { border-color: var(--danger); }
 
+    input.invalid { border-color: var(--danger) !important; background: #fff8f8; }
+
     .required-default {
       border-color: var(--danger) !important;
       background: #fff8f8 !important;
@@ -531,7 +533,7 @@
             </div>
             <div class="field-row">
               <label for="trn">TRN<span class="required-star">*</span></label>
-              <input id="trn" type="text" placeholder="000-000-000" required />
+              <input id="trn" type="text" inputmode="numeric" maxlength="11" placeholder="000-000-000" required />
             </div>
             <div class="field-row">
               <label for="contactNo">Contact No.</label>
@@ -956,6 +958,20 @@
       if (el) el.textContent = value;
     }
 
+
+    // Jamaican TRN: exactly 9 digits. Typing is auto-formatted to
+    // 000-000-000 and capped, and the form counts as incomplete until the
+    // TRN is valid — so an invalid TRN can never be printed or autosaved.
+    function trnDigitCount(value) { return String(value || '').replace(/\D/g, '').length; }
+
+    function formatTrnInput(el) {
+      const d = String(el.value || '').replace(/\D/g, '').slice(0, 9);
+      el.value = d.length > 6 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6)
+               : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3)
+               : d;
+      el.classList.toggle('invalid', el.value !== '' && trnDigitCount(el.value) !== 9);
+    }
+
     function requiredFieldLabel(field) {
       const label = document.querySelector(`label[for="${field.id}"]`);
       if (!label) return field.id;
@@ -964,6 +980,7 @@
 
     function isRequiredMissing(field) {
       const value = String(field.value || '').trim();
+      if (field.id === 'trn') return trnDigitCount(value) !== 9;
       const defaultValue = String(field.dataset.defaultValue || '').trim();
       if (!value) return true;
       if (defaultValue && value === defaultValue) return true;
@@ -1143,6 +1160,12 @@
 
     function validateRequiredFields() {
       updateDefaultRequiredVisuals();
+      if (trnDigitCount(trnEl.value) !== 9) {
+        alert('TRN must be exactly 9 digits (for example 123-456-789).');
+        trnEl.classList.add('invalid');
+        trnEl.focus();
+        return false;
+      }
       const fields = Array.from(document.querySelectorAll('[required]'));
       const missing = fields.filter(isRequiredMissing);
       if (missing.length) {
@@ -1365,6 +1388,9 @@
         });
       });
     }
+
+    trnEl.addEventListener('input', () => { formatTrnInput(trnEl); updateSchedule(); });
+    trnEl.addEventListener('blur', () => formatTrnInput(trnEl));
 
     enableEnterNavigation();
 

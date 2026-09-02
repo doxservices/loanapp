@@ -75,10 +75,25 @@ app.get('/auth/verify', requireGoogleAuth, (req, res) => res.json({ ok: true, em
 // land on the SAME document instead of piling up duplicates. submittedAt is
 // kept from the first write; later writes only move updatedAt.
 // =========================================================================
+// A Jamaican TRN is exactly 9 digits. Records that fail this are rejected so
+// invalid submissions never reach the collections. The standing order form
+// historically had no TRN field, so a blank TRN is still accepted there for
+// the older client still deployed on doxservices.com — anything actually
+// entered must be valid.
+function trnProblem(trn, required) {
+  const digits = String(trn == null ? '' : trn).replace(/\D/g, '');
+  if (!digits.length) return required ? 'TRN is required and must be exactly 9 digits' : null;
+  return digits.length === 9 ? null : 'TRN must be exactly 9 digits';
+}
+
 function formRoutes(path, collection, logLabel) {
+  const trnRequired = collection === 'salaryDeductions';
+
   app.post(path, async (req, res) => {
     try {
       const body = { ...(req.body || {}) };
+      const bad = trnProblem(body.trn, trnRequired);
+      if (bad) return res.status(400).json({ ok: false, error: bad });
       const draftId = typeof body.draftId === 'string' && /^[A-Za-z0-9_-]{6,80}$/.test(body.draftId)
         ? body.draftId : null;
 
@@ -129,6 +144,8 @@ function formRoutes(path, collection, logLabel) {
       const doc = await ref.get();
       if (!doc.exists) return res.status(404).json({ ok: false, error: 'Record not found' });
       const body = { ...(req.body || {}) };
+      const bad = trnProblem(body.trn, trnRequired);
+      if (bad) return res.status(400).json({ ok: false, error: bad });
       delete body.submittedAt;
       delete body.draftId;
       await ref.set({ ...body, editedByAdmin: true, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
