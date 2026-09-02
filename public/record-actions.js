@@ -52,31 +52,38 @@
   window.addEventListener('scroll', closeMenu, true);
   window.addEventListener('resize', closeMenu);
 
+  // opts.items lets a page supply its own actions ({ label, icon, href, onClick });
+  // without it the submission tables get the default three.
   function menu(button, record, opts) {
     const wasOpen = openMenu && openMenu.dataset.for === record.id;
     closeMenu();
     if (wasOpen) return;
 
+    const items = opts.items || [
+      { label: 'View full details', icon: 'fa-list-ul', onClick: () => details(record, opts) },
+      { label: 'Open in form', icon: 'fa-pen-to-square', href: opts.formHref(record) },
+      { label: 'Copy record id', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(record.id) }
+    ];
+
     const el = document.createElement('div');
     el.className = 'row-menu';
     el.dataset.for = record.id;
-    el.innerHTML =
-      '<button type="button" data-act="details"><i class="fas fa-list-ul"></i> View full details</button>' +
-      '<a href="' + opts.formHref(record) + '"><i class="fas fa-pen-to-square"></i> Open in form</a>' +
-      '<button type="button" data-act="copy"><i class="fas fa-copy"></i> Copy record id</button>';
+    el.innerHTML = items.map((it, i) => it.href
+      ? '<a href="' + it.href + '"><i class="fas ' + it.icon + '"></i> ' + esc(it.label) + '</a>'
+      : '<button type="button" data-i="' + i + '"><i class="fas ' + it.icon + '"></i> ' + esc(it.label) + '</button>'
+    ).join('');
     document.body.appendChild(el);
+    el.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => {
+      const item = items[Number(b.dataset.i)];
+      closeMenu();
+      if (item.onClick) item.onClick(record);
+    }));
 
     const r = button.getBoundingClientRect();
     const width = el.offsetWidth || 210;
     el.style.top = Math.min(r.bottom + 6, window.innerHeight - el.offsetHeight - 8) + 'px';
     el.style.left = Math.max(8, Math.min(r.right - width, window.innerWidth - width - 8)) + 'px';
     openMenu = el;
-
-    el.querySelector('[data-act="details"]').addEventListener('click', () => { closeMenu(); details(record, opts); });
-    el.querySelector('[data-act="copy"]').addEventListener('click', () => {
-      navigator.clipboard && navigator.clipboard.writeText(record.id);
-      closeMenu();
-    });
   }
 
   function closeModal() {

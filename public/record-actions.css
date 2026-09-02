@@ -1,0 +1,85 @@
+/* Row actions: kebab menu + full-detail dialog. Shared by every admin
+ * table, independent of which theme sheet the page loads. */
+.row-menu-btn {
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--blue-soft); color: var(--blue-dark); border: 1px solid var(--blue-line);
+  font-size: 14px; line-height: 1; transition: all .15s ease;
+}
+.row-menu-btn:hover { background: #e4f0fd; border-color: var(--blue); }
+
+.row-menu {
+  position: fixed; z-index: 2000; min-width: 210px; padding: 6px;
+  background: #fff; border: 1px solid #d3dfeb; border-radius: 10px;
+  box-shadow: 0 12px 30px rgba(16, 57, 92, 0.22);
+  display: flex; flex-direction: column; gap: 2px;
+}
+.row-menu a, .row-menu button {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 11px; border: 0; border-radius: 7px; background: transparent;
+  color: var(--ink); font: inherit; font-size: 13px; font-weight: 600;
+  text-align: left; text-decoration: none; cursor: pointer;
+}
+.row-menu a:hover, .row-menu button:hover { background: var(--blue-soft); color: var(--blue-dark); }
+.row-menu i { width: 15px; text-align: center; color: var(--gold); }
+
+.record-modal {
+  position: fixed; inset: 0; z-index: 2100; background: rgba(16, 40, 70, 0.5);
+  display: flex; align-items: center; justify-content: center; padding: 22px;
+}
+.record-modal-card {
+  background: #fff; border: 1px solid #d3dfeb; border-radius: 14px;
+  width: 100%; max-width: 720px; max-height: 88vh; display: flex; flex-direction: column;
+  box-shadow: 0 20px 50px rgba(16, 57, 92, 0.30); overflow: hidden;
+}
+.record-modal-card header {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+  padding: 18px 22px; border-bottom: 1px solid #e2ecf6; background: #fbfdff;
+}
+.record-modal-card header h3 { margin: 0 0 3px; font-size: 17px; color: var(--blue-dark); }
+.record-modal-card header p { margin: 0; font-size: 12.5px; color: var(--text-muted); }
+/* Only the header's dismiss control is a bare glyph; the footer button
+   keeps its normal .btn styling. */
+.record-modal-card header .record-modal-close {
+  background: none; border: 0; color: var(--text-muted); font-size: 24px; line-height: 1;
+  cursor: pointer; padding: 0 4px;
+}
+.record-modal-card header .record-modal-close:hover { color: #c0392b; }
+.record-modal-body { padding: 6px 22px 18px; overflow: auto; }
+.record-modal-body section { margin-top: 16px; }
+.record-modal-body h4 {
+  margin: 0 0 8px; font-size: 11.5px; font-weight: 800; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--blue-dark); padding-bottom: 6px; border-bottom: 1px solid #e8f0f8;
+}
+.record-modal-body dl { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13.5px; }
+.record-modal-body dt { color: var(--text-muted); font-weight: 600; }
+.record-modal-body dd { margin: 0; color: var(--ink); font-weight: 600; word-break: break-word; }
+.record-raw { margin-top: 18px; }
+.record-raw summary { cursor: pointer; color: var(--blue); font-weight: 700; font-size: 13px; }
+.record-modal-card footer {
+  display: flex; justify-content: flex-end; gap: 10px;
+  padding: 14px 22px; border-top: 1px solid #e2ecf6; background: #fbfdff;
+}
+
+/* Keep long values on one line in the table; details live in the menu. */
+.table-wrap td.nowrap, .table-wrap th.nowrap { white-space: nowrap; }
+.table-wrap td.actions-cell { text-align: right; white-space: nowrap; }
+
+@media (max-width: 700px) {
+  .record-modal-body dl { grid-template-columns: 1fr; gap: 2px; }
+  .record-modal-body dd { margin-bottom: 8px; }
+}
+
+/* Dark theme */
+:root[data-theme="dark"] .row-menu-btn { background: rgba(13,62,164,0.70); border-color: rgba(205,226,255,0.20); color: var(--text-main); }
+:root[data-theme="dark"] .row-menu-btn:hover { background: rgba(13,62,164,0.92); }
+:root[data-theme="dark"] .row-menu { background: #0d2c55; border-color: rgba(255,255,255,0.18); box-shadow: 0 12px 30px rgba(0,0,0,0.45); }
+:root[data-theme="dark"] .row-menu a, :root[data-theme="dark"] .row-menu button { color: rgba(255,255,255,0.95); }
+:root[data-theme="dark"] .row-menu a:hover, :root[data-theme="dark"] .row-menu button:hover { background: rgba(255,255,255,0.12); color: #fff; }
+:root[data-theme="dark"] .record-modal-card { background: #0d2c55; border-color: rgba(255,255,255,0.20); }
+:root[data-theme="dark"] .record-modal-card header,
+:root[data-theme="dark"] .record-modal-card footer { background: rgba(255,255,255,0.04); border-color: rgba(255,255,255,0.12); }
+:root[data-theme="dark"] .record-modal-card header h3 { color: #fff; }
+:root[data-theme="dark"] .record-modal-body h4 { color: var(--gold); border-bottom-color: rgba(255,255,255,0.12); }
+:root[data-theme="dark"] .record-modal-body dd { color: rgba(255,255,255,0.95); }
+:root[data-theme="dark"] .record-raw summary { color: var(--gold); }
