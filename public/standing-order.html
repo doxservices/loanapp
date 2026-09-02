@@ -484,9 +484,35 @@
     .pi-note { font-size: 18px; line-height: 1.8; font-weight: 600; color: #ffffff; margin: 0 0 34px; }
     .pi-note strong { color: #00b4d8; }
     .pi-site { font-size: 13px; font-weight: 700; letter-spacing: 0.24em; color: #00b4d8; text-transform: uppercase; }
+
+    /* Edit-mode bar (screen only) — shown when a saved record is opened
+       from the admin submissions list via ?record=<id>. */
+    .record-bar {
+      position: sticky; top: 45px; z-index: 999;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px; background: #fdf6e4; border-bottom: 1px solid #e8d199;
+      color: #5c4708; font-size: 12.5px;
+    }
+    .record-bar-tag {
+      background: #0a4f8b; color: #fff; border-radius: 999px;
+      padding: 3px 10px; font-weight: 700; font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .record-bar-tag.error { background: #b3261e; }
+    .record-bar-msg { flex: 1; min-width: 220px; line-height: 1.5; }
+    .record-bar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .record-bar-status { color: #6b5a2a; font-size: 12px; }
+    .record-bar-btn {
+      border: 1px solid #d8c48a; background: #fff; color: #5c4708; border-radius: 6px;
+      padding: 7px 13px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
+    }
+    .record-bar-btn:hover { background: #fffaf0; }
+    .record-bar-btn.primary { background: linear-gradient(180deg, #f1c75a, #dfa938); border-color: #b8912f; color: #1f2430; }
+    .record-bar-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    @media print { .record-bar { display: none !important; } }
   </style>
 </head>
-<body>
+<body data-record-endpoint="/standing-orders" data-record-label="standing order record">
   <div class="toolbar">
     <nav class="toolbar-nav" aria-label="Forms"></nav>
     <button type="button" onclick="printIfValid()">Print / Save as PDF</button>
@@ -1259,6 +1285,7 @@
     // On completion, send the form data to the server where it is stored
     // for admin viewing only (never on GitHub). Fire-and-forget: never blocks printing.
     function recordSubmission() {
+      if (window.__formEditMode) return;
       try {
         const data = collectFormData();
         lastAutosavedSnapshot = JSON.stringify(data);
@@ -1285,6 +1312,7 @@
     }
 
     function scheduleAutosave() {
+      if (window.__formEditMode) return;
       clearTimeout(autosaveTimer);
       autosaveTimer = setTimeout(() => {
         try {
@@ -1446,6 +1474,7 @@
     setDefaultDates();
     updateSchedule();
   </script>
+  <script src="form-record.js"></script>
 </body>
 </html>
 

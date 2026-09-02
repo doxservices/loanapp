@@ -30,6 +30,17 @@
         <div class="card-title"><i class="fas fa-table"></i> Submissions</div>
         <div class="bar">
           <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <label for="view-mode">View</label>
+          <select id="view-mode">
+            <option value="latest">Latest per form session</option>
+            <option value="all">Every saved version</option>
+          </select>
+          <label for="type-filter">Show</label>
+          <select id="type-filter">
+            <option value="all">All records</option>
+            <option value="printed">Printed only</option>
+            <option value="autosaved">Autosaved drafts only</option>
+          </select>
           <span id="status" class="status"></span>
           <a href="standing-order.html" class="nav-btn push-right"><i class="fas fa-external-link-alt"></i> Open the form</a>
         </div>
@@ -37,7 +48,7 @@
           <table id="tbl">
             <thead><tr>
               <th>Submitted</th><th>Type</th><th>Borrower</th><th>Contact</th><th>Loan Amount</th><th>Payment</th>
-              <th>Frequency</th><th>Start</th><th>Term (months)</th><th>Bank</th><th>Full record</th>
+              <th>Frequency</th><th>Start</th><th>Term (months)</th><th>Bank</th><th>Record</th>
             </tr></thead>
             <tbody><tr><td colspan="11" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
           </table>
@@ -58,38 +69,73 @@
       try { return new Date(v).toLocaleString(); } catch { return String(v); }
     };
 
+    let rows = [];
+
+    // Rows arrive newest first, so keeping the first row per form session
+    // shows the current state of each submission and hides the older
+    // autosaved versions of the same form.
+    function latestPerSession(list) {
+      const seen = new Set();
+      return list.filter(r => {
+        const key = r.draftId || r.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
+    function render() {
+      const filter = document.getElementById('type-filter').value;
+      const mode = document.getElementById('view-mode').value;
+      const tbody = document.querySelector('#tbl tbody');
+      let shown = rows.filter(r =>
+        filter === 'all' || (filter === 'autosaved' ? r.autosaved === true : r.autosaved !== true)
+      );
+      if (mode === 'latest') shown = latestPerSession(shown);
+
+      tbody.innerHTML = '';
+      if (!shown.length) {
+        tbody.innerHTML = '<tr><td colspan="11" class="muted" style="text-align:center; padding: 20px;">No submissions match this filter.</td></tr>';
+      }
+      for (const r of shown) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${esc(fmtWhen(r.submittedAt))}</td>
+          <td>${r.autosaved ? '<span class="pill" style="margin:0;">autosaved</span>' : 'printed'}</td>
+          <td>${esc(r.borrowerName)}</td>
+          <td>${esc(r.contactNo)}</td>
+          <td>${esc(r.loanAmount)}</td>
+          <td>${esc(r.paymentAmount)}</td>
+          <td>${esc(r.repaymentFrequency)}</td>
+          <td>${esc(r.startDate)}</td>
+          <td>${esc(r.totalMonths)}</td>
+          <td>${esc(r.borrowerBank)}</td>
+          <td>
+            <a class="btn btn-primary" style="padding:6px 11px; font-size:12px;" href="standing-order.html?record=${encodeURIComponent(r.id)}"><i class="fas fa-pen-to-square"></i> Open in form</a>
+            <details style="margin-top:6px;"><summary>raw</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details>
+          </td>`;
+        tbody.appendChild(tr);
+      }
+      const printed = rows.filter(r => r.autosaved !== true).length;
+      const sessions = latestPerSession(rows).length;
+      document.getElementById('status').textContent =
+        `${shown.length} shown · ${sessions} form session(s) · ${rows.length} saved version(s) (${printed} printed, ${rows.length - printed} autosaved)`;
+    }
+
     async function load() {
       const status = document.getElementById('status');
-      const tbody = document.querySelector('#tbl tbody');
       status.textContent = 'Loading…';
       try {
         const res = await window.adminAuth.fetch('/standing-orders');
         const json = await res.json();
         if (!json.ok) { status.textContent = 'Error: ' + (json.error || res.status); return; }
-        tbody.innerHTML = '';
-        if (!json.rows.length) {
-          tbody.innerHTML = '<tr><td colspan="11" class="muted" style="text-align:center; padding: 20px;">No submissions yet.</td></tr>';
-        }
-        for (const r of json.rows) {
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td>${esc(fmtWhen(r.submittedAt))}</td>
-            <td>${r.autosaved ? '<span class="pill" style="margin:0;">autosaved</span>' : 'printed'}</td>
-            <td>${esc(r.borrowerName)}</td>
-            <td>${esc(r.contactNo)}</td>
-            <td>${esc(r.loanAmount)}</td>
-            <td>${esc(r.paymentAmount)}</td>
-            <td>${esc(r.repaymentFrequency)}</td>
-            <td>${esc(r.startDate)}</td>
-            <td>${esc(r.totalMonths)}</td>
-            <td>${esc(r.borrowerBank)}</td>
-            <td><details><summary>view</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>`;
-          tbody.appendChild(tr);
-        }
-        status.textContent = json.rows.length + ' record(s)';
+        rows = json.rows;
+        render();
       } catch (e) { status.textContent = 'Request failed'; }
     }
     document.getElementById('refresh').addEventListener('click', load);
+    document.getElementById('type-filter').addEventListener('change', render);
+    document.getElementById('view-mode').addEventListener('change', render);
     window.adminAuth.ready().then(load);
   </script>
 </body>

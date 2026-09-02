@@ -68,51 +68,81 @@ async function requireGoogleAuth(req, res, next) {
 app.get('/auth/verify', requireGoogleAuth, (req, res) => res.json({ ok: true, email: req.adminEmail }));
 
 // =========================================================================
-// Standing orders — public submit, admin-gated list (Firestore: standingOrders)
+// Authorization form submissions (standingOrders / salaryDeductions).
+//
+// One record per form session: the page sends a draftId that is used as the
+// document id, so a session's autosaves and its final printed submission all
+// land on the SAME document instead of piling up duplicates. submittedAt is
+// kept from the first write; later writes only move updatedAt.
 // =========================================================================
-app.post('/standing-orders', async (req, res) => {
-  try {
-    const rec = { submittedAt: FieldValue.serverTimestamp(), ...(req.body || {}) };
-    const ref = await db.collection('standingOrders').add(rec);
-    res.json({ ok: true, id: ref.id });
-  } catch (e) {
-    console.error('[standing-orders] write error:', e.message);
-    res.status(500).json({ ok: false, error: 'Failed to save record' });
-  }
-});
-app.get('/standing-orders', requireGoogleAuth, async (req, res) => {
-  try {
-    const snap = await db.collection('standingOrders').orderBy('submittedAt', 'desc').get();
-    res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
-  } catch (e) {
-    console.error('[standing-orders] read error:', e.message);
-    res.status(500).json({ ok: false, error: 'Query failed' });
-  }
-});
+function formRoutes(path, collection, logLabel) {
+  app.post(path, async (req, res) => {
+    try {
+      const body = { ...(req.body || {}) };
+      const draftId = typeof body.draftId === 'string' && /^[A-Za-z0-9_-]{6,80}$/.test(body.draftId)
+        ? body.draftId : null;
 
-// =========================================================================
-// Salary deduction authorizations — public submit (print + silent autosave
-// from salary-deduction.html), admin-gated list (Firestore: salaryDeductions)
-// =========================================================================
-app.post('/salary-deductions', async (req, res) => {
-  try {
-    const rec = { submittedAt: FieldValue.serverTimestamp(), ...(req.body || {}) };
-    const ref = await db.collection('salaryDeductions').add(rec);
-    res.json({ ok: true, id: ref.id });
-  } catch (e) {
-    console.error('[salary-deductions] write error:', e.message);
-    res.status(500).json({ ok: false, error: 'Failed to save record' });
-  }
-});
-app.get('/salary-deductions', requireGoogleAuth, async (req, res) => {
-  try {
-    const snap = await db.collection('salaryDeductions').orderBy('submittedAt', 'desc').get();
-    res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
-  } catch (e) {
-    console.error('[salary-deductions] read error:', e.message);
-    res.status(500).json({ ok: false, error: 'Query failed' });
-  }
-});
+      if (!draftId) {
+        const ref = await db.collection(collection).add({ submittedAt: FieldValue.serverTimestamp(), ...body });
+        return res.json({ ok: true, id: ref.id, created: true });
+      }
+
+      const ref = db.collection(collection).doc(draftId);
+      const existing = await ref.get();
+      const rec = { ...body, updatedAt: FieldValue.serverTimestamp() };
+      if (!existing.exists) rec.submittedAt = FieldValue.serverTimestamp();
+      await ref.set(rec, { merge: true });
+      res.json({ ok: true, id: ref.id, created: !existing.exists });
+    } catch (e) {
+      console.error('[' + logLabel + '] write error:', e.message);
+      res.status(500).json({ ok: false, error: 'Failed to save record' });
+    }
+  });
+
+  app.get(path, requireGoogleAuth, async (req, res) => {
+    try {
+      const snap = await db.collection(collection).orderBy('submittedAt', 'desc').get();
+      res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
+    } catch (e) {
+      console.error('[' + logLabel + '] read error:', e.message);
+      res.status(500).json({ ok: false, error: 'Query failed' });
+    }
+  });
+
+  // Single record + admin edit — used by the form pages' edit mode. Reading
+  // and writing an existing record both require the admin sign-in, since the
+  // records carry applicant personal details.
+  app.get(path + '/:id', requireGoogleAuth, async (req, res) => {
+    try {
+      const doc = await db.collection(collection).doc(req.params.id).get();
+      if (!doc.exists) return res.status(404).json({ ok: false, error: 'Record not found' });
+      res.json({ ok: true, record: { id: doc.id, ...doc.data() } });
+    } catch (e) {
+      console.error('[' + logLabel + '] read-one error:', e.message);
+      res.status(500).json({ ok: false, error: 'Query failed' });
+    }
+  });
+
+  app.put(path + '/:id', requireGoogleAuth, async (req, res) => {
+    try {
+      const ref = db.collection(collection).doc(req.params.id);
+      const doc = await ref.get();
+      if (!doc.exists) return res.status(404).json({ ok: false, error: 'Record not found' });
+      const body = { ...(req.body || {}) };
+      delete body.submittedAt;
+      delete body.draftId;
+      await ref.set({ ...body, editedByAdmin: true, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+      const saved = await ref.get();
+      res.json({ ok: true, record: { id: saved.id, ...saved.data() } });
+    } catch (e) {
+      console.error('[' + logLabel + '] update error:', e.message);
+      res.status(500).json({ ok: false, error: 'Failed to update record' });
+    }
+  });
+}
+
+formRoutes('/standing-orders', 'standingOrders', 'standing-orders');
+formRoutes('/salary-deductions', 'salaryDeductions', 'salary-deductions');
 
 // =========================================================================
 // Legacy flat applications listing (Firestore: applications) — feeds

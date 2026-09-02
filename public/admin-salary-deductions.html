@@ -29,6 +29,11 @@
         <div class="card-title"><i class="fas fa-table"></i> Submissions</div>
         <div class="bar">
           <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <label for="view-mode">View</label>
+          <select id="view-mode">
+            <option value="latest">Latest per form session</option>
+            <option value="all">Every saved version</option>
+          </select>
           <label for="type-filter">Show</label>
           <select id="type-filter">
             <option value="all">All records</option>
@@ -42,7 +47,7 @@
           <table id="tbl">
             <thead><tr>
               <th>Submitted</th><th>Type</th><th>Borrower</th><th>TRN</th><th>Employer</th><th>Position</th>
-              <th>Loan Amount</th><th>Deduction</th><th>Pay Period</th><th>Repayment Period</th><th>Term</th><th>Full record</th>
+              <th>Loan Amount</th><th>Deduction</th><th>Pay Period</th><th>Repayment Period</th><th>Term</th><th>Record</th>
             </tr></thead>
             <tbody><tr><td colspan="12" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
           </table>
@@ -65,12 +70,27 @@
 
     let rows = [];
 
+    // Rows arrive newest first, so keeping the first row per form session
+    // shows the current state of each submission and hides the older
+    // autosaved versions of the same form.
+    function latestPerSession(list) {
+      const seen = new Set();
+      return list.filter(r => {
+        const key = r.draftId || r.id;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    }
+
     function render() {
       const filter = document.getElementById('type-filter').value;
+      const mode = document.getElementById('view-mode').value;
       const tbody = document.querySelector('#tbl tbody');
-      const shown = rows.filter(r =>
+      let shown = rows.filter(r =>
         filter === 'all' || (filter === 'autosaved' ? r.autosaved === true : r.autosaved !== true)
       );
+      if (mode === 'latest') shown = latestPerSession(shown);
       tbody.innerHTML = '';
       if (!shown.length) {
         tbody.innerHTML = '<tr><td colspan="12" class="muted" style="text-align:center; padding: 20px;">No submissions match this filter.</td></tr>';
@@ -89,12 +109,16 @@
           <td>${esc(r.payFrequency)}</td>
           <td>${esc(r.repaymentPeriod)}</td>
           <td>${esc(r.totalMonths)}</td>
-          <td><details><summary>view</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details></td>`;
+          <td>
+            <a class="btn btn-primary" style="padding:6px 11px; font-size:12px;" href="salary-deduction.html?record=${encodeURIComponent(r.id)}"><i class="fas fa-pen-to-square"></i> Open in form</a>
+            <details style="margin-top:6px;"><summary>raw</summary><pre>${esc(JSON.stringify(r, null, 2))}</pre></details>
+          </td>`;
         tbody.appendChild(tr);
       }
       const printed = rows.filter(r => r.autosaved !== true).length;
+      const sessions = latestPerSession(rows).length;
       document.getElementById('status').textContent =
-        `${shown.length} shown · ${rows.length} total (${printed} printed, ${rows.length - printed} autosaved)`;
+        `${shown.length} shown · ${sessions} form session(s) · ${rows.length} saved version(s) (${printed} printed, ${rows.length - printed} autosaved)`;
     }
 
     async function load() {
@@ -111,6 +135,7 @@
 
     document.getElementById('refresh').addEventListener('click', load);
     document.getElementById('type-filter').addEventListener('change', render);
+    document.getElementById('view-mode').addEventListener('change', render);
     window.adminAuth.ready().then(load);
   </script>
 </body>
