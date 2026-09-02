@@ -20,7 +20,7 @@
 }
 
 :root[data-theme="light"] body {
-  background: linear-gradient(rgba(255,255,255,0.38), rgba(255,255,255,0.38)),
+  background: linear-gradient(rgba(255,255,255,0.10), rgba(255,255,255,0.10)),
               url("assets/banking-background.jpg") center center / cover no-repeat fixed;
   color: var(--text-main);
   text-shadow: none;
@@ -28,8 +28,8 @@
 
 /* ---- Shell ---------------------------------------------------------- */
 :root[data-theme="light"] .admin-container {
-  background: rgba(255, 255, 255, 0.88);
-  border: 1px solid rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.68);
+  border: 1px solid rgba(255, 255, 255, 0.75);
   box-shadow: 0 16px 42px rgba(8, 40, 80, 0.18);
   backdrop-filter: blur(16px) saturate(120%); -webkit-backdrop-filter: blur(16px) saturate(120%);
 }
@@ -81,8 +81,8 @@
 :root[data-theme="light"] .card,
 :root[data-theme="light"] .management-section,
 :root[data-theme="light"] .stat-card {
-  background: rgba(255, 255, 255, 0.86);
-  border: 1px solid #d9e5f1;
+  background: rgba(255, 255, 255, 0.78);
+  border: 1px solid rgba(217, 229, 241, 0.9);
   box-shadow: 0 2px 8px rgba(16, 57, 92, 0.05);
 }
 :root[data-theme="light"] .card { border-top: 4px solid var(--blue); }
@@ -155,7 +155,7 @@
 :root[data-theme="light"] .term-checklist::-webkit-scrollbar-thumb:hover { background: #8fc0e8; }
 
 /* ---- Tables --------------------------------------------------------- */
-:root[data-theme="light"] .table-container { background: #ffffff; border: 1px solid #d9e5f1; }
+:root[data-theme="light"] .table-container { background: rgba(255, 255, 255, 0.78); border: 1px solid rgba(217, 229, 241, 0.9); }
 :root[data-theme="light"] .promo-table { background: #ffffff; }
 :root[data-theme="light"] .promo-table th,
 :root[data-theme="light"] .user-table th,
