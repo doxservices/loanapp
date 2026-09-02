@@ -86,6 +86,40 @@ function trnProblem(trn, required) {
   return digits.length === 9 ? null : 'TRN must be exactly 9 digits';
 }
 
+// Fields that describe the record rather than the form's content — two
+// records are "the same information" when everything except these matches.
+const META_KEYS = new Set(['autosaved', 'submittedAt', 'updatedAt', 'draftId', 'editedByAdmin']);
+
+function contentSignature(rec) {
+  return JSON.stringify(
+    Object.keys(rec)
+      .filter(k => !META_KEYS.has(k))
+      .sort()
+      .map(k => [k, String(rec[k] == null ? '' : rec[k])])
+  );
+}
+
+// A printed form supersedes any autosaved draft holding the same
+// information, so only the printed copy is kept.
+async function dropSupersededAutosaves(collection, keepId, printedRec) {
+  const target = contentSignature(printedRec);
+  const trn = printedRec.trn;
+  const query = trn ? db.collection(collection).where('trn', '==', trn) : db.collection(collection);
+  const snap = await query.get();
+
+  const doomed = snap.docs.filter(d =>
+    d.id !== keepId &&
+    d.data().autosaved === true &&          // never remove another printed form
+    contentSignature(d.data()) === target   // only identical information
+  );
+  if (!doomed.length) return 0;
+
+  const batch = db.batch();
+  doomed.forEach(d => batch.delete(d.ref));
+  await batch.commit();
+  return doomed.length;
+}
+
 function formRoutes(path, collection, logLabel) {
   const trnRequired = collection === 'salaryDeductions';
 
@@ -107,7 +141,16 @@ function formRoutes(path, collection, logLabel) {
       const rec = { ...body, updatedAt: FieldValue.serverTimestamp() };
       if (!existing.exists) rec.submittedAt = FieldValue.serverTimestamp();
       await ref.set(rec, { merge: true });
-      res.json({ ok: true, id: ref.id, created: !existing.exists });
+
+      let superseded = 0;
+      if (!body.autosaved) {
+        try {
+          superseded = await dropSupersededAutosaves(collection, ref.id, { ...existing.data(), ...body });
+        } catch (e) {
+          console.error('[' + logLabel + '] supersede cleanup failed:', e.message);
+        }
+      }
+      res.json({ ok: true, id: ref.id, created: !existing.exists, superseded });
     } catch (e) {
       console.error('[' + logLabel + '] write error:', e.message);
       res.status(500).json({ ok: false, error: 'Failed to save record' });
