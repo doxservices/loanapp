@@ -6,6 +6,7 @@
 // Run with: GOOGLE_APPLICATION_CREDENTIALS=.secrets/firebase-adminsdk.json node scripts/seed-demo-portfolio.js
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const crypto = require('crypto');
 initializeApp();
 const db = getFirestore();
 
@@ -77,6 +78,8 @@ const addMonths = (iso, n) => {
 
     const appRef = await db.collection('applications').add({
       applicationCode,
+      // Matches the API: the contract link travels on this, not on the code.
+      contractToken: crypto.randomBytes(24).toString('base64url'),
       promotionId: promoDoc.id,
       selectedTermMonths: a.term,
       promoSnapshot,

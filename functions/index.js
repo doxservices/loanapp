@@ -5,6 +5,7 @@ const { getFirestore, FieldValue } = require('firebase-admin/firestore');
 const { getAuth } = require('firebase-admin/auth');
 const { getStorage } = require('firebase-admin/storage');
 const express = require('express');
+const crypto = require('crypto');
 
 setGlobalOptions({ maxInstances: 10 });
 
@@ -228,6 +229,9 @@ function toFlatRow(doc, promoNames) {
 
   return {
     application_id: d.applicationCode || doc.id,
+    // Admin-only table (this route is behind requireGoogleAuth); it is what
+    // builds the contract link for a row.
+    contract_token: d.contractToken || null,
     first_name: a.firstName || '', last_name: a.lastName || '', email: a.email || '',
     phone_full: a.phone || '', address1: a.addressLine1 || '', address2: a.addressLine2 || '',
     parish: a.parish || '', term_months: d.selectedTermMonths ?? null,
@@ -445,9 +449,9 @@ app.delete('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// Because the reference is used as a lookup key in links, it has to be
-// genuinely unique — four random digits collide often enough to matter, so
-// the code is checked against existing applications before being issued.
+// The APP-YYYY-NNNN reference is for humans to quote — it is short, ordered
+// and guessable, so it is never a lookup key. Anything that addresses an
+// application from a link uses the separate contract token below.
 async function nextApplicationCode() {
   const year = new Date().getFullYear();
   for (let attempt = 0; attempt < 10; attempt++) {
@@ -458,10 +462,20 @@ async function nextApplicationCode() {
   return `APP-${year}-${Date.now().toString(36).toUpperCase()}`;
 }
 
-function appToApi(doc) {
+// The capability key for the contract link: 192 bits of CSPRNG output, so the
+// URL cannot be guessed, walked or reasoned about from a neighbouring one.
+// Nothing about the applicant or the application is derivable from it.
+function newContractToken() {
+  return crypto.randomBytes(24).toString('base64url');
+}
+
+function appToApi(doc, opts) {
   const d = doc.data();
   return {
     id: doc.id, applicationCode: d.applicationCode || null,
+    // Admin-authenticated responses only — the token is what opens the
+    // contract, so it never rides along on a publicly reachable route.
+    ...((opts && opts.includeContractToken) ? { contractToken: d.contractToken || null } : {}),
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null,
     promotionId: d.promotionId, selectedTermMonths: d.selectedTermMonths, promoSnapshot: d.promoSnapshot || {},
     applicant: d.applicant || {}, status: d.status || 'Submitted', reason: d.reason || '',
@@ -470,7 +484,7 @@ function appToApi(doc) {
 }
 app.get('/api/applications', requireGoogleAuth, async (req, res) => {
   const snap = await db.collection('applications').orderBy('createdAt', 'desc').get();
-  res.json(snap.docs.map(appToApi));
+  res.json(snap.docs.map(doc => appToApi(doc, { includeContractToken: true })));
 });
 app.get('/api/applications/trn/:trn', async (req, res) => {
   const snap = await db.collection('applications').where('applicant.trn', '==', req.params.trn)
@@ -478,14 +492,33 @@ app.get('/api/applications/trn/:trn', async (req, res) => {
   if (snap.empty) return res.status(404).json({ error: 'No application found for this TRN' });
   res.json(appToApi(snap.docs[0]));
 });
-// The application reference (APP-YYYY-NNNN) is the code that travels in
-// links — it means something to a reader, unlike the document id. Declared
-// before /:id so "code" is not swallowed as an id.
-app.get('/api/applications/code/:code', async (req, res) => {
-  const code = String(req.params.code || '').trim().toUpperCase();
-  const snap = await db.collection('applications').where('applicationCode', '==', code).limit(1).get();
-  if (snap.empty) return res.status(404).json({ error: 'No application found for this reference' });
-  res.json(appToApi(snap.docs[0]));
+// Opening a contract from its link. The token is unguessable, but holding it
+// is still only permission to draw up this one contract, so the response
+// carries just the fields the contract prints — no messages, attachments,
+// review flags or decision reasons. Declared before /:id so "contract" is not
+// swallowed as a document id.
+app.get('/api/applications/contract/:token', async (req, res) => {
+  const token = String(req.params.token || '');
+  if (token.length < 20) return res.status(404).json({ error: 'Unknown contract link' });
+  const snap = await db.collection('applications').where('contractToken', '==', token).limit(1).get();
+  if (snap.empty) return res.status(404).json({ error: 'Unknown contract link' });
+  const d = snap.docs[0].data();
+  const a = d.applicant || {};
+  const snapshot = d.promoSnapshot || {};
+  res.json({
+    applicationCode: d.applicationCode || null,
+    status: d.status || 'Submitted',
+    selectedTermMonths: d.selectedTermMonths ?? null,
+    promoSnapshot: {
+      name: snapshot.name || '', currency: snapshot.currency || 'JMD',
+      principal: snapshot.principal ?? null, monthlyInterestPct: snapshot.monthlyInterestPct ?? null
+    },
+    applicant: {
+      firstName: a.firstName || '', lastName: a.lastName || '', email: a.email || '',
+      phone: a.phone || '', trn: a.trn || '', addressLine1: a.addressLine1 || '',
+      addressLine2: a.addressLine2 || '', parish: a.parish || ''
+    }
+  });
 });
 app.get('/api/applications/:id', async (req, res) => {
   const doc = await db.collection('applications').doc(req.params.id).get();
@@ -504,7 +537,8 @@ app.post('/api/applications', async (req, res) => {
   };
   const applicationCode = await nextApplicationCode();
   const ref = await db.collection('applications').add({
-    applicationCode, promotionId: promoDoc.id, selectedTermMonths, promoSnapshot,
+    applicationCode, contractToken: newContractToken(),
+    promotionId: promoDoc.id, selectedTermMonths, promoSnapshot,
     applicant: applicant || {}, status: 'Submitted', reason: '', reviewFlags: {}, attachments: {}, messages: [],
     createdAt: FieldValue.serverTimestamp()
   });

@@ -426,6 +426,7 @@
       return {
         id: a.id,
         code: a.applicationCode || a.id,
+        contractToken: a.contractToken || '',
         firstName: ap.firstName || '', lastName: ap.lastName || '',
         email: ap.email || '', phone: ap.phone || '',
         address1: ap.addressLine1 || '', address2: ap.addressLine2 || '',
@@ -634,7 +635,10 @@
           items: [
             { label: 'View details', icon: 'fa-eye', onClick: () => viewApplication(btn.dataset.id) },
             { label: 'Edit application', icon: 'fa-pen-to-square', onClick: () => editApplication(btn.dataset.id) },
-            { label: 'Open loan contract', icon: 'fa-file-contract', href: 'loan-contract.html?application=' + encodeURIComponent(app.code) },
+            // The contract opens on its random token, never on the reference.
+            ...(app.contractToken
+              ? [{ label: 'Open loan contract', icon: 'fa-file-contract', href: 'loan-contract.html?c=' + encodeURIComponent(app.contractToken) }]
+              : []),
             { label: 'Copy application ID', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(app.code) }
           ]
         });
