@@ -12,6 +12,18 @@
       { "source": "/salary-deductions/**", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/applications", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/health", "function": { "functionId": "api", "region": "us-central1" } }
+    ],
+    "headers": [
+      {
+        "//": "Hosting's default for these is max-age=3600 with nothing forcing a revalidation, so for an hour after a deploy a returning browser keeps running the previous build against the current API. Filenames here are not content-hashed, so the only safe policy is to revalidate every load: no-cache still caches, it just checks the ETag first and gets a cheap 304 when nothing changed.",
+        "source": "**/*.@(html|js|css)",
+        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
+      },
+      {
+        "//": "Images and fonts are replaced by uploading a new file, so they can be held.",
+        "source": "**/*.@(png|jpg|jpeg|gif|svg|webp|ico|woff|woff2|ttf)",
+        "headers": [{ "key": "Cache-Control", "value": "public, max-age=604800" }]
+      }
     ]
   },
   "functions": [
