@@ -90,25 +90,28 @@ profile as the canonical borrower record the other three read from.
 ## Gap 3 — the forms and the contract price a loan differently
 
 The authorization forms have no interest model: on the salary deduction
-that was used to test this, `loanAmount` is 154,800 and `deductionAmount`
-is 12,900, and 12 × 12,900 comes to exactly 154,800. The form treats the
-loan amount as the whole of what gets repaid.
+used to test this, `loanAmount` is 154,800 and `deductionAmount` is
+12,900, and 12 × 12,900 comes to exactly 154,800. The contract charges
+daily interest on a principal, which on the same figures would produce a
+total nearer 361,600.
 
-The contract charges daily interest on the principal, so the same figures
-produce a total repayable of about 361,600. Carrying the form's
-instalment through therefore leaves a schedule of eleven instalments at
-J$12,900 and a final one at J$219,712.80, because the last instalment
-absorbs everything the earlier ones did not cover.
+**Settled for now:** on an authorization form the amount is the *final*
+amount — what the borrower repays in full — not a principal to charge
+interest on. The contract carries it as the total repayable and divides
+the schedule out of it, so 154,800 closes at J$0.00 over 12 instalments
+of 12,900.
 
-The prefill deliberately does **not** paper over this. Recomputing the
-instalment silently would hide a real disagreement between two records
-about what the borrower owes; showing it puts the conflict in front of
-whoever is preparing the contract, who has to resolve it before printing.
+The two are kept apart rather than reconciled. The contract's daily
+interest calculation is untouched and still applies to a contract filled
+in by hand and to one seeded from a loan application, where the principal
+really is a principal. Editing the principal, processing fee or daily
+rate on a form-seeded contract hands pricing back to the contract's own
+model, and the Calculated Totals box says which of the two is in force.
 
-**To decide:** whether `loanAmount` on the forms means principal (and the
-contract's interest is additional) or the total already including
-interest. Until that is settled, a contract seeded from a form needs its
-charges checked by hand.
+**Still to resolve:** the Loan Details table on a form-seeded contract
+still prints "Principal Loan Amount" against a figure that is really the
+total, and the stated Daily Interest Rate has not been applied to it.
+Reconciling the two models — or relabelling the row — is the open piece.
 
 ## Also open — the schedule does not paginate
 

@@ -870,6 +870,15 @@
       return addDays(start, i * 7);
     }
 
+    // A standing order or salary deduction states the amount to be recovered
+    // in full — that figure is the total repayable, not a principal to charge
+    // interest on. When one seeds the contract it is carried here and the
+    // schedule is built from it directly. The contract's own interest model
+    // stays exactly where it is for contracts filled in by hand; the two are
+    // kept apart rather than reconciled, which is a separate question.
+    let carriedTotal = null;
+    let carriedTotalSource = '';
+
     // Interest accrues daily on the principal from the agreement date through
     // to the final instalment, at the rate stated in the Loan Details. The
     // instalment amount can be overridden if the loan is priced differently.
@@ -883,7 +892,13 @@
       const last = start ? dueDate(start, count - 1) : null;
       const days = (agreed && last) ? Math.max(0, Math.round((last - agreed) / 86400000)) : 0;
       const interest = principal * (rate / 100) * days;
-      return { principal, fee, rate, count, start, last, days, interest, total: principal + fee + interest };
+      const carried = carriedTotal > 0;
+      return {
+        principal, fee, rate, count, start, last, carried,
+        days: carried ? 0 : days,
+        interest: carried ? 0 : interest,
+        total: carried ? carriedTotal : principal + fee + interest
+      };
     }
 
     function updateContract() {
@@ -896,12 +911,20 @@
         : (t.total > 0 ? Math.round((t.total / t.count) * 100) / 100 : 0);
       if (!instalmentOverridden) instalmentAmountEl.value = moneyEntry(perInstalment);
 
-      $('totalsSummary').textContent = t.total > 0
-        ? 'Principal ' + money(t.principal) + ' plus processing fee ' + money(t.fee) + ' plus interest ' +
-          money(t.interest) + ' over ' + t.days + ' days at ' + t.rate + '% daily equals total repayable ' +
-          money(t.total) + ', payable in ' + t.count + ' ' + frequencyEl.value + ' instalment' +
-          (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '.'
-        : 'Enter the principal, charges and schedule to calculate the total repayable.';
+      // The carried figure is stated as what it is, rather than being folded
+      // into the interest sentence as though the two had been reconciled.
+      $('totalsSummary').textContent = t.total <= 0
+        ? 'Enter the principal, charges and schedule to calculate the total repayable.'
+        : t.carried
+          ? 'Total repayable ' + money(t.total) + ' carried from the ' + (carriedTotalSource || 'linked record') +
+            ', payable in ' + t.count + ' ' + frequencyEl.value + ' instalment' +
+            (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '. ' +
+            'The daily interest in the Loan Details has not been applied to this figure — set the charges to ' +
+            'match the loan before printing.'
+          : 'Principal ' + money(t.principal) + ' plus processing fee ' + money(t.fee) + ' plus interest ' +
+            money(t.interest) + ' over ' + t.days + ' days at ' + t.rate + '% daily equals total repayable ' +
+            money(t.total) + ', payable in ' + t.count + ' ' + frequencyEl.value + ' instalment' +
+            (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '.';
 
       const address = [$('addressLine1').value, $('addressLine2').value, $('town').value, $('parish').value]
         .map(v => String(v || '').trim()).filter(Boolean).join(', ');
@@ -985,6 +1008,8 @@
     function resetForm() {
       document.getElementById('contractForm').reset();
       instalmentOverridden = false;
+      carriedTotal = null;
+      carriedTotalSource = '';
       linkedRecord = null;
       $('linkedNote').style.display = 'none';
       dailyRateEl.value = '0.40';
@@ -1001,6 +1026,18 @@
     trnEl.addEventListener('input', () => formatTrnInput(trnEl));
     instalmentAmountEl.addEventListener('input', () => {
       instalmentOverridden = String(instalmentAmountEl.value || '').trim() !== '';
+    });
+
+    // Touching any input of the interest calculation means the operator is
+    // pricing this loan on the contract's own terms, so the figure carried
+    // from the form stops standing in for the total.
+    [principalEl, processingFeeEl, dailyRateEl].forEach(el => {
+      el.addEventListener('input', () => {
+        if (carriedTotal === null) return;
+        carriedTotal = null;
+        carriedTotalSource = '';
+        updateContract();
+      });
     });
 
     // The link carries ?c=<contract token>, issued with whichever record it
@@ -1056,6 +1093,15 @@
       if (instalment > 0) {
         instalmentAmountEl.value = moneyEntry(instalment);
         instalmentOverridden = true;
+      }
+
+      // On an authorization form the amount is what the borrower repays in
+      // full, so it closes the schedule rather than starting it. An
+      // application's principal is a genuine principal and keeps the
+      // contract's own interest calculation.
+      if (rec.source !== 'application' && principal > 0) {
+        carriedTotal = principal;
+        carriedTotalSource = (rec.sourceLabel || 'linked record').toLowerCase();
       }
 
       linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '' };
