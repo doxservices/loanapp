@@ -117,9 +117,11 @@ function openRecordMenu(btn) {
           subtitleOf: x => `${x.application_id} · ${x.promotion || 'No promotion'}`
         }) },
       // The contract opens on its random token, never on the reference.
-      ...(r.contract_token
-        ? [{ label: 'Open loan contract', icon: 'fa-file-contract', href: 'loan-contract.html?c=' + encodeURIComponent(r.contract_token) }]
-        : []),
+      ...(r.contract_token ? [
+        { label: 'Open prefilled contract', icon: 'fa-file-contract', href: 'loan-contract.html?c=' + encodeURIComponent(r.contract_token) },
+        { label: 'Copy contract link', icon: 'fa-link', onClick: () => navigator.clipboard && navigator.clipboard.writeText(
+            new URL('loan-contract.html?c=' + encodeURIComponent(r.contract_token), location.href).href) }
+      ] : []),
       { label: 'Copy application ID', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(r.application_id) }
     ]
   });

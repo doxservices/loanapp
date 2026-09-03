@@ -14,23 +14,32 @@ const crypto = require('crypto');
 initializeApp();
 const db = getFirestore();
 
-(async () => {
-  const snap = await db.collection('applications').get();
-  let issued = 0, kept = 0;
+// A standing order and a salary deduction can seed a contract too, so they
+// carry the same token.
+const COLLECTIONS = ['applications', 'standingOrders', 'salaryDeductions'];
 
-  for (const doc of snap.docs) {
-    const d = doc.data();
-    if (d.contractToken) {
-      kept++;
-      console.log(`  keep   ${d.applicationCode || doc.id} — already has a token`);
-      continue;
+(async () => {
+  let issued = 0, kept = 0, total = 0;
+
+  for (const collection of COLLECTIONS) {
+    const snap = await db.collection(collection).get();
+    total += snap.size;
+    console.log(`\n${collection} (${snap.size} record(s))`);
+    for (const doc of snap.docs) {
+      const d = doc.data();
+      const name = d.applicationCode || d.borrowerName || doc.id;
+      if (d.contractToken) {
+        kept++;
+        console.log(`  keep   ${name} — already has a token`);
+        continue;
+      }
+      const token = crypto.randomBytes(24).toString('base64url');
+      await doc.ref.update({ contractToken: token });
+      issued++;
+      console.log(`  issue  ${name} — ${token}`);
     }
-    const token = crypto.randomBytes(24).toString('base64url');
-    await doc.ref.update({ contractToken: token });
-    issued++;
-    console.log(`  issue  ${d.applicationCode || doc.id} — ${token}`);
   }
 
-  console.log(`\n${issued} token(s) issued, ${kept} left untouched, ${snap.size} application(s) total.`);
+  console.log(`\n${issued} token(s) issued, ${kept} left untouched, ${total} record(s) total.`);
   process.exit(0);
 })().catch(e => { console.error('FAILED', e); process.exit(1); });

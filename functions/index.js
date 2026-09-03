@@ -133,13 +133,18 @@ function formRoutes(path, collection, logLabel) {
         ? body.draftId : null;
 
       if (!draftId) {
-        const ref = await db.collection(collection).add({ submittedAt: FieldValue.serverTimestamp(), ...body });
+        const ref = await db.collection(collection).add({
+          submittedAt: FieldValue.serverTimestamp(), contractToken: newContractToken(), ...body
+        });
         return res.json({ ok: true, id: ref.id, created: true });
       }
 
       const ref = db.collection(collection).doc(draftId);
       const existing = await ref.get();
       const rec = { ...body, updatedAt: FieldValue.serverTimestamp() };
+      // Issued once, on the first write of a session, so a link already handed
+      // out keeps working as the form is autosaved and finally printed.
+      if (!existing.exists || !existing.data().contractToken) rec.contractToken = newContractToken();
       if (!existing.exists) rec.submittedAt = FieldValue.serverTimestamp();
       await ref.set(rec, { merge: true });
 
@@ -501,33 +506,78 @@ app.get('/api/applications/trn/:trn', async (req, res) => {
   if (snap.empty) return res.status(404).json({ error: 'No application found for this TRN' });
   res.json(appToApi(snap.docs[0]));
 });
-// Opening a contract from its link. The token is unguessable, but holding it
-// is still only permission to draw up this one contract, so the response
-// carries just the fields the contract prints — no messages, attachments,
-// review flags or decision reasons. Declared before /:id so "contract" is not
-// swallowed as a document id.
-app.get('/api/applications/contract/:token', async (req, res) => {
+// Opening a prefilled contract from its link. A loan application, a standing
+// order and a salary deduction all describe the same borrower and the same
+// loan, so any of the three can seed a contract; the token says which record
+// without the link having to name a collection.
+//
+// The token is unguessable, but holding it is still only permission to draw up
+// this one contract, so each branch returns just the fields the contract
+// prints — never messages, attachments, review flags, decision reasons, or the
+// bank and payroll details that belong to the authorization forms.
+const CONTRACT_SOURCES = [
+  { collection: 'applications', source: 'application', label: 'Loan application' },
+  { collection: 'standingOrders', source: 'standingOrder', label: 'Standing order' },
+  { collection: 'salaryDeductions', source: 'salaryDeduction', label: 'Salary deduction' }
+];
+
+const asFrequency = v => (['monthly', 'fortnightly', 'weekly'].includes(String(v || '').toLowerCase())
+  ? String(v).toLowerCase() : null);
+
+function contractFromApplication(d) {
+  const a = d.applicant || {};
+  const snap = d.promoSnapshot || {};
+  return {
+    reference: d.applicationCode || '',
+    product: snap.name || '',
+    status: d.status || 'Submitted',
+    borrower: {
+      name: [a.firstName, a.lastName].filter(Boolean).join(' '),
+      trn: a.trn || '', phone: a.phone || '', email: a.email || '',
+      addressLine1: a.addressLine1 || '', addressLine2: a.addressLine2 || '',
+      town: '', parish: a.parish || ''
+    },
+    loan: {
+      principal: snap.principal ?? null, instalments: d.selectedTermMonths ?? null,
+      frequency: 'monthly', firstPaymentDate: '', agreementDate: '', instalmentAmount: ''
+    }
+  };
+}
+
+// Both authorization forms carry the borrower, the principal and the
+// repayment plan under slightly different field names.
+function contractFromForm(d, source) {
+  return {
+    reference: '',
+    product: '',
+    status: d.autosaved ? 'Draft' : 'Submitted',
+    borrower: {
+      name: String(d.borrowerName || '').trim(), trn: d.trn || '',
+      phone: d.contactNo || '', email: '',
+      addressLine1: '', addressLine2: '', town: '', parish: ''
+    },
+    loan: {
+      principal: d.loanAmount ?? null,
+      instalments: d.totalMonths ?? null,
+      frequency: asFrequency(source === 'standingOrder' ? d.repaymentFrequency : d.payFrequency),
+      firstPaymentDate: d.startDate || '',
+      agreementDate: d.contractDate || '',
+      instalmentAmount: (source === 'standingOrder' ? d.paymentAmount : d.deductionAmount) || ''
+    }
+  };
+}
+
+app.get('/api/contract/:token', async (req, res) => {
   const token = String(req.params.token || '');
   if (token.length < 20) return res.status(404).json({ error: 'Unknown contract link' });
-  const snap = await db.collection('applications').where('contractToken', '==', token).limit(1).get();
-  if (snap.empty) return res.status(404).json({ error: 'Unknown contract link' });
-  const d = snap.docs[0].data();
-  const a = d.applicant || {};
-  const snapshot = d.promoSnapshot || {};
-  res.json({
-    applicationCode: d.applicationCode || null,
-    status: d.status || 'Submitted',
-    selectedTermMonths: d.selectedTermMonths ?? null,
-    promoSnapshot: {
-      name: snapshot.name || '', currency: snapshot.currency || 'JMD',
-      principal: snapshot.principal ?? null, monthlyInterestPct: snapshot.monthlyInterestPct ?? null
-    },
-    applicant: {
-      firstName: a.firstName || '', lastName: a.lastName || '', email: a.email || '',
-      phone: a.phone || '', trn: a.trn || '', addressLine1: a.addressLine1 || '',
-      addressLine2: a.addressLine2 || '', parish: a.parish || ''
-    }
-  });
+  for (const { collection, source, label } of CONTRACT_SOURCES) {
+    const snap = await db.collection(collection).where('contractToken', '==', token).limit(1).get();
+    if (snap.empty) continue;
+    const d = snap.docs[0].data();
+    const body = source === 'application' ? contractFromApplication(d) : contractFromForm(d, source);
+    return res.json({ source, sourceLabel: label, ...body });
+  }
+  res.status(404).json({ error: 'Unknown contract link' });
 });
 app.get('/api/applications/:id', async (req, res) => {
   const doc = await db.collection('applications').doc(req.params.id).get();

@@ -506,13 +506,26 @@
     .clause-list ul li { margin-bottom: 4px; }
     .lead-note { font-size: 12.5px; line-height: 1.55; margin: 0 0 12px; text-align: justify; }
     .licence-line { font-size: 12.5px; margin: 0 0 4px; }
+    /* Only shown when the contract was opened from a record, and never in
+       print — the entry page is a working screen, not part of the agreement. */
+    .share-link-btn {
+      margin-top: 10px;
+      border: 1.2px solid var(--blue-line);
+      background: #fff;
+      color: var(--blue-dark);
+      padding: 7px 12px;
+      font: inherit;
+      font-weight: 700;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .share-link-btn:hover { background: var(--blue-soft); }
+    @media print { .share-link-btn { display: none !important; } }
+
     .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 34px; margin-top: 22px; }
     /* A signature block must not be split across a page break. */
     .sig-grid, .sig-block { page-break-inside: avoid; break-inside: avoid; }
     .sig-block h4 { margin: 0 0 2px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
-    .sig-line { display: flex; gap: 14px; align-items: flex-end; }
-    .sig-field { flex: 1; min-width: 0; }
-    .sig-field.sig-date { flex: 0 0 1.15in; }
     /* The clear space for writing belongs to the line itself, not to whatever
        happens to sit above it — that way every line gets the same room. These
        are scoped under .letter-body because `.letter-body p` (0,1,1) would
@@ -534,8 +547,9 @@
       <div class="page-inner">
         <div class="entry-header">
           <h1 class="entry-page-title">Loan Agreement Details</h1>
-          <p class="entry-page-subtitle">Complete the data entry section below. The loan agreement and repayment schedule are generated on the following pages. Opening this page from an application record fills the borrower's details in automatically.</p>
+          <p class="entry-page-subtitle">Complete the data entry section below. The loan agreement and repayment schedule are generated on the following pages. Opening this page from an application, standing order or salary deduction record fills the borrower's details in automatically.</p>
           <p class="entry-page-subtitle" id="linkedNote" style="display:none; margin-top:8px; font-weight:700; color:var(--blue-dark);"></p>
+          <button type="button" id="shareLinkBtn" class="share-link-btn" hidden>Copy shareable link</button>
         </div>
 
         <div class="loan-hero">
@@ -682,8 +696,6 @@
 
           <div class="section-title">Loan Details</div>
           <table class="account-table">
-            <tr id="rowAppRef" style="display:none;"><td>Application Reference</td><td id="docAppRef"></td></tr>
-            <tr id="rowProduct" style="display:none;"><td>Loan Product</td><td id="docProduct"></td></tr>
             <tr><td>Principal Loan Amount</td><td id="docPrincipal">J$ __________</td></tr>
             <tr><td>Processing Fee</td><td id="docProcessingFee">J$ __________</td></tr>
             <tr><td>Daily Interest Rate</td><td id="docDailyRate">0.40%</td></tr>
@@ -745,40 +757,30 @@
           <div class="section-title">Seizure Clause</div>
           <p>In the event of any breach of this loan agreement by the Borrower, the Lender shall have the absolute right, without further notice, to seize and take possession of any asset(s) owned by the Borrower that have a total value up to three times (3x) the outstanding amount of the loan, including applicable collector, bailiff, legal, and court fees. The Borrower expressly agrees that all reasonable expenses incurred by the Lender in the process of asset seizure&mdash;including, but not limited to, collector fees, bailiff fees, attorney fees, and court costs&mdash;shall be added to the amount recoverable. The Lender&rsquo;s rights under this clause are in addition to any other remedies available under law or this agreement.</p>
 
-          <!-- Every signatory dates their own signature: on a contract the
-               date of execution is per-party, not one date for the document. -->
+          <!-- Verbatim from the lawyer-reviewed agreement: four blocks, each
+               "Authorized Signature" over "Print Name and Title", no date
+               line. Only the spacing is ours — the wording is not to change
+               without legal review. -->
           <div class="sig-grid">
             <div class="sig-block">
               <h4>Lender</h4>
-              <div class="sig-line">
-                <div class="sig-field"><div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p></div>
-                <div class="sig-field sig-date"><div class="sig-rule"></div><p class="sig-caption">Date</p></div>
-              </div>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
               <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
             </div>
             <div class="sig-block">
               <h4>Loan Officer</h4>
-              <div class="sig-line">
-                <div class="sig-field"><div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p></div>
-                <div class="sig-field sig-date"><div class="sig-rule"></div><p class="sig-caption">Date</p></div>
-              </div>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
               <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
             </div>
             <div class="sig-block">
               <h4>Borrower</h4>
-              <div class="sig-line">
-                <div class="sig-field"><div class="sig-rule"></div><p class="sig-caption">Signature</p></div>
-                <div class="sig-field sig-date"><div class="sig-rule"></div><p class="sig-caption">Date</p></div>
-              </div>
-              <div class="sig-rule"></div><p class="sig-caption">Print Name</p>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
+              <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
             </div>
             <div class="sig-block">
               <h4>Guarantor</h4>
-              <div class="sig-line">
-                <div class="sig-field"><div class="sig-rule"></div><p class="sig-caption">Signature</p></div>
-                <div class="sig-field sig-date"><div class="sig-rule"></div><p class="sig-caption">Date</p></div>
-              </div>
-              <div class="sig-rule"></div><p class="sig-caption">Print Name</p>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
+              <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
             </div>
           </div>
         </div>
@@ -808,7 +810,7 @@
           instalmentAmountEl = $('instalmentAmount'), trnEl = $('trn');
 
     let instalmentOverridden = false;
-    let linkedApplication = null;
+    let linkedRecord = null;
 
     function pad(n) { return String(n).padStart(2, '0'); }
     function parseDateInput(v) { if (!v) return null; const p = v.split('-').map(Number); return p.length === 3 ? new Date(p[0], p[1] - 1, p[2]) : null; }
@@ -904,12 +906,6 @@
       $('docLateFee').textContent = money(parseMoney(lateFeeEl.value));
       $('docMaturity').textContent = formatDate(t.last);
 
-      const ref = linkedApplication && linkedApplication.reference;
-      const product = linkedApplication && linkedApplication.product;
-      $('rowAppRef').style.display = ref ? '' : 'none';
-      $('rowProduct').style.display = product ? '' : 'none';
-      if (ref) $('docAppRef').textContent = ref;
-      if (product) $('docProduct').textContent = product;
 
       let balance = t.total;
       const rows = [];
@@ -978,7 +974,7 @@
     function resetForm() {
       document.getElementById('contractForm').reset();
       instalmentOverridden = false;
-      linkedApplication = null;
+      linkedRecord = null;
       $('linkedNote').style.display = 'none';
       dailyRateEl.value = '0.40';
       instalmentsEl.value = '6';
@@ -996,68 +992,95 @@
       instalmentOverridden = String(instalmentAmountEl.value || '').trim() !== '';
     });
 
-    // Opening the contract from an application record prefills the borrower
-    // and the loan figures. The link carries ?c=<contract token>, a key issued
-    // with the application and kept separate from the reference the applicant
-    // quotes — quoting your reference should never hand out contract access.
-    // Holding the token is the permission, so no admin sign-in is needed here;
-    // the endpoint returns only the fields this contract prints.
-    async function loadApplication(token) {
+    // The link carries ?c=<contract token>, issued with whichever record it
+    // came from — a loan application, a standing order or a salary deduction.
+    // The token says which record without the URL naming a collection, and
+    // holding it is the permission, so the person filling in the contract does
+    // not need an admin sign-in. The endpoint returns only the fields this
+    // contract prints.
+    async function loadContractSource(token) {
       try {
-        const res = await fetch(window.LOANIT_API_BASE +
-          '/api/applications/contract/' + encodeURIComponent(token));
+        const res = await fetch(window.LOANIT_API_BASE + '/api/contract/' + encodeURIComponent(token));
         if (res.ok) return await res.json();
       } catch (e) { /* fall through to the blank contract */ }
       return null;
     }
 
-    async function prefillFromApplication(token) {
-      const app = await loadApplication(token);
+    function setIfPresent(id, value) {
+      const v = String(value == null ? '' : value).trim();
+      if (v) $(id).value = v;
+    }
+
+    async function prefillFromRecord(token) {
+      const rec = await loadContractSource(token);
       const note = $('linkedNote');
-      if (!app) {
+      if (!rec) {
         // The token is not echoed back into the page.
         note.style.display = 'block';
         note.textContent = 'This contract link is not valid or has expired. Fill the agreement in manually.';
         return;
       }
 
-      const a = app.applicant || {};
-      const snap = app.promoSnapshot || {};
+      const b = rec.borrower || {};
+      const loan = rec.loan || {};
 
-      $('borrowerName').value = [a.firstName, a.lastName].filter(Boolean).join(' ');
-      if (a.trn) { trnEl.value = a.trn; formatTrnInput(trnEl); }
-      $('contactNo').value = a.phone || '';
-      $('email').value = a.email || '';
-      $('addressLine1').value = a.addressLine1 || '';
-      $('addressLine2').value = a.addressLine2 || '';
-      setParish(a.parish);
-      if (snap.principal) principalEl.value = moneyEntry(Number(snap.principal));
-      if (app.selectedTermMonths) instalmentsEl.value = app.selectedTermMonths;
+      setIfPresent('borrowerName', b.name);
+      if (b.trn) { trnEl.value = b.trn; formatTrnInput(trnEl); }
+      setIfPresent('contactNo', b.phone);
+      setIfPresent('email', b.email);
+      setIfPresent('addressLine1', b.addressLine1);
+      setIfPresent('addressLine2', b.addressLine2);
+      setIfPresent('town', b.town);
+      setParish(b.parish);
 
-      // The application's own reference and product are carried onto the
-      // agreement, so the signed contract points back at the application.
-      linkedApplication = {
-        reference: app.applicationCode || '',
-        product: snap.name || '',
-        currency: snap.currency || 'JMD'
-      };
+      const principal = parseMoney(loan.principal);
+      if (principal > 0) principalEl.value = moneyEntry(principal);
+      if (loan.instalments) instalmentsEl.value = loan.instalments;
+      if (loan.frequency) frequencyEl.value = loan.frequency;
+      setIfPresent('agreementDate', loan.agreementDate);
+      setIfPresent('firstPaymentDate', loan.firstPaymentDate);
+      // The authorization forms already state what the borrower pays each
+      // period, so that figure leads rather than being recomputed.
+      const instalment = parseMoney(loan.instalmentAmount);
+      if (instalment > 0) {
+        instalmentAmountEl.value = moneyEntry(instalment);
+        instalmentOverridden = true;
+      }
+
+      linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '' };
 
       note.style.display = 'block';
-      note.textContent = 'Linked to application ' + (app.applicationCode || '') +
-        (snap.name ? ' — ' + snap.name : '') +
-        (app.status ? ' (' + app.status + ')' : '') + '.';
+      note.textContent = 'Prefilled from ' + (rec.sourceLabel || 'a record').toLowerCase() +
+        (rec.reference ? ' ' + rec.reference : '') +
+        (b.name ? ' for ' + b.name : '') +
+        (rec.product ? ' — ' + rec.product : '') +
+        (rec.status ? ' (' + rec.status + ')' : '') + '. Check every field before printing.';
 
       updateContract();
     }
 
+    // The prefilled link is meant to be passed to whoever completes the
+    // contract, so it stays in the address bar and this copies it.
+    const shareBtn = $('shareLinkBtn');
+    if (shareBtn) {
+      shareBtn.addEventListener('click', async () => {
+        const label = shareBtn.textContent;
+        try {
+          await navigator.clipboard.writeText(location.href);
+          shareBtn.textContent = 'Link copied';
+        } catch (e) {
+          shareBtn.textContent = 'Copy failed — use the address bar';
+        }
+        setTimeout(() => { shareBtn.textContent = label; }, 2200);
+      });
+    }
+
     setDefaultDates();
     updateContract();
-    // Keep the token out of the address bar's history entry once it is read,
-    // so it is not left sitting in a shared screen or a copied URL.
     const contractToken = new URLSearchParams(location.search).get('c');
     if (contractToken) {
-      history.replaceState(null, '', location.pathname);
-      prefillFromApplication(contractToken);
+      if (shareBtn) shareBtn.hidden = false;
+      prefillFromRecord(contractToken);
     }
   </script>
 </body>

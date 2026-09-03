@@ -636,9 +636,11 @@
             { label: 'View details', icon: 'fa-eye', onClick: () => viewApplication(btn.dataset.id) },
             { label: 'Edit application', icon: 'fa-pen-to-square', onClick: () => editApplication(btn.dataset.id) },
             // The contract opens on its random token, never on the reference.
-            ...(app.contractToken
-              ? [{ label: 'Open loan contract', icon: 'fa-file-contract', href: 'loan-contract.html?c=' + encodeURIComponent(app.contractToken) }]
-              : []),
+            ...(app.contractToken ? [
+              { label: 'Open prefilled contract', icon: 'fa-file-contract', href: 'loan-contract.html?c=' + encodeURIComponent(app.contractToken) },
+              { label: 'Copy contract link', icon: 'fa-link', onClick: () => navigator.clipboard && navigator.clipboard.writeText(
+                  new URL('loan-contract.html?c=' + encodeURIComponent(app.contractToken), location.href).href) }
+            ] : []),
             { label: 'Copy application ID', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(app.code) }
           ]
         });
