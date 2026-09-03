@@ -124,7 +124,7 @@ function openRecordMenu(btn) {
           titleOf: x => `${x.first_name} ${x.last_name}`.trim() || 'Application',
           subtitleOf: x => `${x.application_id} · ${x.promotion || 'No promotion'}`
         }) },
-      { label: 'Open loan contract', icon: 'fa-file-contract', href: 'loan-contract.html' },
+      { label: 'Open loan contract', icon: 'fa-file-contract', href: 'loan-contract.html?application=' + encodeURIComponent(r.application_id) },
       { label: 'Copy application ID', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(r.application_id) }
     ]
   });

@@ -526,6 +526,7 @@
         <div class="entry-header">
           <h1 class="entry-page-title">Loan Agreement Details</h1>
           <p class="entry-page-subtitle">Complete the data entry section below. The loan agreement and repayment schedule are generated on the following pages. Opening this page from an application record fills the borrower's details in automatically.</p>
+          <p class="entry-page-subtitle" id="linkedNote" style="display:none; margin-top:8px; font-weight:700; color:var(--blue-dark);"></p>
         </div>
 
         <div class="loan-hero">
@@ -672,6 +673,8 @@
 
           <div class="section-title">Loan Details</div>
           <table class="account-table">
+            <tr id="rowAppRef" style="display:none;"><td>Application Reference</td><td id="docAppRef"></td></tr>
+            <tr id="rowProduct" style="display:none;"><td>Loan Product</td><td id="docProduct"></td></tr>
             <tr><td>Principal Loan Amount</td><td id="docPrincipal">J$ __________</td></tr>
             <tr><td>Processing Fee</td><td id="docProcessingFee">J$ __________</td></tr>
             <tr><td>Daily Interest Rate</td><td id="docDailyRate">0.40%</td></tr>
@@ -782,6 +785,7 @@
           instalmentAmountEl = $('instalmentAmount'), trnEl = $('trn');
 
     let instalmentOverridden = false;
+    let linkedApplication = null;
 
     function pad(n) { return String(n).padStart(2, '0'); }
     function parseDateInput(v) { if (!v) return null; const p = v.split('-').map(Number); return p.length === 3 ? new Date(p[0], p[1] - 1, p[2]) : null; }
@@ -808,6 +812,19 @@
       el.value = d.length > 6 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6)
                : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3) : d;
       el.classList.toggle('invalid', el.value !== '' && trnDigitCount(el.value) !== 9);
+    }
+
+    // Applications may store a parish as "Saint Andrew" while this list
+    // offers "St. Andrew" — match on a normalised form so the parish is not
+    // silently dropped from the borrower's address.
+    function setParish(value) {
+      const norm = v => String(v || '').toLowerCase().replace(/\./g, '')
+        .replace(/^saint\s+/, 'st ').replace(/^st\s+/, 'st ').replace(/\s+/g, ' ').trim();
+      const target = norm(value);
+      if (!target) return;
+      const select = $('parish');
+      const match = Array.from(select.options).find(o => norm(o.value || o.textContent) === target);
+      if (match) select.value = match.value || match.textContent;
     }
 
     function dueDate(start, i) {
@@ -863,6 +880,13 @@
       $('docDailyRate').textContent = (Number(dailyRateEl.value) || 0) + '%';
       $('docLateFee').textContent = money(parseMoney(lateFeeEl.value));
       $('docMaturity').textContent = formatDate(t.last);
+
+      const ref = linkedApplication && linkedApplication.reference;
+      const product = linkedApplication && linkedApplication.product;
+      $('rowAppRef').style.display = ref ? '' : 'none';
+      $('rowProduct').style.display = product ? '' : 'none';
+      if (ref) $('docAppRef').textContent = ref;
+      if (product) $('docProduct').textContent = product;
 
       let balance = t.total;
       const rows = [];
@@ -931,6 +955,8 @@
     function resetForm() {
       document.getElementById('contractForm').reset();
       instalmentOverridden = false;
+      linkedApplication = null;
+      $('linkedNote').style.display = 'none';
       dailyRateEl.value = '0.40';
       instalmentsEl.value = '6';
       frequencyEl.value = 'monthly';
@@ -950,24 +976,59 @@
     // Opening the contract from an application record prefills the borrower
     // and the loan figures. The single-application endpoint is public (the
     // status page already uses it), so no admin sign-in is needed here.
-    async function prefillFromApplication(id) {
-      try {
-        const res = await fetch(window.LOANIT_API_BASE + '/api/applications/' + encodeURIComponent(id));
-        if (!res.ok) return;
-        const app = await res.json();
-        const a = app.applicant || {};
-        const snap = app.promoSnapshot || {};
-        $('borrowerName').value = [a.firstName, a.lastName].filter(Boolean).join(' ');
-        if (a.trn) { trnEl.value = a.trn; formatTrnInput(trnEl); }
-        $('contactNo').value = a.phone || '';
-        $('email').value = a.email || '';
-        $('addressLine1').value = a.addressLine1 || '';
-        $('addressLine2').value = a.addressLine2 || '';
-        if (a.parish) $('parish').value = a.parish;
-        if (snap.principal) principalEl.value = moneyEntry(Number(snap.principal));
-        if (app.selectedTermMonths) instalmentsEl.value = app.selectedTermMonths;
-        updateContract();
-      } catch (e) { /* leave the blank contract in place */ }
+    // ?application= accepts the application reference (APP-YYYY-NNNN) or, for
+    // older links, the document id. Both endpoints are public — the status
+    // page already reads them — so no admin sign-in is needed here.
+    async function loadApplication(key) {
+      const isReference = /^APP-/i.test(key);
+      const paths = isReference
+        ? ['/api/applications/code/' + encodeURIComponent(key), '/api/applications/' + encodeURIComponent(key)]
+        : ['/api/applications/' + encodeURIComponent(key), '/api/applications/code/' + encodeURIComponent(key)];
+      for (const path of paths) {
+        try {
+          const res = await fetch(window.LOANIT_API_BASE + path);
+          if (res.ok) return await res.json();
+        } catch (e) { /* try the next form */ }
+      }
+      return null;
+    }
+
+    async function prefillFromApplication(key) {
+      const app = await loadApplication(key);
+      const note = $('linkedNote');
+      if (!app) {
+        note.style.display = 'block';
+        note.textContent = 'No application found for reference ' + key + '. Fill the agreement in manually.';
+        return;
+      }
+
+      const a = app.applicant || {};
+      const snap = app.promoSnapshot || {};
+
+      $('borrowerName').value = [a.firstName, a.lastName].filter(Boolean).join(' ');
+      if (a.trn) { trnEl.value = a.trn; formatTrnInput(trnEl); }
+      $('contactNo').value = a.phone || '';
+      $('email').value = a.email || '';
+      $('addressLine1').value = a.addressLine1 || '';
+      $('addressLine2').value = a.addressLine2 || '';
+      setParish(a.parish);
+      if (snap.principal) principalEl.value = moneyEntry(Number(snap.principal));
+      if (app.selectedTermMonths) instalmentsEl.value = app.selectedTermMonths;
+
+      // The application's own reference and product are carried onto the
+      // agreement, so the signed contract points back at the application.
+      linkedApplication = {
+        reference: app.applicationCode || '',
+        product: snap.name || '',
+        currency: snap.currency || 'JMD'
+      };
+
+      note.style.display = 'block';
+      note.textContent = 'Linked to application ' + (app.applicationCode || key) +
+        (snap.name ? ' — ' + snap.name : '') +
+        (app.status ? ' (' + app.status + ')' : '') + '.';
+
+      updateContract();
     }
 
     setDefaultDates();

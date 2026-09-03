@@ -445,6 +445,19 @@ app.delete('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Because the reference is used as a lookup key in links, it has to be
+// genuinely unique — four random digits collide often enough to matter, so
+// the code is checked against existing applications before being issued.
+async function nextApplicationCode() {
+  const year = new Date().getFullYear();
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const code = `APP-${year}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const clash = await db.collection('applications').where('applicationCode', '==', code).limit(1).get();
+    if (clash.empty) return code;
+  }
+  return `APP-${year}-${Date.now().toString(36).toUpperCase()}`;
+}
+
 function appToApi(doc) {
   const d = doc.data();
   return {
@@ -465,6 +478,15 @@ app.get('/api/applications/trn/:trn', async (req, res) => {
   if (snap.empty) return res.status(404).json({ error: 'No application found for this TRN' });
   res.json(appToApi(snap.docs[0]));
 });
+// The application reference (APP-YYYY-NNNN) is the code that travels in
+// links — it means something to a reader, unlike the document id. Declared
+// before /:id so "code" is not swallowed as an id.
+app.get('/api/applications/code/:code', async (req, res) => {
+  const code = String(req.params.code || '').trim().toUpperCase();
+  const snap = await db.collection('applications').where('applicationCode', '==', code).limit(1).get();
+  if (snap.empty) return res.status(404).json({ error: 'No application found for this reference' });
+  res.json(appToApi(snap.docs[0]));
+});
 app.get('/api/applications/:id', async (req, res) => {
   const doc = await db.collection('applications').doc(req.params.id).get();
   if (!doc.exists) return res.status(404).json({ error: 'Application not found' });
@@ -480,7 +502,7 @@ app.post('/api/applications', async (req, res) => {
     monthlyInterestPct: promo.monthlyInterestPct, termMode: promo.termMode,
     fixedTermMonths: promo.fixedTermMonths ?? null, allowedTerms: promo.allowedTerms || []
   };
-  const applicationCode = `APP-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+  const applicationCode = await nextApplicationCode();
   const ref = await db.collection('applications').add({
     applicationCode, promotionId: promoDoc.id, selectedTermMonths, promoSnapshot,
     applicant: applicant || {}, status: 'Submitted', reason: '', reviewFlags: {}, attachments: {}, messages: [],
