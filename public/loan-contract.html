@@ -974,11 +974,11 @@
     });
 
     // Opening the contract from an application record prefills the borrower
-    // and the loan figures. The link carries ?c=<contract token>, a random
-    // key issued with the application — deliberately not the APP-YYYY-NNNN
-    // reference, which is short enough to be guessed and walked. Holding the
-    // token is the permission, so no admin sign-in is needed here; the
-    // endpoint returns only the fields this contract prints.
+    // and the loan figures. The link carries ?c=<contract token>, a key issued
+    // with the application and kept separate from the reference the applicant
+    // quotes — quoting your reference should never hand out contract access.
+    // Holding the token is the permission, so no admin sign-in is needed here;
+    // the endpoint returns only the fields this contract prints.
     async function loadApplication(token) {
       try {
         const res = await fetch(window.LOANIT_API_BASE +

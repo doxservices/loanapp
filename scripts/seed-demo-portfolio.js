@@ -7,6 +7,14 @@
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const crypto = require('crypto');
+
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function randomCode(length) {
+  const bytes = crypto.randomBytes(length);
+  let out = '';
+  for (let i = 0; i < length; i++) out += CODE_ALPHABET[bytes[i] & 31];
+  return out;
+}
 initializeApp();
 const db = getFirestore();
 
@@ -69,7 +77,9 @@ const addMonths = (iso, n) => {
     if (!a) { console.log('no applicant mapped for promotion', promo.name, '- skipped'); continue; }
 
     seq++;
-    const applicationCode = 'APP-2026-' + String(1000 + seq);
+    // Same opaque reference format the API issues — no prefix, no year, no
+    // sequence, so demo rows look exactly like real ones.
+    const applicationCode = randomCode(12);
     const promoSnapshot = {
       name: promo.name, currency: promo.currency, principal: promo.principal,
       monthlyInterestPct: promo.monthlyInterestPct, termMode: promo.termMode,

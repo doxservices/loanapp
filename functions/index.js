@@ -449,17 +449,26 @@ app.delete('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-// The APP-YYYY-NNNN reference is for humans to quote — it is short, ordered
-// and guessable, so it is never a lookup key. Anything that addresses an
-// application from a link uses the separate contract token below.
+// The reference a person quotes. It is deliberately opaque: no prefix, no
+// year, no counter — nothing about it says what it is, when it was issued or
+// which application came before it. Crockford Base32 leaves out I, L, O and U,
+// so there is no 0/O or 1/I to mishear and no accidental words. 12 characters
+// is 60 bits, drawn from the CSPRNG rather than Math.random.
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+function randomCode(length) {
+  // 256 is a multiple of 32, so masking a random byte stays uniform.
+  const bytes = crypto.randomBytes(length);
+  let out = '';
+  for (let i = 0; i < length; i++) out += CODE_ALPHABET[bytes[i] & 31];
+  return out;
+}
 async function nextApplicationCode() {
-  const year = new Date().getFullYear();
   for (let attempt = 0; attempt < 10; attempt++) {
-    const code = `APP-${year}-${Math.floor(1000 + Math.random() * 9000)}`;
+    const code = randomCode(12);
     const clash = await db.collection('applications').where('applicationCode', '==', code).limit(1).get();
     if (clash.empty) return code;
   }
-  return `APP-${year}-${Date.now().toString(36).toUpperCase()}`;
+  return randomCode(16);
 }
 
 // The capability key for the contract link: 192 bits of CSPRNG output, so the

@@ -450,8 +450,7 @@
       successMessage.innerHTML = `
         <h3>✓ Application Submitted!</h3>
         <p>Your loan application has been successfully submitted.</p>
-        <p>Application ID: <strong>APP-2025-${Math.floor(1000 + Math.random() * 9000)}</strong></p>
-        <p>You will receive a confirmation email shortly.</p>
+        <p>You will receive a confirmation email shortly with your application reference.</p>
         <div style="margin-top: 12px;"><a href="status.html" class="btn btn-primary">View Application Status</a></div>
       `;
       this.parentNode.insertBefore(successMessage, this.nextSibling);
