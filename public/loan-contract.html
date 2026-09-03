@@ -330,17 +330,20 @@
     }
 
     .letter-body p {
-      margin: 0 0 9px;
+      margin: 0 0 8px;
       text-align: justify;
     }
 
     /* Headings sit close to the content they label so the whole
-       authorization fits on a single printed page once filled. */
+       authorization fits on a single printed page once filled. The clause
+       page is the tight one, so a couple of pixels here and on the
+       paragraphs below pays for the writing space in the signature block
+       without touching the type size or the leading of the text itself. */
     .section-title {
       color: var(--blue-dark);
       font-size: 13px;
       font-weight: 700;
-      margin: 13px 0 5px;
+      margin: 11px 0 5px;
       line-height: 1.3;
     }
 
@@ -501,7 +504,7 @@
     /* Contract-specific: clause numbering, licence lines and the four-way
        signature block. */
     .clause-list { margin: 0 0 12px; padding-left: 20px; font-size: 12.5px; line-height: 1.55; }
-    .clause-list > li { margin-bottom: 7px; }
+    .clause-list > li { margin-bottom: 6px; }
     .clause-list ul { margin: 5px 0 0; padding-left: 18px; list-style: circle; }
     .clause-list ul li { margin-bottom: 4px; }
     .lead-note { font-size: 12.5px; line-height: 1.55; margin: 0 0 12px; text-align: justify; }
@@ -526,7 +529,7 @@
        It needs to be clearly wider than the gap between a caption and the
        line under it, so the second pair reads as its own pair rather than as
        a continuation of the block above. */
-    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6in 34px; margin-top: 22px; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75in 34px; margin-top: 22px; }
     /* A signature block must not be split across a page break. */
     .sig-grid, .sig-block { page-break-inside: avoid; break-inside: avoid; }
     .sig-block h4 { margin: 0 0 2px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
@@ -534,7 +537,7 @@
        happens to sit above it — that way every line gets the same room. These
        are scoped under .letter-body because `.letter-body p` (0,1,1) would
        otherwise outrank a bare `.sig-caption` (0,1,0) and collapse the gap. */
-    .letter-body .sig-rule { border-top: 1px solid #33415a; margin: 0.4in 0 0; }
+    .letter-body .sig-rule { border-top: 1px solid #33415a; margin: 0.5in 0 0; }
     .letter-body .sig-caption { font-size: 11.5px; color: #33415a; margin: 3px 0 0; text-align: left; }
   </style>
 </head>
