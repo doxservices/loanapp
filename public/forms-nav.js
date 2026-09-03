@@ -5,7 +5,8 @@
   var links = [
     { href: 'index.html', label: 'Home' },
     { href: 'standing-order.html', label: 'Standing Order' },
-    { href: 'salary-deduction.html', label: 'Salary Deduction' }
+    { href: 'salary-deduction.html', label: 'Salary Deduction' },
+    { href: 'loan-contract.html', label: 'Loan Contract' }
   ];
   var current = location.pathname.split('/').pop() || 'index.html';
   document.querySelectorAll('.toolbar-nav').forEach(function (nav) {

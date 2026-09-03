@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Loan It Limited - Loan Agreement</title>
+  <style>
+    :root {
+      --blue: #0f6fbe;
+      --blue-dark: #0a4f8b;
+      --blue-soft: #f2f8ff;
+      --blue-line: #b9d8f2;
+      --gold: #d3a63b;
+      --ink: #16202a;
+      --muted: #617181;
+      --paper: #ffffff;
+      --screen: #eef3f8;
+      --danger: #c00000;
+    }
+
+    * { box-sizing: border-box; }
+
+    /* Print exactly as designed: browsers can't have the dialog's
+       "Background graphics" box ticked programmatically, but this inherited
+       property forces every background color and tint to print as if it
+       were — no dialog settings needed. */
+    html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+
+    body {
+      margin: 0;
+      background: var(--screen);
+      color: var(--ink);
+      font-family: "Aptos", "Segoe UI", Calibri, Arial, sans-serif;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #fff;
+      border-bottom: 1px solid #ced8e4;
+    }
+
+    .toolbar button {
+      border: 1px solid var(--blue-dark);
+      background: var(--blue);
+      color: #fff;
+      padding: 9px 15px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+
+    .toolbar button.secondary {
+      background: #fff;
+      color: var(--blue-dark);
+    }
+
+    .toolbar-nav {
+      display: flex;
+      gap: 4px;
+      margin-right: 14px;
+      padding-right: 14px;
+      border-right: 1px solid #ced8e4;
+    }
+
+    .toolbar-nav a {
+      display: inline-block;
+      padding: 8px 13px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--blue-dark);
+      text-decoration: none;
+      border: 1px solid transparent;
+    }
+
+    .toolbar-nav a:hover { background: var(--blue-soft); }
+
+    .toolbar-nav a.active {
+      background: var(--blue-soft);
+      border-color: var(--blue-line);
+      color: var(--blue);
+    }
+
+    .page {
+      width: 8.5in;
+      min-height: 14in;
+      margin: 22px auto;
+      background: var(--paper);
+      border: 1px solid #c2cfdb;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.10);
+      page-break-after: always;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .page:last-child { page-break-after: auto; }
+
+    .page-inner { padding: 0.42in 0.58in 0.58in; }
+
+    .entry-header {
+      border: 1.2px solid var(--blue-line);
+      border-left: 5px solid var(--blue);
+      background: #fbfdff;
+      padding: 14px 15px;
+      margin-bottom: 18px;
+      border-radius: 4px;
+    }
+
+    .entry-page-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--blue-dark);
+      margin: 0 0 4px;
+      letter-spacing: 0.2px;
+    }
+
+    .entry-page-subtitle {
+      margin: 2px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .loan-hero {
+      width: calc((100% - 16px) / 2);
+      min-width: 280px;
+      margin: 0 0 16px;
+      border: 1.4px solid var(--blue);
+      border-left: 5px solid var(--blue);
+      background: var(--blue-soft);
+      padding: 12px 14px;
+      border-radius: 4px;
+    }
+
+    .loan-hero label {
+      display: block;
+      color: var(--blue-dark);
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .loan-hero input {
+      font-size: 14px;
+      font-weight: 600;
+      min-height: 32px;
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 20px 18px;
+      align-items: stretch;
+      margin-top: 8px;
+    }
+
+    .field-panel {
+      border: 1.2px solid var(--blue-line);
+      border-top: 4px solid var(--blue);
+      background: #fff;
+      border-radius: 5px;
+      box-shadow: 0 2px 8px rgba(16, 57, 92, 0.05);
+      padding: 0 15px 16px;
+      min-height: 240px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .field-panel h3 {
+      margin: 0 -15px 16px;
+      color: var(--blue-dark);
+      font-size: 12px;
+      font-weight: 800;
+      padding: 13px 15px 10px;
+      border-bottom: 1px solid #d9e7f3;
+      background: #f7fbff;
+      text-transform: uppercase;
+      letter-spacing: 0.45px;
+      line-height: 1.35;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 142px minmax(0, 1fr);
+      gap: 11px;
+      align-items: center;
+      min-height: 38px;
+      margin-bottom: 11px;
+    }
+
+    .field-row:last-child { margin-bottom: 0; }
+
+    .field-row label {
+      font-weight: 700;
+      color: #24313d;
+    }
+
+    .required-star {
+      color: var(--danger);
+      font-weight: 700;
+      margin-left: 3px;
+    }
+
+    input, select {
+      width: 100%;
+      min-height: 30px;
+      padding: 4px 8px;
+      border: 1.2px solid var(--blue-line);
+      border-radius: 4px;
+      background: #fff;
+      color: #000;
+      font: inherit;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease, background-color .15s ease;
+    }
+
+    input:focus, select:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(15,111,190,0.12);
+    }
+
+    input:required, select:required { border-color: var(--danger); }
+
+    input.invalid { border-color: var(--danger) !important; background: #fff8f8; }
+
+    .required-default {
+      border-color: var(--danger) !important;
+      background: #fff8f8 !important;
+    }
+
+    input[readonly] {
+      background: #f4f8fb;
+      color: #2b3640;
+      cursor: default;
+    }
+
+    .money-input {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .currency-field {
+      position: relative;
+      width: 100%;
+    }
+
+    .currency-prefix {
+      position: absolute;
+      left: 9px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--blue-dark);
+      font-weight: 700;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .currency-field input {
+      padding-left: 34px;
+      text-align: right;
+    }
+
+    .summary-box {
+      border: 1.2px solid var(--blue-line);
+      border-left: 5px solid var(--gold);
+      background: #f8fbff;
+      border-radius: 4px;
+      padding: 15px 15px;
+      margin-top: 2px;
+      font-weight: 700;
+      color: #18324a;
+      min-height: 126px;
+      display: flex;
+      align-items: center;
+      line-height: 1.65;
+    }
+
+    .summary-panel {
+      border-top-color: var(--gold);
+    }
+
+    .summary-panel .summary-box {
+      flex: 1;
+      line-height: 1.55;
+    }
+
+    .banner {
+      width: calc(100% + 1.16in);
+      height: 1.55in;
+      margin: -0.42in 0 12px -0.58in;
+      overflow: hidden;
+      display: block;
+      background: #fff;
+    }
+
+    .banner img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+    }
+
+    .doc-title {
+      margin: 2px 0 13px;
+      text-align: center;
+      font-size: 17px;
+      color: var(--blue-dark);
+      font-weight: 700;
+      text-decoration: underline;
+      line-height: 1.3;
+    }
+
+    .letter-body {
+      font-size: 12.5px;
+      line-height: 1.5;
+    }
+
+    .letter-body p {
+      margin: 0 0 9px;
+      text-align: justify;
+    }
+
+    /* Headings sit close to the content they label so the whole
+       authorization fits on a single printed page once filled. */
+    .section-title {
+      color: var(--blue-dark);
+      font-size: 13px;
+      font-weight: 700;
+      margin: 13px 0 5px;
+      line-height: 1.3;
+    }
+
+    .section-title:first-child { margin-top: 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1.1px solid #86b8e2;
+      padding: 5px 9px;
+      vertical-align: middle;
+      line-height: 1.35;
+    }
+
+    th {
+      background: var(--blue-soft);
+      color: #10283b;
+      font-weight: 700;
+      text-align: left;
+    }
+
+    .account-table td:first-child {
+      width: 38%;
+      font-weight: 700;
+      background: #f9fcff;
+    }
+
+    .signature-table { margin-top: 10px; }
+
+    .signature-table td {
+      height: 46px;
+      width: 50%;
+      vertical-align: top;
+    }
+
+    .sig-label, .date-label {
+      display: block;
+      font-weight: 700;
+      margin-bottom: 20px;
+    }
+
+    .schedule-heading-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-end;
+      margin: 8px 0 16px;
+    }
+
+    .schedule-title {
+      color: var(--blue-dark);
+      font-size: 16px;
+      font-weight: 700;
+      text-decoration: underline;
+    }
+
+    .schedule-meta {
+      text-align: right;
+      font-size: 11.5px;
+      color: #324353;
+      line-height: 1.4;
+    }
+
+    .schedule-table { font-size: 11px; }
+
+    .schedule-table th { text-align: center; }
+
+    .schedule-table td:nth-child(1),
+    .schedule-table td:nth-child(2),
+    .schedule-table td:nth-child(3),
+    .schedule-table td:nth-child(4),
+    .schedule-table td:nth-child(5) { text-align: center; }
+
+    @media print {
+      body { background: #fff; }
+      .toolbar { display: none; }
+      .page {
+        margin: 0;
+        width: 8.5in;
+        min-height: 14in;
+        border: none;
+        box-shadow: none;
+      }
+      @page {
+        size: Legal;
+        margin: 0;
+      }
+
+      /* Printing is locked to the form's own Print button: only the button
+         flow sets .print-authorized on <body> (after validation and record
+         submission). A print started through browser functions instead
+         renders the Doxservices-branded interruption page, never the
+         document. */
+      body:not(.print-authorized) .page { display: none !important; }
+      body:not(.print-authorized) .print-interrupt {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        width: 8.5in;
+        min-height: 14in;
+        margin: 0;
+        border: none;
+        box-shadow: none;
+        background: #fff !important;
+      }
+    }
+
+    /* Doxservices-branded print interruption — hidden on screen, shown only
+       for prints that didn't come through the form's own controls. Uses
+       borders and text colors so it renders even when background graphics
+       aren't printed. */
+    .print-interrupt { display: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pi-band {
+      width: 8.5in; height: 9.6in;
+      background: radial-gradient(circle at 50% 46%, #081b3d 0%, #030e24 50%, #010513 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .pi-inner { text-align: center; max-width: 6.6in; padding: 0.3in; }
+    .pi-frame { border: 2px solid rgba(0, 180, 216, 0.65); border-radius: 8px; padding: 0.4in 0.45in 0.55in; position: relative; }
+    .pi-frame::before { content: ''; position: absolute; inset: 6px; border: 1px solid rgba(255, 255, 255, 0.22); border-radius: 4px; pointer-events: none; }
+    .pi-logo {
+      display: block; width: 5in; max-width: 100%; margin: -0.25in auto -0.1in;
+      -webkit-mask-image: radial-gradient(circle, #000 58%, transparent 86%);
+      mask-image: radial-gradient(circle, #000 58%, transparent 86%);
+    }
+    .pi-note { font-size: 18px; line-height: 1.8; font-weight: 600; color: #ffffff; margin: 0 0 34px; }
+    .pi-note strong { color: #00b4d8; }
+    .pi-site { font-size: 13px; font-weight: 700; letter-spacing: 0.24em; color: #00b4d8; text-transform: uppercase; }
+
+    /* Edit-mode bar (screen only) — shown when a saved record is opened
+       from the admin submissions list via ?record=<id>. */
+    .record-bar {
+      position: sticky; top: 45px; z-index: 999;
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 10px 16px; background: #fdf6e4; border-bottom: 1px solid #e8d199;
+      color: #5c4708; font-size: 12.5px;
+    }
+    .record-bar-tag {
+      background: #0a4f8b; color: #fff; border-radius: 999px;
+      padding: 3px 10px; font-weight: 700; font-size: 11px; letter-spacing: .04em; text-transform: uppercase;
+    }
+    .record-bar-tag.error { background: #b3261e; }
+    .record-bar-msg { flex: 1; min-width: 220px; line-height: 1.5; }
+    .record-bar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+    .record-bar-status { color: #6b5a2a; font-size: 12px; }
+    .record-bar-btn {
+      border: 1px solid #d8c48a; background: #fff; color: #5c4708; border-radius: 6px;
+      padding: 7px 13px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; text-decoration: none;
+    }
+    .record-bar-btn:hover { background: #fffaf0; }
+    .record-bar-btn.primary { background: linear-gradient(180deg, #f1c75a, #dfa938); border-color: #b8912f; color: #1f2430; }
+    .record-bar-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    @media print { .record-bar { display: none !important; } }
+    /* Contract-specific: clause numbering, licence lines and the four-way
+       signature block. */
+    .clause-list { margin: 0 0 12px; padding-left: 20px; font-size: 12.5px; line-height: 1.55; }
+    .clause-list > li { margin-bottom: 7px; }
+    .clause-list ul { margin: 5px 0 0; padding-left: 18px; list-style: circle; }
+    .clause-list ul li { margin-bottom: 4px; }
+    .lead-note { font-size: 12.5px; line-height: 1.55; margin: 0 0 12px; text-align: justify; }
+    .licence-line { font-size: 12.5px; margin: 0 0 4px; }
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 34px; margin-top: 20px; }
+    .sig-block h4 { margin: 0 0 34px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
+    .sig-rule { border-top: 1px solid #33415a; margin-bottom: 4px; }
+    .sig-caption { font-size: 11.5px; color: #33415a; margin: 0 0 26px; }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <nav class="toolbar-nav" aria-label="Forms"></nav>
+    <button type="button" onclick="printIfValid()">Print / Save as PDF</button>
+    <button type="button" class="secondary" onclick="resetForm()">Reset Fields</button>
+  </div>
+  <script src="forms-nav.js"></script>
+
+  <form id="contractForm">
+    <section class="page">
+      <div class="page-inner">
+        <div class="entry-header">
+          <h1 class="entry-page-title">Loan Agreement Details</h1>
+          <p class="entry-page-subtitle">Complete the data entry section below. The loan agreement and repayment schedule are generated on the following pages. Opening this page from an application record fills the borrower's details in automatically.</p>
+        </div>
+
+        <div class="loan-hero">
+          <label for="principal">Principal Loan Amount<span class="required-star">*</span></label>
+          <div class="currency-field">
+            <span class="currency-prefix">J$</span>
+            <input id="principal" class="money-input" type="text" inputmode="decimal" placeholder="0.00" required />
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <div class="field-panel">
+            <h3>Borrower Information</h3>
+            <div class="field-row">
+              <label for="borrowerName">Full Name<span class="required-star">*</span></label>
+              <input id="borrowerName" type="text" placeholder="Full Name" required />
+            </div>
+            <div class="field-row">
+              <label for="trn">TRN<span class="required-star">*</span></label>
+              <input id="trn" type="text" inputmode="numeric" maxlength="11" placeholder="000-000-000" required />
+            </div>
+            <div class="field-row">
+              <label for="contactNo">Contact No.<span class="required-star">*</span></label>
+              <input id="contactNo" type="text" placeholder="876-000-0000" required />
+            </div>
+            <div class="field-row">
+              <label for="email">Email</label>
+              <input id="email" type="email" placeholder="name@example.com" />
+            </div>
+          </div>
+
+          <div class="field-panel">
+            <h3>Borrower Address</h3>
+            <div class="field-row">
+              <label for="addressLine1">Address Line 1<span class="required-star">*</span></label>
+              <input id="addressLine1" type="text" required />
+            </div>
+            <div class="field-row">
+              <label for="addressLine2">Address Line 2</label>
+              <input id="addressLine2" type="text" />
+            </div>
+            <div class="field-row">
+              <label for="town">Town / City<span class="required-star">*</span></label>
+              <input id="town" type="text" required />
+            </div>
+            <div class="field-row">
+              <label for="parish">Parish<span class="required-star">*</span></label>
+              <select id="parish" required>
+                <option value="" disabled selected>Select Parish</option>
+                <option>Kingston</option><option>St. Andrew</option><option>St. Catherine</option>
+                <option>Clarendon</option><option>Manchester</option><option>St. Elizabeth</option>
+                <option>Westmoreland</option><option>Hanover</option><option>St. James</option>
+                <option>Trelawny</option><option>St. Ann</option><option>St. Mary</option>
+                <option>Portland</option><option>St. Thomas</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field-panel">
+            <h3>Loan Charges</h3>
+            <div class="field-row">
+              <label for="agreementDate">Agreement Date<span class="required-star">*</span></label>
+              <input id="agreementDate" type="date" required />
+            </div>
+            <div class="field-row">
+              <label for="processingFee">Processing Fee<span class="required-star">*</span></label>
+              <div class="currency-field">
+                <span class="currency-prefix">J$</span>
+                <input id="processingFee" class="money-input" type="text" inputmode="decimal" placeholder="0.00" required />
+              </div>
+            </div>
+            <div class="field-row">
+              <label for="dailyRate">Daily Interest (%)<span class="required-star">*</span></label>
+              <input id="dailyRate" type="number" step="0.01" min="0" value="0.40" required />
+            </div>
+            <div class="field-row">
+              <label for="lateFee">Late Fee<span class="required-star">*</span></label>
+              <div class="currency-field">
+                <span class="currency-prefix">J$</span>
+                <input id="lateFee" class="money-input" type="text" inputmode="decimal" placeholder="0.00" required />
+              </div>
+            </div>
+          </div>
+
+          <div class="field-panel">
+            <h3>Repayment Schedule</h3>
+            <div class="field-row">
+              <label for="firstPaymentDate">First Payment Date<span class="required-star">*</span></label>
+              <input id="firstPaymentDate" type="date" required />
+            </div>
+            <div class="field-row">
+              <label for="frequency">Frequency<span class="required-star">*</span></label>
+              <select id="frequency" required>
+                <option value="monthly" selected>Monthly</option>
+                <option value="fortnightly">Fortnightly</option>
+                <option value="weekly">Weekly</option>
+              </select>
+            </div>
+            <div class="field-row">
+              <label for="instalments">Instalments<span class="required-star">*</span></label>
+              <input id="instalments" type="number" min="1" max="60" value="6" required />
+            </div>
+            <div class="field-row">
+              <label for="maturityDate">Maturity Date</label>
+              <input id="maturityDate" type="date" readonly />
+            </div>
+            <div class="field-row">
+              <label for="instalmentAmount">Instalment Amount</label>
+              <div class="currency-field">
+                <span class="currency-prefix">J$</span>
+                <input id="instalmentAmount" class="money-input" type="text" inputmode="decimal" placeholder="Auto-calculated" />
+              </div>
+            </div>
+          </div>
+
+          <div class="field-panel summary-panel">
+            <h3>Calculated Totals</h3>
+            <div class="summary-box" id="totalsSummary">Enter the principal, charges and schedule to calculate the total repayable.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="banner"><img src="assets/loan-it-banner.png" alt="Loan It Financing Banner" /></div>
+
+        <div class="doc-title">Loan Agreement</div>
+
+        <div class="letter-body">
+          <p class="licence-line"><strong>Loan It Limited</strong> &ndash; Licensed Microcredit Institution under the Microcredit Act, 2021</p>
+          <p class="licence-line">License No: MCA-016-2025</p>
+          <p class="licence-line">Date of Agreement: <strong id="docAgreementDate">__________</strong></p>
+          <p class="lead-note">Loan It Limited is licensed and regulated by the Bank of Jamaica under the Microcredit Act, 2021. This agreement sets out the full terms of your loan. You are entitled to receive and review a copy before signing.</p>
+
+          <div class="section-title">Borrower Information</div>
+          <table class="account-table">
+            <tr><td>Name:</td><td id="docName">[Full Name]</td></tr>
+            <tr><td>Address:</td><td id="docAddress">[Address]</td></tr>
+            <tr><td>TRN:</td><td id="docTrn">[TRN]</td></tr>
+            <tr><td>Contact No:</td><td id="docContact">[Contact No]</td></tr>
+            <tr><td>Email:</td><td id="docEmail">[Email]</td></tr>
+          </table>
+
+          <div class="section-title">Loan Details</div>
+          <table class="account-table">
+            <tr><td>Principal Loan Amount</td><td id="docPrincipal">J$ __________</td></tr>
+            <tr><td>Processing Fee</td><td id="docProcessingFee">J$ __________</td></tr>
+            <tr><td>Daily Interest Rate</td><td id="docDailyRate">0.40%</td></tr>
+            <tr><td>Late Fee</td><td id="docLateFee">J$ __________</td></tr>
+            <tr><td>Maturity Date</td><td id="docMaturity">__________</td></tr>
+          </table>
+
+          <div class="section-title">Repayment Schedule</div>
+          <p class="lead-note">The repayment schedule in this agreement will remain in effect and enforceable unless the loan is repaid in full or otherwise discharged under applicable law. Any extension of time, adjustment of payments, or waiver of any term by the lender does not change the borrower&rsquo;s obligation to make payments according to this schedule unless agreed to in writing by both parties.</p>
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th style="width: 16%;">Instalment No.</th>
+                <th style="width: 26%;">Due Date</th>
+                <th style="width: 29%;">Amount Due</th>
+                <th style="width: 29%;">Balance After Payment</th>
+              </tr>
+            </thead>
+            <tbody id="scheduleBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="letter-body">
+          <ol class="clause-list">
+            <li>The borrower agrees to make each repayment in the amount and on the date specified in the Repayment Schedule. Payments must be made in full and in a manner verifiable by the lender, on or before the scheduled due date.</li>
+            <li><strong>Grace Period:</strong> The borrower is allowed a grace period of three (3) days after the scheduled due date to make payment without penalty.</li>
+            <li>If payment is not received in full by the end of the grace period:
+              <ul>
+                <li>The instalment will be considered overdue.</li>
+                <li>A late payment fee of J$2,000 per overdue instalment will be added to the outstanding loan balance.</li>
+                <li>Interest will continue to accrue daily on the outstanding balance at the rate stated in the Loan Details until payment is made in full.</li>
+              </ul>
+            </li>
+            <li>The borrower must not take any action intended to avoid or delay repayment, including but not limited to:
+              <ul>
+                <li>Removing or cancelling any standing order or automatic payment arrangement;</li>
+                <li>Changing the primary salary account used for repayment without providing at least seven (7) days&rsquo; prior written notice to the lender.</li>
+              </ul>
+            </li>
+            <li>Any such action that results in the loan becoming overdue will be treated as a breach of this agreement.</li>
+          </ol>
+
+          <div class="section-title">Borrower&rsquo;s Rights</div>
+          <p>You may repay the loan in full before the maturity date without penalty. You have the right to lodge a complaint with Loan It Limited at <span id="docComplaints">[complaints email/phone]</span>, and if unresolved, escalate to the Consumer Affairs Commission or BOJ.</p>
+
+          <div class="section-title">Default &amp; Recovery</div>
+          <p>If the borrower fails to make a scheduled payment on a loan already classified as non-performing, and such failure continues for more than thirty (30) consecutive days, the loan will be deemed in default. Upon default, the lender may, after giving written notice to the borrower, demand immediate payment of the total outstanding balance of the loan, including any accrued interest and late fees, in accordance with applicable laws and regulations.</p>
+          <p>If the borrower has not paid the total outstanding loan balance, including late fees, within thirty (30) days after default, a penalty of <strong>30%</strong> will be applied to the outstanding amount.</p>
+          <p>The lender may engage a licensed third-party debt collector or attorney to recover the debt. The borrower will be responsible for all costs of recovery, including legal fees, court costs, and collection expenses, as permitted by law.</p>
+
+          <div class="section-title">Data Privacy</div>
+          <p>Your personal data will be kept secure and only shared with third parties as required by law or for loan recovery purposes.</p>
+          <p>Any individual signing this agreement as a Guarantor agrees to be equally responsible along with the Borrower for this loan.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="page">
+      <div class="page-inner">
+        <div class="letter-body">
+          <div class="section-title">Seizure Clause</div>
+          <p>In the event of any breach of this loan agreement by the Borrower, the Lender shall have the absolute right, without further notice, to seize and take possession of any asset(s) owned by the Borrower that have a total value up to three times (3x) the outstanding amount of the loan, including applicable collector, bailiff, legal, and court fees. The Borrower expressly agrees that all reasonable expenses incurred by the Lender in the process of asset seizure&mdash;including, but not limited to, collector fees, bailiff fees, attorney fees, and court costs&mdash;shall be added to the amount recoverable. The Lender&rsquo;s rights under this clause are in addition to any other remedies available under law or this agreement.</p>
+
+          <div class="sig-grid">
+            <div class="sig-block">
+              <h4>Lender</h4>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
+              <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
+            </div>
+            <div class="sig-block">
+              <h4>Loan Officer</h4>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
+              <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
+            </div>
+            <div class="sig-block">
+              <h4>Borrower</h4>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
+              <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
+            </div>
+            <div class="sig-block">
+              <h4>Guarantor</h4>
+              <div class="sig-rule"></div><p class="sig-caption">Authorized Signature</p>
+              <div class="sig-rule"></div><p class="sig-caption">Print Name and Title</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </form>
+
+  <section class="page print-interrupt" aria-hidden="true">
+    <div class="pi-band">
+      <div class="pi-inner">
+        <div class="pi-frame">
+          <img class="pi-logo" src="assets/dox-logo-lockup.jpg" alt="DoxServices — Intelligent DNA" />
+          <p class="pi-note">This document is produced using the controls on the page.<br />Please use the <strong>Print / Save as PDF</strong> button on the form.</p>
+          <div class="pi-site">www.doxservices.com</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    const numberFormatter = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const principalEl = $('principal'), processingFeeEl = $('processingFee'), dailyRateEl = $('dailyRate'),
+          lateFeeEl = $('lateFee'), agreementDateEl = $('agreementDate'), firstPaymentDateEl = $('firstPaymentDate'),
+          frequencyEl = $('frequency'), instalmentsEl = $('instalments'), maturityDateEl = $('maturityDate'),
+          instalmentAmountEl = $('instalmentAmount'), trnEl = $('trn');
+
+    let instalmentOverridden = false;
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+    function parseDateInput(v) { if (!v) return null; const p = v.split('-').map(Number); return p.length === 3 ? new Date(p[0], p[1] - 1, p[2]) : null; }
+    function formatDate(d) { return (!d || isNaN(d)) ? '__________' : pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear(); }
+    function formatInputDate(d) { return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); }
+    function addDays(d, n) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+    function addMonths(d, n) {
+      const day = d.getDate();
+      const t = new Date(d.getFullYear(), d.getMonth() + n, 1);
+      t.setDate(Math.min(day, new Date(t.getFullYear(), t.getMonth() + 1, 0).getDate()));
+      return t;
+    }
+    function parseMoney(v) { return Number(String(v || '').replace(/[^0-9.-]/g, '')); }
+    function money(n) { return Number.isFinite(n) && n > 0 ? 'J$' + numberFormatter.format(n) : 'J$ __________'; }
+    function moneyEntry(n) { return Number.isFinite(n) && n > 0 ? numberFormatter.format(n) : ''; }
+    function esc(v) {
+      return String(v == null ? '' : v).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    }
+
+    // Same 9-digit TRN rule as the authorization forms.
+    function trnDigitCount(v) { return String(v || '').replace(/\D/g, '').length; }
+    function formatTrnInput(el) {
+      const d = String(el.value || '').replace(/\D/g, '').slice(0, 9);
+      el.value = d.length > 6 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6)
+               : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3) : d;
+      el.classList.toggle('invalid', el.value !== '' && trnDigitCount(el.value) !== 9);
+    }
+
+    function dueDate(start, i) {
+      const f = frequencyEl.value;
+      if (f === 'monthly') return addMonths(start, i);
+      if (f === 'fortnightly') return addDays(start, i * 14);
+      return addDays(start, i * 7);
+    }
+
+    // Interest accrues daily on the principal from the agreement date through
+    // to the final instalment, at the rate stated in the Loan Details. The
+    // instalment amount can be overridden if the loan is priced differently.
+    function totals() {
+      const principal = parseMoney(principalEl.value) || 0;
+      const fee = parseMoney(processingFeeEl.value) || 0;
+      const rate = Number(dailyRateEl.value) || 0;
+      const count = Math.max(1, Number(instalmentsEl.value) || 1);
+      const start = parseDateInput(firstPaymentDateEl.value);
+      const agreed = parseDateInput(agreementDateEl.value);
+      const last = start ? dueDate(start, count - 1) : null;
+      const days = (agreed && last) ? Math.max(0, Math.round((last - agreed) / 86400000)) : 0;
+      const interest = principal * (rate / 100) * days;
+      return { principal, fee, rate, count, start, last, days, interest, total: principal + fee + interest };
+    }
+
+    function updateContract() {
+      const t = totals();
+      if (t.last) maturityDateEl.value = formatInputDate(t.last);
+
+      const override = parseMoney(instalmentAmountEl.value);
+      const perInstalment = instalmentOverridden && override > 0
+        ? override
+        : (t.total > 0 ? Math.round((t.total / t.count) * 100) / 100 : 0);
+      if (!instalmentOverridden) instalmentAmountEl.value = moneyEntry(perInstalment);
+
+      $('totalsSummary').textContent = t.total > 0
+        ? 'Principal ' + money(t.principal) + ' plus processing fee ' + money(t.fee) + ' plus interest ' +
+          money(t.interest) + ' over ' + t.days + ' days at ' + t.rate + '% daily equals total repayable ' +
+          money(t.total) + ', payable in ' + t.count + ' ' + frequencyEl.value + ' instalment' +
+          (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '.'
+        : 'Enter the principal, charges and schedule to calculate the total repayable.';
+
+      const address = [$('addressLine1').value, $('addressLine2').value, $('town').value, $('parish').value]
+        .map(v => String(v || '').trim()).filter(Boolean).join(', ');
+      $('docAgreementDate').textContent = formatDate(parseDateInput(agreementDateEl.value));
+      $('docName').textContent = $('borrowerName').value || '[Full Name]';
+      $('docAddress').textContent = address || '[Address]';
+      $('docTrn').textContent = trnEl.value || '[TRN]';
+      $('docContact').textContent = $('contactNo').value || '[Contact No]';
+      $('docEmail').textContent = $('email').value || '[Email]';
+      $('docPrincipal').textContent = money(t.principal);
+      $('docProcessingFee').textContent = money(t.fee);
+      $('docDailyRate').textContent = (Number(dailyRateEl.value) || 0) + '%';
+      $('docLateFee').textContent = money(parseMoney(lateFeeEl.value));
+      $('docMaturity').textContent = formatDate(t.last);
+
+      let balance = t.total;
+      const rows = [];
+      for (let i = 0; i < t.count; i++) {
+        const isLast = i === t.count - 1;
+        const amount = isLast ? Math.max(0, Math.round(balance * 100) / 100) : perInstalment;
+        balance = Math.max(0, Math.round((balance - amount) * 100) / 100);
+        rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(formatDate(t.start ? dueDate(t.start, i) : null)) +
+          '</td><td>' + esc(money(amount)) + '</td><td>' + esc(balance === 0 ? 'J$0.00' : money(balance)) + '</td></tr>');
+      }
+      $('scheduleBody').innerHTML = rows.join('');
+    }
+
+    function requiredFieldLabel(field) {
+      const label = document.querySelector('label[for="' + field.id + '"]');
+      return label ? label.textContent.replace('*', '').trim() : field.id;
+    }
+    function isRequiredMissing(field) {
+      const value = String(field.value || '').trim();
+      if (field.id === 'trn') return trnDigitCount(value) !== 9;
+      return !value;
+    }
+    function validateRequiredFields() {
+      if (trnDigitCount(trnEl.value) !== 9) {
+        alert('TRN must be exactly 9 digits (for example 123-456-789).');
+        trnEl.classList.add('invalid');
+        trnEl.focus();
+        return false;
+      }
+      const missing = Array.from(document.querySelectorAll('[required]')).filter(isRequiredMissing);
+      if (missing.length) {
+        alert('Please complete the required fields before printing: ' + missing.map(requiredFieldLabel).join(', '));
+        missing[0].focus();
+        return false;
+      }
+      return true;
+    }
+
+    // Printing is locked to this button, as on the authorization forms.
+    function printIfValid() {
+      [principalEl, processingFeeEl, lateFeeEl].forEach(el => {
+        const n = parseMoney(el.value);
+        if (n > 0) el.value = moneyEntry(n);
+      });
+      updateContract();
+      if (!validateRequiredFields()) return;
+      document.body.classList.add('print-authorized');
+      window.print();
+      document.body.classList.remove('print-authorized');
+    }
+    window.addEventListener('afterprint', () => document.body.classList.remove('print-authorized'));
+    document.addEventListener('keydown', event => {
+      if ((event.ctrlKey || event.metaKey) && String(event.key).toLowerCase() === 'p') {
+        event.preventDefault();
+        event.stopPropagation();
+        printIfValid();
+      }
+    });
+
+    function setDefaultDates() {
+      const today = formatInputDate(new Date());
+      agreementDateEl.value = today;
+      firstPaymentDateEl.value = today;
+    }
+
+    function resetForm() {
+      document.getElementById('contractForm').reset();
+      instalmentOverridden = false;
+      dailyRateEl.value = '0.40';
+      instalmentsEl.value = '6';
+      frequencyEl.value = 'monthly';
+      setDefaultDates();
+      updateContract();
+    }
+
+    document.querySelectorAll('#contractForm input, #contractForm select').forEach(el => {
+      el.addEventListener('input', updateContract);
+      el.addEventListener('change', updateContract);
+    });
+    trnEl.addEventListener('input', () => formatTrnInput(trnEl));
+    instalmentAmountEl.addEventListener('input', () => {
+      instalmentOverridden = String(instalmentAmountEl.value || '').trim() !== '';
+    });
+
+    // Opening the contract from an application record prefills the borrower
+    // and the loan figures. The single-application endpoint is public (the
+    // status page already uses it), so no admin sign-in is needed here.
+    async function prefillFromApplication(id) {
+      try {
+        const res = await fetch(window.LOANIT_API_BASE + '/api/applications/' + encodeURIComponent(id));
+        if (!res.ok) return;
+        const app = await res.json();
+        const a = app.applicant || {};
+        const snap = app.promoSnapshot || {};
+        $('borrowerName').value = [a.firstName, a.lastName].filter(Boolean).join(' ');
+        if (a.trn) { trnEl.value = a.trn; formatTrnInput(trnEl); }
+        $('contactNo').value = a.phone || '';
+        $('email').value = a.email || '';
+        $('addressLine1').value = a.addressLine1 || '';
+        $('addressLine2').value = a.addressLine2 || '';
+        if (a.parish) $('parish').value = a.parish;
+        if (snap.principal) principalEl.value = moneyEntry(Number(snap.principal));
+        if (app.selectedTermMonths) instalmentsEl.value = app.selectedTermMonths;
+        updateContract();
+      } catch (e) { /* leave the blank contract in place */ }
+    }
+
+    setDefaultDates();
+    updateContract();
+    const appId = new URLSearchParams(location.search).get('application');
+    if (appId) prefillFromApplication(appId);
+  </script>
+</body>
+</html>
