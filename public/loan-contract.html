@@ -522,7 +522,11 @@
     .share-link-btn:hover { background: var(--blue-soft); }
     @media print { .share-link-btn { display: none !important; } }
 
-    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px 34px; margin-top: 22px; }
+    /* The row gap sets the space above the Borrower and Guarantor headings.
+       It needs to be clearly wider than the gap between a caption and the
+       line under it, so the second pair reads as its own pair rather than as
+       a continuation of the block above. */
+    .sig-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6in 34px; margin-top: 22px; }
     /* A signature block must not be split across a page break. */
     .sig-grid, .sig-block { page-break-inside: avoid; break-inside: avoid; }
     .sig-block h4 { margin: 0 0 2px; font-size: 12px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; color: var(--ink); }
