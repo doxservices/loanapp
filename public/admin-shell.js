@@ -10,6 +10,7 @@
     { href: 'applications-list.html', icon: 'fa-list-alt', label: 'Applications List' },
     { href: 'admin-standing-orders.html', icon: 'fa-file-invoice', label: 'Standing Orders' },
     { href: 'admin-salary-deductions.html', icon: 'fa-file-signature', label: 'Salary Deductions' },
+    { href: 'admin-contracts.html', icon: 'fa-file-contract', label: 'Loan Contracts' },
     { href: 'user-management.html', icon: 'fa-users', label: 'User Management' },
     { href: 'admin.html', icon: 'fa-cog', label: 'Settings' },
     { href: 'index.html', icon: 'fa-sign-out-alt', label: 'Logout' }

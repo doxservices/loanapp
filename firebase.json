@@ -10,6 +10,8 @@
       { "source": "/standing-orders/**", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/salary-deductions", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/salary-deductions/**", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "/contracts", "function": { "functionId": "api", "region": "us-central1" } },
+      { "source": "/contracts/**", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/applications", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/health", "function": { "functionId": "api", "region": "us-central1" } }
     ],

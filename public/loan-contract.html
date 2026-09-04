@@ -951,6 +951,7 @@
           '</td><td>' + esc(money(amount)) + '</td><td>' + esc(balance === 0 ? 'J$0.00' : money(balance)) + '</td></tr>');
       }
       $('scheduleBody').innerHTML = rows.join('');
+      scheduleAutosave();
     }
 
     function requiredFieldLabel(field) {
@@ -978,6 +979,69 @@
       return true;
     }
 
+    // ---- Recording, exactly as the two authorization forms do it ----
+    // One record per contract session: the draftId is the document id, so the
+    // silent autosaves and the final printed copy land on the same document
+    // rather than piling up duplicates.
+    const formDraftId = 'draft-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    let lastAutosavedSnapshot = '';
+    let autosaveTimer = null;
+
+    function collectFormData() {
+      const ids = ['principal', 'borrowerName', 'trn', 'contactNo', 'email',
+        'addressLine1', 'addressLine2', 'town', 'parish',
+        'agreementDate', 'processingFee', 'dailyRate', 'lateFee',
+        'firstPaymentDate', 'frequency', 'instalments', 'maturityDate', 'instalmentAmount'];
+      const data = {};
+      ids.forEach(id => { const el = $(id); if (el) data[id] = el.value; });
+
+      // What the contract actually works out to, so the admin table does not
+      // have to recompute it, plus which pricing model produced it.
+      const t = totals();
+      data.totalRepayable = t.total > 0 ? String(Math.round(t.total * 100) / 100) : '';
+      data.pricing = t.carried ? 'carried from source record' : 'contract daily interest';
+
+      // Where the contract was seeded from, so a saved contract can be traced
+      // back to the application or authorization form behind it.
+      data.seededFrom = (linkedRecord && linkedRecord.source) || '';
+      data.sourceReference = (linkedRecord && linkedRecord.reference) || '';
+      return data;
+    }
+
+    // Fire-and-forget: recording must never block or delay printing.
+    function saveContract(extra) {
+      try {
+        const data = collectFormData();
+        lastAutosavedSnapshot = JSON.stringify(data);
+        fetch(window.LOANIT_API_BASE + '/contracts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...data, ...extra, draftId: formDraftId }),
+          keepalive: true
+        }).catch(() => { lastAutosavedSnapshot = ''; });
+      } catch (e) { /* never surfaces to the user */ }
+    }
+
+    function formIsComplete() {
+      return !Array.from(document.querySelectorAll('[required]')).some(isRequiredMissing);
+    }
+
+    // Silent draft capture once every required field is filled. No UI feedback
+    // of any kind, and identical data is never sent twice.
+    function scheduleAutosave() {
+      clearTimeout(autosaveTimer);
+      autosaveTimer = setTimeout(() => {
+        try {
+          if (!formIsComplete()) return;
+          const data = collectFormData();
+          const snapshot = JSON.stringify(data);
+          if (snapshot === lastAutosavedSnapshot) return;
+          lastAutosavedSnapshot = snapshot;
+          saveContract({ autosaved: true });
+        } catch (e) { /* autosave must never surface to the user */ }
+      }, 1500);
+    }
+
     // Printing is locked to this button, as on the authorization forms.
     function printIfValid() {
       [principalEl, processingFeeEl, lateFeeEl].forEach(el => {
@@ -986,6 +1050,7 @@
       });
       updateContract();
       if (!validateRequiredFields()) return;
+      saveContract({});
       document.body.classList.add('print-authorized');
       window.print();
       document.body.classList.remove('print-authorized');
@@ -1028,16 +1093,17 @@
       instalmentOverridden = String(instalmentAmountEl.value || '').trim() !== '';
     });
 
-    // Touching any input of the interest calculation means the operator is
-    // pricing this loan on the contract's own terms, so the figure carried
-    // from the form stops standing in for the total.
-    [principalEl, processingFeeEl, dailyRateEl].forEach(el => {
-      el.addEventListener('input', () => {
-        if (carriedTotal === null) return;
-        carriedTotal = null;
-        carriedTotalSource = '';
-        updateContract();
-      });
+    // Changing the amount itself means the figure carried from the form no
+    // longer describes this loan, so pricing goes back to the contract's own
+    // model. Only the amount does this: the processing fee, late fee and
+    // daily rate are required disclosures that have to be filled on every
+    // contract, so clearing the carried total on those would mean it never
+    // survived to print.
+    principalEl.addEventListener('input', () => {
+      if (carriedTotal === null) return;
+      carriedTotal = null;
+      carriedTotalSource = '';
+      updateContract();
     });
 
     // The link carries ?c=<contract token>, issued with whichever record it

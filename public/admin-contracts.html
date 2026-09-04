@@ -5,7 +5,7 @@
   <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Salary Deductions (Admin)</title>
+  <title>Loan Contracts (Admin)</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <link rel="stylesheet" href="admin-theme.css">
   <link rel="stylesheet" href="record-actions.css">
@@ -18,23 +18,23 @@
     <div class="container wide">
       <div class="top-bar">
         <div>
-          <h1 class="page-title"><i class="fas fa-file-signature"></i> Salary Deduction Submissions</h1>
-          <p class="page-subtitle">Every completed salary deduction form, including silent autosaves (tagged <code>autosaved</code>). Stored in Firestore and visible to the doxservices admin account only.</p>
+          <h1 class="page-title"><i class="fas fa-file-contract"></i> Loan Contracts</h1>
+          <p class="page-subtitle">Every completed loan agreement, including silent autosaves (tagged <code>autosaved</code>). Stored in Firestore and visible to the doxservices admin account only.</p>
         </div>
         <div class="user-info">
           <a href="admin-standing-orders.html" class="nav-btn"><i class="fas fa-file-invoice"></i> Standing Orders</a>
-          <a href="admin-contracts.html" class="nav-btn"><i class="fas fa-file-contract"></i> Loan Contracts</a>
+          <a href="admin-salary-deductions.html" class="nav-btn"><i class="fas fa-file-signature"></i> Salary Deductions</a>
           <a href="admin.html" class="nav-btn"><i class="fas fa-compass"></i> Admin Navigation</a>
         </div>
       </div>
 
       <div class="card">
-        <div class="card-title"><i class="fas fa-table"></i> Submissions</div>
+        <div class="card-title"><i class="fas fa-table"></i> Contracts</div>
         <div class="bar">
           <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
           <label for="view-mode">View</label>
           <select id="view-mode">
-            <option value="latest">Latest per form session</option>
+            <option value="latest">Latest per contract session</option>
             <option value="all">Every saved version</option>
           </select>
           <label for="type-filter">Show</label>
@@ -44,15 +44,16 @@
             <option value="autosaved">Autosaved drafts only</option>
           </select>
           <span id="status" class="status"></span>
-          <a href="salary-deduction.html" class="nav-btn push-right"><i class="fas fa-external-link-alt"></i> Open the form</a>
+          <a href="loan-contract.html" class="nav-btn push-right"><i class="fas fa-external-link-alt"></i> Open the contract</a>
         </div>
         <div class="table-wrap">
           <table id="tbl">
             <thead><tr>
-              <th class="nowrap">Submitted</th><th>Type</th><th>Borrower</th><th>Employer</th>
-              <th class="nowrap">Loan Amount</th><th class="nowrap">Deduction</th><th class="nowrap">Term</th><th></th>
+              <th class="nowrap">Saved</th><th>Type</th><th>Borrower</th><th class="nowrap">TRN</th>
+              <th class="nowrap">Amount</th><th class="nowrap">Total Repayable</th>
+              <th class="nowrap">Term</th><th>Seeded from</th><th></th>
             </tr></thead>
-            <tbody><tr><td colspan="8" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
+            <tbody><tr><td colspan="9" class="muted" style="text-align:center; padding: 20px;">Loading…</td></tr></tbody>
           </table>
         </div>
       </div>
@@ -70,12 +71,27 @@
       if (typeof v === 'object' && v._seconds) return new Date(v._seconds * 1000).toLocaleString();
       try { return new Date(v).toLocaleString(); } catch { return String(v); }
     };
+    const money = v => {
+      const n = Number(String(v ?? '').replace(/[^0-9.-]/g, ''));
+      return Number.isFinite(n) && n > 0 ? 'J$' + n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
+    };
+    // A contract typed from scratch has no source record behind it.
+    const SOURCE_LABELS = {
+      application: 'Loan application',
+      standingOrder: 'Standing order',
+      salaryDeduction: 'Salary deduction'
+    };
+    const sourceOf = r => {
+      const label = SOURCE_LABELS[r.seededFrom];
+      if (!label) return '<span class="muted">Entered by hand</span>';
+      return esc(label) + (r.sourceReference ? ' <span class="muted">' + esc(r.sourceReference) + '</span>' : '');
+    };
 
     let rows = [];
 
-    // Rows arrive newest first, so keeping the first row per form session
-    // shows the current state of each submission and hides the older
-    // autosaved versions of the same form.
+    // Rows arrive newest first, so keeping the first row per contract session
+    // shows the current state of each contract and hides its earlier
+    // autosaved versions.
     function latestPerSession(list) {
       const seen = new Set();
       return list.filter(r => {
@@ -96,7 +112,7 @@
       if (mode === 'latest') shown = latestPerSession(shown);
       tbody.innerHTML = '';
       if (!shown.length) {
-        tbody.innerHTML = '<tr><td colspan="8" class="muted" style="text-align:center; padding: 20px;">No submissions match this filter.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="muted" style="text-align:center; padding: 20px;">No contracts match this filter.</td></tr>';
       }
       for (const r of shown) {
         const tr = document.createElement('tr');
@@ -104,24 +120,25 @@
           <td class="nowrap">${esc(fmtWhen(r.submittedAt))}</td>
           <td>${r.autosaved ? '<span class="pill" style="margin:0;">autosaved</span>' : 'printed'}</td>
           <td>${esc(r.borrowerName)}</td>
-          <td>${esc(r.employer)}</td>
-          <td class="nowrap">${esc(r.loanAmount)}</td>
-          <td class="nowrap">${esc(r.deductionAmount)}</td>
-          <td class="nowrap">${esc(r.totalMonths)} mo</td>
+          <td class="nowrap mono">${esc(r.trn)}</td>
+          <td class="nowrap">${money(r.principal)}</td>
+          <td class="nowrap">${money(r.totalRepayable)}</td>
+          <td class="nowrap">${esc(r.instalments)} ${esc(r.frequency || '')}</td>
+          <td>${sourceOf(r)}</td>
           <td class="actions-cell"><button type="button" class="row-menu-btn" data-id="${esc(r.id)}" aria-label="Record actions"><i class="fas fa-ellipsis-vertical"></i></button></td>`;
         tbody.appendChild(tr);
       }
       const printed = rows.filter(r => r.autosaved !== true).length;
       const sessions = latestPerSession(rows).length;
       document.getElementById('status').textContent =
-        `${shown.length} shown · ${sessions} form session(s) · ${rows.length} saved version(s) (${printed} printed, ${rows.length - printed} autosaved)`;
+        `${shown.length} shown · ${sessions} contract session(s) · ${rows.length} saved version(s) (${printed} printed, ${rows.length - printed} autosaved)`;
     }
 
     async function load() {
       const status = document.getElementById('status');
       status.textContent = 'Loading…';
       try {
-        const res = await window.adminAuth.fetch('/salary-deductions');
+        const res = await window.adminAuth.fetch('/contracts');
         const json = await res.json();
         if (!json.ok) { status.textContent = 'Error: ' + (json.error || res.status); return; }
         rows = json.rows;
@@ -129,16 +146,43 @@
       } catch (e) { status.textContent = 'Request failed'; }
     }
 
-    // One delegated handler, so rows re-render freely.
+    // One delegated handler, so rows re-render freely. A saved contract has no
+    // edit-in-form route yet, so the menu is the details view plus the id.
     document.querySelector('#tbl tbody').addEventListener('click', (e) => {
       const btn = e.target.closest('.row-menu-btn');
       if (!btn) return;
       e.stopPropagation();
       const record = rows.find(r => r.id === btn.dataset.id);
-      if (record) window.RecordActions.menu(btn, record, {
-        formHref: r => 'salary-deduction.html?record=' + encodeURIComponent(r.id)
+      if (!record) return;
+      window.RecordActions.menu(btn, record, {
+        items: [
+          { label: 'View full contract record', icon: 'fa-list-ul', onClick: () => window.RecordActions.details(record, {
+              groups: GROUPS, labels: LABELS,
+              titleOf: r => r.borrowerName || 'Contract',
+              subtitleOf: r => (r.autosaved ? 'Autosaved draft' : 'Printed contract') + ' · ' + fmtWhen(r.submittedAt)
+            }) },
+          { label: 'Copy record id', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(record.id) }
+        ]
       });
     });
+
+    const GROUPS = [
+      { title: 'Borrower', keys: ['borrowerName', 'trn', 'contactNo', 'email'] },
+      { title: 'Address', keys: ['addressLine1', 'addressLine2', 'town', 'parish'] },
+      { title: 'Loan', keys: ['principal', 'processingFee', 'dailyRate', 'lateFee', 'totalRepayable', 'pricing'] },
+      { title: 'Schedule', keys: ['agreementDate', 'firstPaymentDate', 'frequency', 'instalments', 'instalmentAmount', 'maturityDate'] },
+      { title: 'Record', keys: ['seededFrom', 'sourceReference', 'draftId', 'submittedAt', 'updatedAt'] }
+    ];
+    const LABELS = {
+      borrowerName: 'Full name', trn: 'TRN', contactNo: 'Contact no.', email: 'Email',
+      addressLine1: 'Address line 1', addressLine2: 'Address line 2', town: 'Town / city', parish: 'Parish',
+      principal: 'Principal loan amount', processingFee: 'Processing fee', dailyRate: 'Daily interest (%)',
+      lateFee: 'Late fee', totalRepayable: 'Total repayable', pricing: 'Priced by',
+      agreementDate: 'Agreement date', firstPaymentDate: 'First payment date', frequency: 'Frequency',
+      instalments: 'Instalments', instalmentAmount: 'Instalment amount', maturityDate: 'Maturity date',
+      seededFrom: 'Seeded from', sourceReference: 'Source reference', draftId: 'Contract session',
+      submittedAt: 'First saved', updatedAt: 'Last saved'
+    };
 
     document.getElementById('refresh').addEventListener('click', load);
     document.getElementById('type-filter').addEventListener('change', render);

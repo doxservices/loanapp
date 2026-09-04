@@ -121,8 +121,13 @@ async function dropSupersededAutosaves(collection, keepId, printedRec) {
   return doomed.length;
 }
 
-function formRoutes(path, collection, logLabel) {
-  const trnRequired = collection === 'salaryDeductions';
+// opts.trnRequired  — reject a blank TRN (the standing order's older client
+//                     still deployed on doxservices.com has no TRN field).
+// opts.seedsContract — mint a contract token, for records a contract can be
+//                     prefilled from. A saved contract is the end product and
+//                     seeds nothing, so it gets no token.
+function formRoutes(path, collection, logLabel, opts) {
+  const { trnRequired = true, seedsContract = false } = opts || {};
 
   app.post(path, async (req, res) => {
     try {
@@ -134,7 +139,9 @@ function formRoutes(path, collection, logLabel) {
 
       if (!draftId) {
         const ref = await db.collection(collection).add({
-          submittedAt: FieldValue.serverTimestamp(), contractToken: newContractToken(), ...body
+          submittedAt: FieldValue.serverTimestamp(),
+          ...(seedsContract ? { contractToken: newContractToken() } : {}),
+          ...body
         });
         return res.json({ ok: true, id: ref.id, created: true });
       }
@@ -144,7 +151,9 @@ function formRoutes(path, collection, logLabel) {
       const rec = { ...body, updatedAt: FieldValue.serverTimestamp() };
       // Issued once, on the first write of a session, so a link already handed
       // out keeps working as the form is autosaved and finally printed.
-      if (!existing.exists || !existing.data().contractToken) rec.contractToken = newContractToken();
+      if (seedsContract && (!existing.exists || !existing.data().contractToken)) {
+        rec.contractToken = newContractToken();
+      }
       if (!existing.exists) rec.submittedAt = FieldValue.serverTimestamp();
       await ref.set(rec, { merge: true });
 
@@ -207,8 +216,9 @@ function formRoutes(path, collection, logLabel) {
   });
 }
 
-formRoutes('/standing-orders', 'standingOrders', 'standing-orders');
-formRoutes('/salary-deductions', 'salaryDeductions', 'salary-deductions');
+formRoutes('/standing-orders', 'standingOrders', 'standing-orders', { trnRequired: false, seedsContract: true });
+formRoutes('/salary-deductions', 'salaryDeductions', 'salary-deductions', { trnRequired: true, seedsContract: true });
+formRoutes('/contracts', 'contracts', 'contracts', { trnRequired: true, seedsContract: false });
 
 // =========================================================================
 // Legacy flat applications listing (Firestore: applications) — feeds
