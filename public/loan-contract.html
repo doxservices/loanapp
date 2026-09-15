@@ -893,11 +893,13 @@
       const days = (agreed && last) ? Math.max(0, Math.round((last - agreed) / 86400000)) : 0;
       const interest = principal * (rate / 100) * days;
       const carried = carriedTotal > 0;
+      // The processing fee is disclosed in the Loan Details but is not part of
+      // the total repayable, so it never feeds the schedule either.
       return {
         principal, fee, rate, count, start, last, carried,
         days: carried ? 0 : days,
         interest: carried ? 0 : interest,
-        total: carried ? carriedTotal : principal + fee + interest
+        total: carried ? carriedTotal : principal + interest
       };
     }
 
@@ -911,6 +913,10 @@
         : (t.total > 0 ? Math.round((t.total / t.count) * 100) / 100 : 0);
       if (!instalmentOverridden) instalmentAmountEl.value = moneyEntry(perInstalment);
 
+      const feeNote = t.fee > 0
+        ? ' The processing fee of ' + money(t.fee) + ' is not included in this total.'
+        : '';
+
       // The carried figure is stated as what it is, rather than being folded
       // into the interest sentence as though the two had been reconciled.
       $('totalsSummary').textContent = t.total <= 0
@@ -920,11 +926,11 @@
             ', payable in ' + t.count + ' ' + frequencyEl.value + ' instalment' +
             (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '. ' +
             'The daily interest in the Loan Details has not been applied to this figure — set the charges to ' +
-            'match the loan before printing.'
-          : 'Principal ' + money(t.principal) + ' plus processing fee ' + money(t.fee) + ' plus interest ' +
+            'match the loan before printing.' + feeNote
+          : 'Principal ' + money(t.principal) + ' plus interest ' +
             money(t.interest) + ' over ' + t.days + ' days at ' + t.rate + '% daily equals total repayable ' +
             money(t.total) + ', payable in ' + t.count + ' ' + frequencyEl.value + ' instalment' +
-            (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '.';
+            (t.count === 1 ? '' : 's') + ' of ' + money(perInstalment) + '.' + feeNote;
 
       const address = [$('addressLine1').value, $('addressLine2').value, $('town').value, $('parish').value]
         .map(v => String(v || '').trim()).filter(Boolean).join(', ');
