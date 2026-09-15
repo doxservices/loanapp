@@ -18,7 +18,7 @@
     contractDate: 'Contract date', startDate: 'First payment date',
     repaymentPeriod: 'Repayment period',
     termYears: 'Term (years)', termMonths: 'Term (months)', totalMonths: 'Total months',
-    submittedAt: 'First submitted', updatedAt: 'Last updated',
+    printedAt: 'Printed', submittedAt: 'First submitted', updatedAt: 'Last updated',
     draftId: 'Form session', id: 'Record id'
   };
 
@@ -28,7 +28,7 @@
     { title: 'Account to be debited', keys: ['borrowerBank', 'borrowerBranch', 'borrowerAccountName', 'borrowerAccountNo'] },
     { title: 'Bank address', keys: ['bankAddressee', 'bankAddress1', 'bankAddress2', 'bankTown', 'bankParish', 'bankCountry'] },
     { title: 'Loan', keys: ['loanAmount', 'deductionAmount', 'paymentAmount', 'payFrequency', 'repaymentFrequency', 'contractDate', 'startDate', 'repaymentPeriod', 'termYears', 'termMonths', 'totalMonths'] },
-    { title: 'Record', keys: ['submittedAt', 'updatedAt', 'draftId', 'id'] }
+    { title: 'Record', keys: ['printedAt', 'submittedAt', 'updatedAt', 'draftId', 'id'] }
   ];
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);

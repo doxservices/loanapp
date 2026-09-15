@@ -79,7 +79,8 @@
     function latestPerSession(list) {
       const seen = new Set();
       return list.filter(r => {
-        const key = r.draftId || r.id;
+        // Every printed record stands on its own; only drafts collapse.
+        const key = r.autosaved === true ? (r.draftId || r.id) : r.id;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;

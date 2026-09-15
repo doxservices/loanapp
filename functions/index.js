@@ -69,12 +69,14 @@ async function requireGoogleAuth(req, res, next) {
 app.get('/auth/verify', requireGoogleAuth, (req, res) => res.json({ ok: true, email: req.adminEmail }));
 
 // =========================================================================
-// Authorization form submissions (standingOrders / salaryDeductions).
+// Form submissions (standingOrders / salaryDeductions / contracts).
 //
-// One record per form session: the page sends a draftId that is used as the
-// document id, so a session's autosaves and its final printed submission all
-// land on the SAME document instead of piling up duplicates. submittedAt is
-// kept from the first write; later writes only move updatedAt.
+// A form session autosaves to one draft document — the page sends a draftId
+// that is used as its id — so repeated autosaves update it rather than piling
+// up. Every print is written as its own record and replaces its session's
+// draft, so no print is ever overwritten. Across sessions, a record that
+// repeats another's information is collapsed: printed records always stay,
+// only the latest of identical autosaves does.
 // =========================================================================
 // A Jamaican TRN is exactly 9 digits. Records that fail this are rejected so
 // invalid submissions never reach the collections. The standing order form
@@ -87,39 +89,65 @@ function trnProblem(trn, required) {
   return digits.length === 9 ? null : 'TRN must be exactly 9 digits';
 }
 
-// Fields that describe the record rather than the form's content — two
-// records are "the same information" when everything except these matches.
-const META_KEYS = new Set(['autosaved', 'submittedAt', 'updatedAt', 'draftId', 'editedByAdmin']);
+// Fields that say when, or in which session, a record was saved rather than
+// what it says. Two records hold "the same information" when everything else
+// matches. contractToken has to be here: it is a random key unique to every
+// record, and while it counted as content no two records could ever match.
+// scripts/dedupe-form-records.js carries a copy of this rule — keep them equal.
+const META_KEYS = new Set(['autosaved', 'submittedAt', 'updatedAt', 'printedAt', 'draftId', 'editedByAdmin', 'contractToken']);
 
 function contentSignature(rec) {
   return JSON.stringify(
     Object.keys(rec)
       .filter(k => !META_KEYS.has(k))
+      // An absent field and an empty one say the same thing, so a form that
+      // gains a field still matches the records saved before it existed.
+      .filter(k => rec[k] != null && String(rec[k]) !== '')
       .sort()
-      .map(k => [k, String(rec[k] == null ? '' : rec[k])])
+      .map(k => [k, String(rec[k])])
   );
 }
 
-// A printed form supersedes any autosaved draft holding the same
-// information, so only the printed copy is kept.
-async function dropSupersededAutosaves(collection, keepId, printedRec) {
-  const target = contentSignature(printedRec);
-  const trn = printedRec.trn;
-  const query = trn ? db.collection(collection).where('trn', '==', trn) : db.collection(collection);
+// Keeps one copy of any given information without ever touching a printed
+// record. A printed record supersedes every autosave that says the same thing,
+// and among autosaves that say the same thing only the latest stays. `rec` is
+// the record just written, as stored, under `savedId`.
+async function dropDuplicateAutosaves(collection, savedId, rec) {
+  const target = contentSignature(rec);
+  const query = rec.trn ? db.collection(collection).where('trn', '==', rec.trn) : db.collection(collection);
   const snap = await query.get();
+  const same = snap.docs.filter(d => d.id !== savedId && contentSignature(d.data()) === target);
 
-  const doomed = snap.docs.filter(d =>
-    d.id !== keepId &&
-    d.data().autosaved === true &&          // never remove another printed form
-    contentSignature(d.data()) === target   // only identical information
-  );
+  // Other matching autosaves go whichever kind was just written: an autosave
+  // is newer than all of them, and a print supersedes them.
+  const doomed = same.filter(d => d.data().autosaved === true).map(d => d.ref);
+  // An autosave that repeats a printed record adds nothing, so it goes too.
+  if (rec.autosaved === true && same.some(d => d.data().autosaved !== true)) {
+    doomed.push(db.collection(collection).doc(savedId));
+  }
   if (!doomed.length) return 0;
 
   const batch = db.batch();
-  doomed.forEach(d => batch.delete(d.ref));
+  doomed.forEach(ref => batch.delete(ref));
   await batch.commit();
   return doomed.length;
 }
+
+// Where a session's autosave lives: the session id itself, unless the older
+// save flow left a printed record there, which an autosave must not overwrite.
+async function sessionDraft(col, draftId) {
+  const ref = col.doc(draftId);
+  const snap = await ref.get();
+  if (snap.exists && snap.data().autosaved !== true) {
+    const alt = col.doc(draftId + '-draft');
+    return { ref: alt, snap: await alt.get() };
+  }
+  return { ref, snap };
+}
+
+// Fields only the server sets. Taking them from the request would let a
+// caller pick a record's contract token or pass a draft off as printed.
+const SERVER_KEYS = ['autosaved', 'draftId', 'printedAt', 'submittedAt', 'updatedAt', 'contractToken', 'editedByAdmin'];
 
 // opts.trnRequired  — reject a blank TRN (the standing order's older client
 //                     still deployed on doxservices.com has no TRN field).
@@ -136,36 +164,57 @@ function formRoutes(path, collection, logLabel, opts) {
       if (bad) return res.status(400).json({ ok: false, error: bad });
       const draftId = typeof body.draftId === 'string' && /^[A-Za-z0-9_-]{6,80}$/.test(body.draftId)
         ? body.draftId : null;
+      const printed = body.autosaved !== true;
+      SERVER_KEYS.forEach(k => delete body[k]);
 
-      if (!draftId) {
-        const ref = await db.collection(collection).add({
-          submittedAt: FieldValue.serverTimestamp(),
-          ...(seedsContract ? { contractToken: newContractToken() } : {}),
-          ...body
-        });
-        return res.json({ ok: true, id: ref.id, created: true });
-      }
+      const col = db.collection(collection);
+      const now = FieldValue.serverTimestamp();
+      let ref;
 
-      const ref = db.collection(collection).doc(draftId);
-      const existing = await ref.get();
-      const rec = { ...body, updatedAt: FieldValue.serverTimestamp() };
-      // Issued once, on the first write of a session, so a link already handed
-      // out keeps working as the form is autosaved and finally printed.
-      if (seedsContract && (!existing.exists || !existing.data().contractToken)) {
-        rec.contractToken = newContractToken();
-      }
-      if (!existing.exists) rec.submittedAt = FieldValue.serverTimestamp();
-      await ref.set(rec, { merge: true });
-
-      let superseded = 0;
-      if (!body.autosaved) {
-        try {
-          superseded = await dropSupersededAutosaves(collection, ref.id, { ...existing.data(), ...body });
-        } catch (e) {
-          console.error('[' + logLabel + '] supersede cleanup failed:', e.message);
+      if (printed) {
+        // Every print is its own record. Prints used to be merged into the
+        // session's autosave document, which left them tagged autosaved and let
+        // a later autosave, or a second print, overwrite them.
+        ref = col.doc();
+        const draft = draftId ? await sessionDraft(col, draftId) : null;
+        const openDraft = draft && draft.snap.exists && draft.snap.data().autosaved === true ? draft : null;
+        const rec = { ...body, autosaved: false, printedAt: now, submittedAt: now, updatedAt: now };
+        if (draftId) rec.draftId = draftId;
+        if (seedsContract) {
+          // Take over the session draft's token as that draft is replaced, so a
+          // contract link already copied from it keeps working.
+          rec.contractToken = (openDraft && openDraft.snap.data().contractToken) || newContractToken();
         }
+        const batch = db.batch();
+        batch.set(ref, rec);
+        // The print is the finished state of its own session, so that session's
+        // draft goes even if a money field was reformatted on the way to the
+        // printer and the two no longer match exactly.
+        if (openDraft) batch.delete(openDraft.ref);
+        await batch.commit();
+      } else {
+        const draft = draftId ? await sessionDraft(col, draftId) : { ref: col.doc(), snap: null };
+        ref = draft.ref;
+        const exists = !!(draft.snap && draft.snap.exists);
+        const rec = { ...body, autosaved: true, updatedAt: now };
+        if (draftId) rec.draftId = draftId;
+        if (!exists) rec.submittedAt = now;
+        // Issued once, on the first write of a session, so a link already
+        // handed out keeps working while the form goes on autosaving.
+        if (seedsContract && (!exists || !draft.snap.data().contractToken)) {
+          rec.contractToken = newContractToken();
+        }
+        await ref.set(rec, { merge: true });
       }
-      res.json({ ok: true, id: ref.id, created: !existing.exists, superseded });
+
+      let removed = 0;
+      try {
+        const saved = await ref.get();
+        if (saved.exists) removed = await dropDuplicateAutosaves(collection, ref.id, saved.data());
+      } catch (e) {
+        console.error('[' + logLabel + '] duplicate cleanup failed:', e.message);
+      }
+      res.json({ ok: true, id: ref.id, printed, removed });
     } catch (e) {
       console.error('[' + logLabel + '] write error:', e.message);
       res.status(500).json({ ok: false, error: 'Failed to save record' });

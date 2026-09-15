@@ -95,7 +95,8 @@
     function latestPerSession(list) {
       const seen = new Set();
       return list.filter(r => {
-        const key = r.draftId || r.id;
+        // Every printed record stands on its own; only drafts collapse.
+        const key = r.autosaved === true ? (r.draftId || r.id) : r.id;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
@@ -171,7 +172,7 @@
       { title: 'Address', keys: ['addressLine1', 'addressLine2', 'town', 'parish'] },
       { title: 'Loan', keys: ['principal', 'processingFee', 'dailyRate', 'lateFee', 'totalRepayable', 'pricing'] },
       { title: 'Schedule', keys: ['agreementDate', 'firstPaymentDate', 'frequency', 'instalments', 'instalmentAmount', 'maturityDate'] },
-      { title: 'Record', keys: ['seededFrom', 'sourceReference', 'draftId', 'submittedAt', 'updatedAt'] }
+      { title: 'Record', keys: ['seededFrom', 'sourceReference', 'draftId', 'printedAt', 'submittedAt', 'updatedAt'] }
     ];
     const LABELS = {
       borrowerName: 'Full name', trn: 'TRN', contactNo: 'Contact no.', email: 'Email',
@@ -181,7 +182,7 @@
       agreementDate: 'Agreement date', firstPaymentDate: 'First payment date', frequency: 'Frequency',
       instalments: 'Instalments', instalmentAmount: 'Instalment amount', maturityDate: 'Maturity date',
       seededFrom: 'Seeded from', sourceReference: 'Source reference', draftId: 'Contract session',
-      submittedAt: 'First saved', updatedAt: 'Last saved'
+      printedAt: 'Printed', submittedAt: 'First saved', updatedAt: 'Last saved'
     };
 
     document.getElementById('refresh').addEventListener('click', load);
