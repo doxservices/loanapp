@@ -878,6 +878,7 @@
     // kept apart rather than reconciled, which is a separate question.
     let carriedTotal = null;
     let carriedTotalSource = '';
+    let carriedSchedule = null;
 
     // Interest accrues daily on the principal from the agreement date through
     // to the final instalment, at the rate stated in the Loan Details. The
@@ -947,14 +948,24 @@
       $('docMaturity').textContent = formatDate(t.last);
 
 
-      let balance = t.total;
+      // A contract opened from a standing order or salary deduction prints
+      // that record's own schedule, exactly as the form worked it out. Editing
+      // any of the fields it describes drops back to the contract's own maths.
       const rows = [];
-      for (let i = 0; i < t.count; i++) {
-        const isLast = i === t.count - 1;
-        const amount = isLast ? Math.max(0, Math.round(balance * 100) / 100) : perInstalment;
-        balance = Math.max(0, Math.round((balance - amount) * 100) / 100);
-        rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(formatDate(t.start ? dueDate(t.start, i) : null)) +
-          '</td><td>' + esc(money(amount)) + '</td><td>' + esc(balance === 0 ? 'J$0.00' : money(balance)) + '</td></tr>');
+      if (carriedSchedule) {
+        carriedSchedule.forEach(r => {
+          rows.push('<tr><td>' + esc(r.n) + '</td><td>' + esc(r.date) +
+            '</td><td>' + esc(r.amount) + '</td><td>' + esc(r.balance) + '</td></tr>');
+        });
+      } else {
+        let balance = t.total;
+        for (let i = 0; i < t.count; i++) {
+          const isLast = i === t.count - 1;
+          const amount = isLast ? Math.max(0, Math.round(balance * 100) / 100) : perInstalment;
+          balance = Math.max(0, Math.round((balance - amount) * 100) / 100);
+          rows.push('<tr><td>' + (i + 1) + '</td><td>' + esc(formatDate(t.start ? dueDate(t.start, i) : null)) +
+            '</td><td>' + esc(money(amount)) + '</td><td>' + esc(balance === 0 ? 'J$0.00' : money(balance)) + '</td></tr>');
+        }
       }
       $('scheduleBody').innerHTML = rows.join('');
       scheduleAutosave();
@@ -1081,6 +1092,7 @@
       instalmentOverridden = false;
       carriedTotal = null;
       carriedTotalSource = '';
+      carriedSchedule = null;
       linkedRecord = null;
       $('linkedNote').style.display = 'none';
       dailyRateEl.value = '0.40';
@@ -1110,6 +1122,18 @@
       carriedTotal = null;
       carriedTotalSource = '';
       updateContract();
+    });
+
+    // The carried schedule describes these fields; once one of them is edited
+    // it no longer does, so the contract goes back to working its own out.
+    function dropCarriedSchedule() {
+      if (!carriedSchedule) return;
+      carriedSchedule = null;
+      updateContract();
+    }
+    [principalEl, instalmentsEl, frequencyEl, firstPaymentDateEl, instalmentAmountEl].forEach(el => {
+      el.addEventListener('input', dropCarriedSchedule);
+      el.addEventListener('change', dropCarriedSchedule);
     });
 
     // The link carries ?c=<contract token>, issued with whichever record it
@@ -1175,6 +1199,7 @@
         carriedTotal = principal;
         carriedTotalSource = (rec.sourceLabel || 'linked record').toLowerCase();
       }
+      if (Array.isArray(loan.schedule) && loan.schedule.length) carriedSchedule = loan.schedule;
 
       linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '' };
 

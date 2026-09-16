@@ -74,7 +74,7 @@
       { label: 'View full details', icon: 'fa-list-ul', onClick: () => details(record, opts) },
       { label: 'Open in form', icon: 'fa-pen-to-square', href: opts.formHref(record), system: true },
       ...(contractUrl ? [
-        { label: 'Open prefilled contract', icon: 'fa-file-contract', href: contractUrl, system: true },
+        { label: 'Open prefilled contract', icon: 'fa-file-contract', href: contractUrl },
         { label: 'Copy contract link', icon: 'fa-link', system: true, onClick: () => navigator.clipboard && navigator.clipboard.writeText(contractUrl) }
       ] : []),
       { label: 'Copy record id', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(record.id) }

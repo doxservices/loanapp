@@ -1233,6 +1233,11 @@
       const data = {};
       ids.forEach(id => { const el = document.getElementById(id); if (el) data[id] = el.value; });
       data.repaymentPeriod = repaymentPeriodText();
+      // The schedule this form worked out, stored as JSON so a contract can
+      // print the very same one instead of deriving a second one from the
+      // same figures. A string, so it compares as content like any other field.
+      data.schedule = JSON.stringify(buildRows().map(r =>
+        ({ n: r.number, date: r.date, amount: r.amount, balance: r.balance })));
       return data;
     }
 

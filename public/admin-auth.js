@@ -62,7 +62,11 @@ function renderGate() {
 // 'business' gets a read-only view of the three form collections. The server
 // enforces this; what follows only keeps the UI from offering an account
 // actions it cannot take, and from stranding it on a page it cannot read.
-const BUSINESS_PAGES = new Set(['admin-contracts.html', 'admin-standing-orders.html', 'admin-salary-deductions.html']);
+// loan-contract.html is here so the view-only account can open a contract
+// prefilled from a stored record and print it. It is a public page and does
+// not load this script; it is listed so its links survive the pruning below.
+const BUSINESS_PAGES = new Set(['admin-contracts.html', 'admin-standing-orders.html',
+  'admin-salary-deductions.html', 'loan-contract.html']);
 const BUSINESS_HOME = 'admin-contracts.html';
 let currentRole = null;
 let pruneQueued = false;

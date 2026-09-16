@@ -633,6 +633,24 @@ function contractFromApplication(d) {
 // Both authorization forms carry the borrower, the principal and the
 // repayment plan under slightly different field names.
 function contractFromForm(d, source) {
+  // The form worked out its own repayment schedule, so the contract prints
+  // that rather than deriving a second one from the same figures — which for
+  // a fortnightly plan would not even have the same number of rows, since the
+  // form schedules 26 payments a year against the contract's 12 months.
+  // Anything unparseable just falls back to the contract's own maths.
+  let schedule = [];
+  try {
+    const parsed = JSON.parse(d.schedule || '[]');
+    if (Array.isArray(parsed)) {
+      schedule = parsed.slice(0, 500).map((r, i) => ({
+        n: Number(r.n) || i + 1,
+        date: String(r.date || ''),
+        amount: String(r.amount || ''),
+        balance: String(r.balance || '')
+      }));
+    }
+  } catch (e) { /* fall back to the contract's own schedule */ }
+
   return {
     reference: '',
     product: '',
@@ -643,8 +661,9 @@ function contractFromForm(d, source) {
       addressLine1: '', addressLine2: '', town: '', parish: ''
     },
     loan: {
+      schedule,
       principal: d.loanAmount ?? null,
-      instalments: d.totalMonths ?? null,
+      instalments: schedule.length || (d.totalMonths ?? null),
       frequency: asFrequency(source === 'standingOrder' ? d.repaymentFrequency : d.payFrequency),
       firstPaymentDate: d.startDate || '',
       agreementDate: d.contractDate || '',
