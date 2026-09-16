@@ -31,7 +31,7 @@ function renderGate() {
         <img src="assets/logo.png" alt="Loan It Financing" style="width:100%;height:100%;object-fit:contain;" />
       </div>
       <h2 style="margin:0 0 8px;font-size:22px;font-weight:600;">Admin sign-in</h2>
-      <p style="margin:0 0 20px;color:rgba(239,245,255,.92);font-size:14px;line-height:1.55;">Sign in with the doxservices Google account to continue to the admin area.</p>
+      <p style="margin:0 0 20px;color:rgba(239,245,255,.92);font-size:14px;line-height:1.55;">Sign in with an authorized Google account to continue to the admin area.</p>
       <button id="admin-auth-signin" type="button" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;border-radius:12px;color:#172033;border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,#f1c75a,#dfa938);box-shadow:0 8px 18px rgba(96,65,8,.18);">
         <svg width="18" height="18" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.5l6.7-6.7C35.6 2.6 30.2 0 24 0 14.6 0 6.6 5.4 2.7 13.2l7.8 6.1C12.4 13.4 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8C43.8 38 46.5 31.8 46.5 24.5z"/><path fill="#FBBC05" d="M10.5 28.7c-.5-1.5-.8-3-.8-4.7s.3-3.2.8-4.7l-7.8-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.8l7.8-6.1z"/><path fill="#34A853" d="M24 48c6.2 0 11.6-2 15.4-5.6l-7.5-5.8c-2.1 1.4-4.8 2.3-7.9 2.3-6.3 0-11.6-3.9-13.5-9.3l-7.8 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
         Sign in with Google
@@ -48,7 +48,7 @@ function renderGate() {
       const idToken = await result.user.getIdToken();
       const res = await fetch(API_BASE + '/auth/verify', { headers: { Authorization: 'Bearer ' + idToken } });
       const json = await res.json();
-      if (json.ok) { overlay.remove(); onReady(); return; }
+      if (json.ok) { applyRole(json.role); overlay.remove(); onReady(); return; }
       msg.textContent = json.error || 'Sign-in failed.';
       await signOut(auth);
     } catch (err) {
@@ -56,6 +56,58 @@ function renderGate() {
     }
   });
   return overlay;
+}
+
+// Two admin roles, matching functions/index.js: 'system' sees everything,
+// 'business' gets a read-only view of the three form collections. The server
+// enforces this; what follows only keeps the UI from offering an account
+// actions it cannot take, and from stranding it on a page it cannot read.
+const BUSINESS_PAGES = new Set(['admin-contracts.html', 'admin-standing-orders.html', 'admin-salary-deductions.html']);
+const BUSINESS_HOME = 'admin-contracts.html';
+let currentRole = null;
+let pruneQueued = false;
+
+function pruneForBusiness() {
+  pruneQueued = false;
+  if (currentRole !== 'business') return;
+  // Links out to anything this account cannot open, including the blank
+  // forms — it may read what was filled in, not fill one in.
+  document.querySelectorAll('a[href]').forEach(a => {
+    const href = a.getAttribute('href') || '';
+    if (/^(https?:|mailto:|tel:|#)/.test(href)) return;
+    const target = href.split('?')[0].split('#')[0].split('/').pop();
+    if (!target || target === 'index.html' || BUSINESS_PAGES.has(target)) return;
+    (a.closest('li') || a).remove();
+  });
+  document.querySelectorAll('[data-system-only]').forEach(el => el.remove());
+
+  const bar = document.querySelector('.top-bar .user-info');
+  if (bar && !document.getElementById('admin-role-pill')) {
+    const pill = document.createElement('span');
+    pill.id = 'admin-role-pill';
+    pill.textContent = 'View only';
+    pill.style.cssText = 'align-self:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;' +
+      'background:rgba(15,111,190,.12);color:#0a4f8b;border:1px solid rgba(15,111,190,.30);';
+    bar.insertBefore(pill, bar.firstChild);
+  }
+}
+
+function applyRole(role) {
+  currentRole = role || 'system';
+  if (currentRole !== 'business') return true;
+  document.body && document.body.setAttribute('data-admin-role', 'business');
+  if (!BUSINESS_PAGES.has(location.pathname.split('/').pop() || 'index.html')) {
+    location.replace(BUSINESS_HOME);
+    return false;
+  }
+  pruneForBusiness();
+  // The sidebar and the row menus are built after this runs, so keep watching.
+  new MutationObserver(() => {
+    if (pruneQueued) return;
+    pruneQueued = true;
+    requestAnimationFrame(pruneForBusiness);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  return true;
 }
 
 let readyResolve;
@@ -76,7 +128,8 @@ onAuthStateChanged(auth, async (user) => {
       currentToken = idToken;
       const overlay = document.getElementById('admin-auth-overlay');
       if (overlay) overlay.remove();
-      readyResolve();
+      // A redirect is under way when this is false; leave the page as it is.
+      if (applyRole(json.role)) readyResolve();
       return;
     }
   } catch (err) {
@@ -90,6 +143,8 @@ onAuthStateChanged(auth, async (user) => {
 
 window.adminAuth = {
   ready: () => readyPromise,
+  get role() { return currentRole; },
+  get viewOnly() { return currentRole === 'business'; },
   fetch: async (path, opts = {}) => {
     const user = auth.currentUser;
     const idToken = user ? await user.getIdToken() : currentToken;

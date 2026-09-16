@@ -33,6 +33,10 @@
 
   const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
+  // The view-only business account may read a record but not act on it, so
+  // actions marked system: true are left out of its menus entirely.
+  const viewOnly = () => !!(window.adminAuth && window.adminAuth.viewOnly);
+
   function fmt(key, value) {
     if (value == null || value === '') return '—';
     if (/(_at|At)$/.test(key)) {
@@ -68,24 +72,26 @@
 
     const items = opts.items || [
       { label: 'View full details', icon: 'fa-list-ul', onClick: () => details(record, opts) },
-      { label: 'Open in form', icon: 'fa-pen-to-square', href: opts.formHref(record) },
+      { label: 'Open in form', icon: 'fa-pen-to-square', href: opts.formHref(record), system: true },
       ...(contractUrl ? [
-        { label: 'Open prefilled contract', icon: 'fa-file-contract', href: contractUrl },
-        { label: 'Copy contract link', icon: 'fa-link', onClick: () => navigator.clipboard && navigator.clipboard.writeText(contractUrl) }
+        { label: 'Open prefilled contract', icon: 'fa-file-contract', href: contractUrl, system: true },
+        { label: 'Copy contract link', icon: 'fa-link', system: true, onClick: () => navigator.clipboard && navigator.clipboard.writeText(contractUrl) }
       ] : []),
       { label: 'Copy record id', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(record.id) }
     ];
 
+    const shown = items.filter(it => !(it.system && viewOnly()));
+
     const el = document.createElement('div');
     el.className = 'row-menu';
     el.dataset.for = record.id;
-    el.innerHTML = items.map((it, i) => it.href
+    el.innerHTML = shown.map((it, i) => it.href
       ? '<a href="' + it.href + '"><i class="fas ' + it.icon + '"></i> ' + esc(it.label) + '</a>'
       : '<button type="button" data-i="' + i + '"><i class="fas ' + it.icon + '"></i> ' + esc(it.label) + '</button>'
     ).join('');
     document.body.appendChild(el);
     el.querySelectorAll('button[data-i]').forEach(b => b.addEventListener('click', () => {
-      const item = items[Number(b.dataset.i)];
+      const item = shown[Number(b.dataset.i)];
       closeMenu();
       if (item.onClick) item.onClick(record);
     }));
@@ -133,7 +139,7 @@
           '<details class="record-raw"><summary>Raw record</summary><pre>' + esc(JSON.stringify(record, null, 2)) + '</pre></details>' +
         '</div>' +
         '<footer>' +
-          (opts.formHref ? '<a class="btn btn-primary" href="' + opts.formHref(record) + '"><i class="fas fa-pen-to-square"></i> Open in form</a>' : '') +
+          (opts.formHref && !viewOnly() ? '<a class="btn btn-primary" href="' + opts.formHref(record) + '"><i class="fas fa-pen-to-square"></i> Open in form</a>' : '') +
           '<button type="button" class="btn record-modal-close">Close</button>' +
         '</footer>' +
       '</div>';

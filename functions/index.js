@@ -42,31 +42,58 @@ app.use((req, res, next) => {
 
 // =========================================================================
 // Google Sign-In — Bearer token, verified fresh on every request.
-// Restricted to one allow-listed account. Applied to all 5 admin surfaces.
+// Two roles, each allow-listed by email address:
+//   system   — the doxservices account: every admin surface, read and write.
+//   business — the lender's own account: read-only, and only the three form
+//              collections (contracts, standing orders, salary deductions).
 // =========================================================================
-const ALLOWED_ADMIN_EMAIL = (process.env.ALLOWED_ADMIN_EMAIL || '').toLowerCase();
+const SYSTEM_ADMIN_EMAIL = (process.env.ALLOWED_ADMIN_EMAIL || '').toLowerCase();
+const BUSINESS_ADMIN_EMAILS = new Set(
+  (process.env.BUSINESS_ADMIN_EMAILS || '')
+    .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+);
 
-async function requireGoogleAuth(req, res, next) {
-  const hdr = req.get('authorization') || '';
-  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
-  if (!token) return res.status(401).json({ ok: false, error: 'Missing bearer token' });
-  try {
-    const decoded = await firebaseAuth.verifyIdToken(token);
-    const email = (decoded.email || '').toLowerCase();
-    if (!decoded.email_verified || !ALLOWED_ADMIN_EMAIL || email !== ALLOWED_ADMIN_EMAIL) {
-      return res.status(403).json({ ok: false, error: 'This Google account is not authorized for admin access.' });
-    }
-    req.adminEmail = email;
-    next();
-  } catch (e) {
-    console.error('[auth] verifyIdToken failed:', e.message);
-    res.status(401).json({ ok: false, error: 'Invalid or expired sign-in token.' });
-  }
+function roleFor(email) {
+  if (!email) return null;
+  if (SYSTEM_ADMIN_EMAIL && email === SYSTEM_ADMIN_EMAIL) return 'system';
+  if (BUSINESS_ADMIN_EMAILS.has(email)) return 'business';
+  return null;
 }
 
-// Lets the client confirm "am I signed in as the right account?" before
-// rendering admin UI, independent of any specific data call.
-app.get('/auth/verify', requireGoogleAuth, (req, res) => res.json({ ok: true, email: req.adminEmail }));
+// Every guarded route names the roles it accepts, so a route added later
+// without a thought for the business account denies it by default.
+function requireRole(...roles) {
+  return async function (req, res, next) {
+    const hdr = req.get('authorization') || '';
+    const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+    if (!token) return res.status(401).json({ ok: false, error: 'Missing bearer token' });
+    try {
+      const decoded = await firebaseAuth.verifyIdToken(token);
+      const email = (decoded.email || '').toLowerCase();
+      const role = decoded.email_verified ? roleFor(email) : null;
+      if (!role) {
+        return res.status(403).json({ ok: false, error: 'This Google account is not authorized for admin access.' });
+      }
+      if (!roles.includes(role)) {
+        return res.status(403).json({ ok: false, error: 'This account has view-only access and cannot use this feature.' });
+      }
+      req.adminEmail = email;
+      req.adminRole = role;
+      next();
+    } catch (e) {
+      console.error('[auth] verifyIdToken failed:', e.message);
+      res.status(401).json({ ok: false, error: 'Invalid or expired sign-in token.' });
+    }
+  };
+}
+
+const requireGoogleAuth = requireRole('system');            // full access
+const requireAdminRead = requireRole('system', 'business'); // reading form records
+
+// Lets the client confirm which account it is signed in as, and what that
+// account is allowed to do, before rendering admin UI.
+app.get('/auth/verify', requireAdminRead, (req, res) =>
+  res.json({ ok: true, email: req.adminEmail, role: req.adminRole }));
 
 // =========================================================================
 // Form submissions (standingOrders / salaryDeductions / contracts).
@@ -221,7 +248,7 @@ function formRoutes(path, collection, logLabel, opts) {
     }
   });
 
-  app.get(path, requireGoogleAuth, async (req, res) => {
+  app.get(path, requireAdminRead, async (req, res) => {
     try {
       const snap = await db.collection(collection).orderBy('submittedAt', 'desc').get();
       res.json({ ok: true, rows: snap.docs.map(d => ({ id: d.id, ...d.data() })) });
@@ -231,10 +258,10 @@ function formRoutes(path, collection, logLabel, opts) {
     }
   });
 
-  // Single record + admin edit — used by the form pages' edit mode. Reading
-  // and writing an existing record both require the admin sign-in, since the
-  // records carry applicant personal details.
-  app.get(path + '/:id', requireGoogleAuth, async (req, res) => {
+  // Single record + admin edit — used by the form pages' edit mode. These
+  // records carry applicant personal details, so reading one needs an admin
+  // sign-in of either role; changing one is the system account only.
+  app.get(path + '/:id', requireAdminRead, async (req, res) => {
     try {
       const doc = await db.collection(collection).doc(req.params.id).get();
       if (!doc.exists) return res.status(404).json({ ok: false, error: 'Record not found' });
