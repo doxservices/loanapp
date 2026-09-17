@@ -115,8 +115,8 @@
   <main>
     <div class="shell">
       <h1>My profile</h1>
-      <p class="page-sub">These are the details we put on your loan agreement and your repayment forms, so they need
-         to match your documents. <span id="state-pill"></span></p>
+      <p class="page-sub" id="page-sub">These are the details we put on your loan agreement and your repayment
+         forms, so they need to match your documents. <span id="state-pill"></span></p>
 
       <div class="card">
         <h2>Your account</h2>
@@ -127,7 +127,7 @@
 
       <form class="card" id="profile-form" novalidate>
         <h2>Your details</h2>
-        <p class="sub">Your employer and monthly income decide which loan campaigns you qualify for.</p>
+        <p class="sub" id="fields-note"></p>
         <div class="grid" id="fields"></div>
         <div class="bar">
           <button type="submit" class="btn" id="save-btn"><i class="fas fa-check"></i> Save changes</button>
@@ -147,8 +147,9 @@
       'St. Elizabeth', 'Westmoreland', 'Hanover', 'St. James', 'Trelawny', 'St. Ann',
       'St. Mary', 'Portland', 'St. Thomas'];
 
-    // The same ten the server keeps, and the same nine it insists on.
-    const FIELDS = [
+    // A borrower's details: what the agreement and the repayment forms carry,
+    // and what a campaign cohort is judged on.
+    const BORROWER_FIELDS = [
       { k: 'firstName', label: 'First name', required: true },
       { k: 'lastName', label: 'Last name', required: true },
       { k: 'phone', label: 'Phone', required: true, type: 'tel', hint: 'e.g. 876-555-0123' },
@@ -161,22 +162,42 @@
       { k: 'monthlyIncome', label: 'Monthly income (J$)', required: true, type: 'number', hint: 'Before deductions' }
     ];
 
-    $('fields').innerHTML = FIELDS.map(f => {
-      const id = 'f-' + f.k;
-      const control = f.options
-        ? `<select id="${id}">${['<option value="">Choose…</option>']
-            .concat(f.options.map(o => `<option>${esc(o)}</option>`)).join('')}</select>`
-        : `<input id="${id}" type="${f.type || 'text'}" />`;
-      return `<div class="f${f.wide ? ' wide' : ''}">
-        <label for="${id}">${esc(f.label)}${f.required ? ' <i aria-hidden="true">*</i>' : ''}</label>
-        ${control}${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</div>`;
-    }).join('');
+    // A member of staff is not a borrower. Their name, because it stands
+    // against their decisions, and a date of birth to tell two people of the
+    // same name apart — nothing else. No TRN, no address, no income.
+    const STAFF_FIELDS = [
+      { k: 'firstName', label: 'First name', required: true },
+      { k: 'lastName', label: 'Last name', required: true },
+      { k: 'dateOfBirth', label: 'Date of birth', required: true, type: 'date' }
+    ];
 
-    $('f-trn').addEventListener('input', () => {
-      const d = $('f-trn').value.replace(/\D/g, '').slice(0, 9);
-      $('f-trn').value = d.length > 6 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6)
-        : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3) : d;
-    });
+    let FIELDS = BORROWER_FIELDS;
+
+    function buildForm(me) {
+      FIELDS = me && me.staff ? STAFF_FIELDS : BORROWER_FIELDS;
+      $('fields').innerHTML = FIELDS.map(f => {
+        const id = 'f-' + f.k;
+        const control = f.options
+          ? `<select id="${id}">${['<option value="">Choose…</option>']
+              .concat(f.options.map(o => `<option>${esc(o)}</option>`)).join('')}</select>`
+          : `<input id="${id}" type="${f.type || 'text'}" />`;
+        return `<div class="f${f.wide ? ' wide' : ''}">
+          <label for="${id}">${esc(f.label)}${f.required ? ' <i aria-hidden="true">*</i>' : ''}</label>
+          ${control}${f.hint ? `<span class="hint">${esc(f.hint)}</span>` : ''}</div>`;
+      }).join('');
+
+      // Only a borrower's form has a TRN to group.
+      const trn = $('f-trn');
+      if (trn) trn.addEventListener('input', () => {
+        const d = trn.value.replace(/\D/g, '').slice(0, 9);
+        trn.value = d.length > 6 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6)
+          : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3) : d;
+      });
+
+      $('fields-note').textContent = me && me.staff
+        ? 'Your name stands against the decisions you make here.'
+        : 'Your employer and monthly income decide which loan campaigns you qualify for.';
+    }
 
     // The lender whose customer this is, for the masthead and the footer.
     window.Tenant.ready().then(t => {
@@ -212,6 +233,10 @@
         if (!v && f.k === 'lastName' && full.indexOf(' ') > -1) v = full.split(' ').slice(1).join(' ');
         el.value = v;
       });
+      if (me.staff) {
+        $('page-sub').childNodes[0].nodeValue =
+          'Your name and date of birth, held against the work you do here. ';
+      }
       $('state-pill').innerHTML = me.profileComplete
         ? '<span class="pill">Complete</span>'
         : '<span class="pill todo">Not finished yet</span>';
@@ -225,6 +250,7 @@
         return;
       }
       $('profile-form').hidden = false;
+      buildForm(me);
       paintIdentity(me);
       fill(me);
     }

@@ -19,7 +19,19 @@
     'St. Elizabeth', 'Westmoreland', 'Hanover', 'St. James', 'Trelawny', 'St. Ann',
     'St. Mary', 'Portland', 'St. Thomas'];
 
-  // Same shape the server accepts, and the same nine it insists on.
+  // A member of staff is not a borrower: they are asked for the name that
+  // appears against their decisions and a date of birth to tell two people of
+  // the same name apart. No TRN, no address, no employer, no income — the
+  // business has no use for those and no business holding them. Everything
+  // else comes from the Google account they signed in with.
+  var STAFF_FIELDS = [
+    { k: 'firstName', label: 'First name', required: true, span: 1, auto: 'given-name' },
+    { k: 'lastName', label: 'Last name', required: true, span: 1, auto: 'family-name' },
+    { k: 'dateOfBirth', label: 'Date of birth', required: true, span: 1, type: 'date', auto: 'bday' }
+  ];
+
+  // Same shape the server accepts from a borrower, and the same nine it
+  // insists on.
   var FIELDS = [
     { k: 'firstName', label: 'First name', required: true, span: 1, auto: 'given-name' },
     { k: 'lastName', label: 'Last name', required: true, span: 1, auto: 'family-name' },
@@ -105,10 +117,12 @@
 
   // What we already know: whatever is on the record, and for a first-time
   // sign-in the name Google gave us, split on the first space.
+  function fieldsFor(me) { return (me && me.staff) ? STAFF_FIELDS : FIELDS; }
+
   function seed(me) {
     var p = (me && me.profile) || {};
     var known = {};
-    FIELDS.forEach(function (f) { known[f.k] = p[f.k] || ''; });
+    fieldsFor(me).forEach(function (f) { known[f.k] = p[f.k] || ''; });
     var google = (window.userAuth.google) || {};
     var full = String(google.displayName || me.name || '').trim();
     if (!known.firstName && full) known.firstName = full.split(' ')[0];
@@ -117,12 +131,19 @@
   }
 
   var open = false;
+  var openFor = null;   // who the form on screen was built for
 
   function show(me) {
+    // Somebody signed in as a different person while this was up — the form
+    // belongs to whoever is signed in now, not to whoever opened it.
+    if (open && openFor && me && openFor !== (me.userId || me.email)) close();
     if (open || document.getElementById('profile-gate')) return;
     open = true;
+    openFor = me ? (me.userId || me.email) : null;
     injectStyles();
 
+    var fields = fieldsFor(me);
+    var staff = !!(me && me.staff);
     var known = seed(me);
     var google = window.userAuth.google || {};
     var name = google.displayName || me.name || me.email;
@@ -139,15 +160,18 @@
       '<div class="sheet">' +
         '<header>' +
           '<h2 id="profile-gate-title">Finish setting up your profile</h2>' +
-          '<p class="sub">We need these details before you can apply for a loan — they are the ones that go on ' +
-          'your agreement and your repayment forms. You only fill this in once.</p>' +
+          '<p class="sub">' + (staff
+            ? 'Just your name as it should appear against your work, and a date of birth so two people of the ' +
+              'same name are never confused. Everything else comes from your Google account.'
+            : 'We need these details before you can apply for a loan — they are the ones that go on your ' +
+              'agreement and your repayment forms. You only fill this in once.') + '</p>' +
           '<div class="who">' + avatar +
             '<div><b>' + esc(name) + '</b><span>' + esc(me.email) + ' · signed in with Google</span></div>' +
           '</div>' +
         '</header>' +
         '<form id="profile-gate-form" novalidate>' +
           '<div class="grid">' +
-            FIELDS.map(function (f) { return field(f, known[f.k]); }).join('') +
+            fields.map(function (f) { return field(f, known[f.k]); }).join('') +
           '</div>' +
           '<footer>' +
             '<span class="msg" id="profile-gate-msg"></span>' +
@@ -162,14 +186,14 @@
 
     // The TRN is nine digits, grouped the way the printed forms group it.
     var trn = document.getElementById('pg-trn');
-    trn.addEventListener('input', function () {
+    if (trn) trn.addEventListener('input', function () {
       var d = trn.value.replace(/\D/g, '').slice(0, 9);
       trn.value = d.length > 6 ? d.slice(0, 3) + '-' + d.slice(3, 6) + '-' + d.slice(6)
         : d.length > 3 ? d.slice(0, 3) + '-' + d.slice(3) : d;
     });
 
     // Land on the first thing we do not already know.
-    var firstEmpty = FIELDS.filter(function (f) { return f.required && !known[f.k]; })[0];
+    var firstEmpty = fields.filter(function (f) { return f.required && !known[f.k]; })[0];
     var focusEl = document.getElementById('pg-' + ((firstEmpty && firstEmpty.k) || 'firstName'));
     if (focusEl) focusEl.focus();
 
@@ -185,12 +209,12 @@
       msg.textContent = '';
 
       var body = {};
-      FIELDS.forEach(function (f) {
+      fields.forEach(function (f) {
         var input = document.getElementById('pg-' + f.k);
         body[f.k] = input ? input.value.trim() : '';
       });
 
-      var missing = FIELDS.filter(function (f) { return f.required && !body[f.k]; });
+      var missing = fields.filter(function (f) { return f.required && !body[f.k]; });
       if (missing.length) {
         msg.textContent = 'Still needed: ' + missing.map(function (f) {
           return f.label.replace(/\s*\(.*\)$/, '').toLowerCase();
@@ -227,6 +251,7 @@
     if (el) el.remove();
     document.documentElement.style.overflow = '';
     open = false;
+    openFor = null;
   }
 
   function consider(me) {

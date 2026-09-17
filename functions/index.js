@@ -1598,28 +1598,72 @@ app.patch('/api/tickets/:id', requireSignedIn, async (req, res) => {
   }
 });
 
-// The profile an applicant fills in before they can apply. Employer and
-// monthly income are here because campaign cohorts are judged on them.
-const PROFILE_FIELDS = ['firstName', 'lastName', 'phone', 'trn', 'addressLine1',
-  'addressLine2', 'town', 'parish', 'employer', 'monthlyIncome'];
+// Two profiles, because two different people are being asked.
+//
+// A borrower's profile carries what an agreement and a repayment instrument
+// need — the TRN the forms print, where they live — and what a campaign cohort
+// is judged on, which is why employer and income are here.
+//
+// A member of staff is not a borrower. Asking them for a TRN, an address or
+// what they earn collects information the business has no use for and no
+// business holding. They are asked for the name that appears against their
+// decisions, and a date of birth to tell two people of the same name apart.
+// Everything else about them comes from the Google account they signed in with.
+const PROFILE_FIELDS = ['firstName', 'lastName', 'dateOfBirth', 'phone', 'trn',
+  'addressLine1', 'addressLine2', 'town', 'parish', 'employer', 'monthlyIncome'];
 const PROFILE_REQUIRED = ['firstName', 'lastName', 'phone', 'trn', 'addressLine1',
   'town', 'parish', 'employer', 'monthlyIncome'];
+const STAFF_PROFILE_FIELDS = ['firstName', 'lastName', 'dateOfBirth'];
+const STAFF_PROFILE_REQUIRED = ['firstName', 'lastName', 'dateOfBirth'];
+
+// A date that is a date, is behind us, and belongs to somebody old enough to
+// be employed. Nothing here is a guess about the person — only a check that
+// the field was filled in with a real date.
+function dateOfBirthProblem(value) {
+  if (!value) return 'Date of birth is needed.';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Date of birth must be a date.';
+  const born = new Date(value + 'T00:00:00Z');
+  if (isNaN(born.getTime())) return 'Date of birth must be a real date.';
+  const now = new Date();
+  if (born > now) return 'Date of birth cannot be in the future.';
+  if (born.getUTCFullYear() < 1900) return 'Please check the year of birth.';
+  const years = (now - born) / (365.2425 * 24 * 3600 * 1000);
+  if (years < 16) return 'This account has to belong to somebody aged 16 or over.';
+  return null;
+}
 
 app.put('/api/me/profile', requireSignedIn, async (req, res) => {
   try {
     if (!req.user.userId) return res.status(400).json({ ok: false, error: 'This account has no profile to fill in.' });
     const body = req.body || {};
-    const profile = {};
-    PROFILE_FIELDS.forEach(k => { if (body[k] !== undefined) profile[k] = String(body[k]).trim().slice(0, 200); });
+    // Staff are asked for their name and date of birth and nothing else, so
+    // borrower fields sent to this route by a staff account are not stored
+    // even if something puts them in the request.
+    const staff = isStaff(req.user);
+    const fields = staff ? STAFF_PROFILE_FIELDS : PROFILE_FIELDS;
+    const required = staff ? STAFF_PROFILE_REQUIRED : PROFILE_REQUIRED;
 
-    const missing = PROFILE_REQUIRED.filter(k => !profile[k]);
+    const profile = {};
+    fields.forEach(k => { if (body[k] !== undefined) profile[k] = String(body[k]).trim().slice(0, 200); });
+
+    const missing = required.filter(k => !profile[k]);
     if (missing.length) return res.status(400).json({ ok: false, error: 'Still needed: ' + missing.join(', '), missing });
-    const bad = trnProblem(profile.trn, true);
-    if (bad) return res.status(400).json({ ok: false, error: bad });
-    if (!(asNumber(profile.monthlyIncome) > 0)) {
-      return res.status(400).json({ ok: false, error: 'Monthly income must be an amount.' });
+
+    if (staff) {
+      const badDate = dateOfBirthProblem(profile.dateOfBirth);
+      if (badDate) return res.status(400).json({ ok: false, error: badDate });
+    } else {
+      const bad = trnProblem(profile.trn, true);
+      if (bad) return res.status(400).json({ ok: false, error: bad });
+      if (!(asNumber(profile.monthlyIncome) > 0)) {
+        return res.status(400).json({ ok: false, error: 'Monthly income must be an amount.' });
+      }
+      profile.monthlyIncome = String(asNumber(profile.monthlyIncome));
+      if (profile.dateOfBirth) {
+        const badDate = dateOfBirthProblem(profile.dateOfBirth);
+        if (badDate) return res.status(400).json({ ok: false, error: badDate });
+      }
     }
-    profile.monthlyIncome = String(asNumber(profile.monthlyIncome));
 
     await db.collection('users').doc(req.user.userId).set({
       ...profile, profileCompletedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
@@ -1642,6 +1686,9 @@ app.get('/api/me', requireSignedIn, async (req, res) => {
     }
   } catch (e) { console.error('[me] tenant lookup failed:', e.message); }
   res.json({ ok: true, ...req.user, staff: isStaff(req.user), tenant,
+    // which profile this account is asked for: a borrower's, or a member of
+    // staff's name and date of birth
+    profileFields: isStaff(req.user) ? STAFF_PROFILE_FIELDS : PROFILE_REQUIRED,
     permissions: permissionsFor(req.user.role) });
 });
 
