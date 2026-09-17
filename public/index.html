@@ -9,7 +9,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LoanApp</title>
-  <meta name="description" content="LoanApp by DoxServices — multi-tenant lending software. Each lender with its own site, its own staff and its own customers." />
+  <meta name="description" content="LoanApp by DoxServices — enterprise lending technology: campaigns and segmentation, origination and underwriting, agreements, repayment instruments and portfolio analysis, multi-tenant by construction." />
   <link rel="icon" href="assets/loanapp-mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -86,8 +86,8 @@
     .btn.small { padding: 8px 16px; font-size: 13.5px; }
 
     /* ---- hero ---- */
-    .hero { padding-block: 92px 78px; }
-    .hero .shell { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 52px; align-items: center; }
+    .hero { padding-block: 74px 64px; }
+    .hero .shell { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 48px; align-items: start; }
     .hero h1 {
       margin: 0 0 20px; font-size: clamp(34px, 5vw, 54px); line-height: 1.16; font-weight: 700;
       color: var(--text-strong); text-wrap: balance;
@@ -113,18 +113,23 @@
     .note.bad { color: #ff9a9a; }
 
     /* ---- sections, centred like the parent's ---- */
-    section { padding-block: 74px; border-top: 1px solid rgba(255, 255, 255, .05); }
-    .section-head { text-align: center; max-width: 720px; margin: 0 auto 42px; }
+    section { padding-block: 64px; border-top: 1px solid rgba(255, 255, 255, .05); }
+    .section-head { text-align: center; max-width: 740px; margin: 0 auto 36px; }
     .eyebrow {
       display: inline-block; padding: 6px 17px; border-radius: 999px; margin-bottom: 18px;
       font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
       color: var(--accent); background: rgba(0, 180, 216, .12); border: 1px solid rgba(0, 180, 216, .22);
     }
-    .section-head h2 { margin: 0 0 12px; font-size: clamp(26px, 3.6vw, 38px); font-weight: 700; color: var(--text-strong); }
+    .section-head h2 { margin: 0 0 12px; font-size: clamp(26px, 3.6vw, 38px); font-weight: 700;
+      line-height: 1.22; color: var(--text-strong); text-wrap: balance; }
     .section-head p { margin: 0; font-size: 16px; color: var(--text-dim); }
 
     /* ---- cards ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+    .grid.four { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
+    .grid .card { display: flex; flex-direction: column; justify-content: center; }
+    .grid .card h3 { min-height: 2.6em; display: flex; align-items: center; justify-content: center; }
+    .grid.four .card h3 { min-height: 0; display: block; }
     .card {
       background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius);
       padding: 32px 26px; text-align: center; text-decoration: none; color: inherit; display: block;
@@ -138,16 +143,8 @@
     .card h3 { margin: 0 0 9px; font-size: 19px; font-weight: 600; color: var(--text-strong); }
     .card p { margin: 0; font-size: 14.5px; color: var(--text-dim); line-height: 1.65; }
 
-    /* ---- tenancy ---- */
-    .tenancy { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 34px 44px; }
-    .tenancy .n {
-      display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; margin-bottom: 14px;
-      background: rgba(0, 180, 216, .12); color: var(--accent); font-size: 15px;
-    }
-    .tenancy h3 { margin: 0 0 7px; font-size: 18px; font-weight: 600; color: var(--text-strong); }
-    .tenancy p { margin: 0; font-size: 15px; color: var(--text-dim); }
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }
-    .roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+    .roles { display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-top: 16px; }
     .role {
       font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 999px;
       background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); color: var(--text);
@@ -196,13 +193,15 @@
     <div class="hero">
       <div class="shell">
         <div>
-          <h1>One platform, and every lender <em>its own front door</em>.</h1>
-          <p class="lede">LoanApp runs the loan book — campaigns and applications, contracts, standing orders and
-             salary deductions, support tickets and repayments. Each lender on it has its own address, its own staff
-             and roles, and its own customers, kept apart from every other lender's.</p>
+          <span class="eyebrow">Enterprise lending technology</span>
+          <h1>The system of record for the institutions that <em>issue credit</em>.</h1>
+          <p class="lede">LoanApp runs a lending operation end to end: the campaigns you take to market and who they
+             are aimed at, origination and underwriting, executed agreements, the repayment instruments banks and
+             employers act on, and the analysis that tells you how the book is performing. Every institution on it
+             operates as its own tenant &mdash; its own people, its own portfolio, its own data.</p>
           <div class="cta">
             <a class="btn" href="#signin" id="hero-signin"><i class="fas fa-user-shield"></i> Administrator sign-in</a>
-            <a class="btn outline" href="#platform"><i class="fas fa-circle-nodes"></i> What it runs</a>
+            <a class="btn outline" href="#platform"><i class="fas fa-diagram-project"></i> See the platform</a>
           </div>
         </div>
 
@@ -219,40 +218,46 @@
     <section id="platform">
       <div class="shell">
         <div class="section-head">
-          <span class="eyebrow">What we run</span>
-          <h2>The whole loan book</h2>
-          <p>One system from the first enquiry to the last repayment.</p>
+          <span class="eyebrow">The platform</span>
+          <h2>From campaign design to final settlement</h2>
+          <p>Six parts of one system, rather than six systems and a reconciliation problem.</p>
         </div>
         <div class="grid">
           <div class="card">
-            <div class="circle"><i class="fas fa-bullhorn"></i></div>
-            <h3>Campaigns and cohorts</h3>
-            <p>Published, unpublished or kept to staff, and offered only to the people who qualify for them.</p>
+            <div class="circle"><i class="fas fa-bullseye"></i></div>
+            <h3>Campaigns and segmentation</h3>
+            <p>Build a credit product once &mdash; amount, rate, terms &mdash; then decide who it is for: by employer,
+               by income, by parish. Take it to market, hold it back, or keep it to your officers.</p>
           </div>
           <div class="card">
-            <div class="circle"><i class="fas fa-file-lines"></i></div>
-            <h3>Applications</h3>
-            <p>Submitted by the customer, reviewed by an underwriter, decided by a loan officer.</p>
+            <div class="circle"><i class="fas fa-clipboard-check"></i></div>
+            <h3>Origination and underwriting</h3>
+            <p>Applications arrive complete and already qualified, go to an underwriter for review and a loan officer
+               for the decision, and carry every status change on the record.</p>
           </div>
           <div class="card">
             <div class="circle"><i class="fas fa-file-signature"></i></div>
-            <h3>Contracts</h3>
-            <p>A print-ready agreement, filled from the record and shared on a link that gives nothing away.</p>
+            <h3>Agreement execution</h3>
+            <p>Agreements generated from the record itself, print-ready to the page, and shared on a link that
+               reveals nothing about the borrower or the loan behind it.</p>
           </div>
           <div class="card">
             <div class="circle"><i class="fas fa-building-columns"></i></div>
-            <h3>Standing orders and salary deductions</h3>
-            <p>The repayment authority the bank or the employer needs, carrying its full schedule.</p>
+            <h3>Repayment instruments</h3>
+            <p>Standing orders and salary deductions issued with their full schedule, in the form a bank or a payroll
+               department will act on without being chased for it.</p>
           </div>
           <div class="card">
-            <div class="circle"><i class="fas fa-life-ring"></i></div>
-            <h3>Support tickets</h3>
-            <p>A customer's question, held against the record it is about and answered by the right person.</p>
+            <div class="circle"><i class="fas fa-chart-line"></i></div>
+            <h3>Portfolio and analysis</h3>
+            <p>What is out, what is owed and what has been paid across the book &mdash; with the record behind any
+               figure one click from the figure itself.</p>
           </div>
           <div class="card">
-            <div class="circle"><i class="fas fa-money-check-dollar"></i></div>
-            <h3>Repayments and statements</h3>
-            <p>What is owed, what has been paid, and every payment made on a loan.</p>
+            <div class="circle"><i class="fas fa-headset"></i></div>
+            <h3>Servicing</h3>
+            <p>A customer's question held against the loan, the application or the agreement it concerns, and
+               answered by whoever holds that part of the book.</p>
           </div>
         </div>
       </div>
@@ -261,42 +266,45 @@
     <section>
       <div class="shell">
         <div class="section-head">
-          <span class="eyebrow">Multi-tenant by design</span>
-          <h2>How a tenant is put together</h2>
-          <p>A lender is a tenant of the platform, not a copy of it.</p>
+          <span class="eyebrow">Enterprise foundation</span>
+          <h2>Built the way institutions are governed</h2>
+          <p>Separation, permission and accountability are structural here, not settings somebody has to remember
+             to turn on.</p>
         </div>
-        <div class="tenancy">
-          <div>
-            <span class="n"><i class="fas fa-link"></i></span>
-            <h3>Its own address</h3>
-            <p>A lender lives at its own path — <span class="mono">/its-own-name</span> — and that is where its
-               customers apply, follow a loan and open a ticket.</p>
+        <div class="grid four">
+          <div class="card">
+            <div class="circle"><i class="fas fa-sitemap"></i></div>
+            <h3>Tenant separation</h3>
+            <p>Each institution is a tenant of the platform, not a copy of it: its campaigns, applications,
+               agreements and customers are all recorded against the business they belong to.</p>
           </div>
-          <div>
-            <span class="n"><i class="fas fa-id-badge"></i></span>
-            <h3>Its own people</h3>
-            <p>Everyone belongs to one business and sees only that business's customers and records.</p>
+          <div class="card">
+            <div class="circle"><i class="fas fa-user-lock"></i></div>
+            <h3>Role-based access</h3>
+            <p>Six roles, each holding named permissions. The menu is built from those permissions before the page is
+               drawn, so nothing is offered that the server would refuse.</p>
             <div class="roles">
               <span class="role">Platform admin</span><span class="role">Business admin</span>
               <span class="role">Loan officer</span><span class="role">Underwriter</span>
               <span class="role">Support</span><span class="role">Customer</span>
             </div>
           </div>
-          <div>
-            <span class="n"><i class="fas fa-key"></i></span>
-            <h3>Permissions, not pages</h3>
-            <p>What a person can open is decided by the permissions on their role, and the menu is built from those
-               permissions before the page is drawn.</p>
+          <div class="card">
+            <div class="circle"><i class="fas fa-globe"></i></div>
+            <h3>Its own front door</h3>
+            <p>An institution lives at its own address &mdash; <span class="mono">/its-own-name</span> &mdash;
+               branded as itself, where its customers apply, follow a loan and ask for help.</p>
           </div>
-          <div>
-            <span class="n"><i class="fas fa-box-archive"></i></span>
-            <h3>Its own records</h3>
-            <p>Campaigns, applications, contracts, standing orders, salary deductions and tickets are all held
-               against the business that created them.</p>
+          <div class="card">
+            <div class="circle"><i class="fas fa-database"></i></div>
+            <h3>One record, end to end</h3>
+            <p>A borrower, their application, the agreement, the instrument and every payment are one chain of
+               records, not five spreadsheets to be reconciled on a Friday.</p>
           </div>
         </div>
       </div>
     </section>
+
   </main>
 
   <footer>
