@@ -12,40 +12,59 @@
 // flash on screen. The list is remembered between visits so the first paint
 // of the next page is already right.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const API_BASE = window.LOANIT_API_BASE || 'https://doxservices-loanapp.web.app';
 const fbApp = initializeApp(window.FIREBASE_CONFIG);
 const auth = getAuth(fbApp);
+// The sign-in itself outlives the tab, so closing the browser does not mean
+// signing in again.
+setPersistence(auth, browserLocalPersistence).catch(err =>
+  console.error('[admin-auth] could not persist the sign-in', err));
 
-const ROLE_KEY = 'adminRole';
-const PERM_KEY = 'adminPermissions';
-const NAV_KEY = 'adminNav';
-const GATED_KEY = 'adminGatedPages';
+// One signed-in session, kept until the expiry the server states. Moving
+// between admin pages reads this instead of verifying again — every API call
+// is still verified on its own, so this only decides how quickly a change of
+// access reaches the menus, and a background refresh keeps that short.
+const SESSION_KEY = 'adminSession';
+const ROLE_KEY = 'adminRole';   // kept for the CSS hook on <html>
 
 let currentRole = null;
 let currentPermissions = null;
 let currentNav = null;
 let gatedPages = [];
+let session = null;
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const pageName = () => location.pathname.split('/').pop() || 'index.html';
 
 function readCache() {
   try {
-    currentRole = localStorage.getItem(ROLE_KEY) || null;
-    currentPermissions = JSON.parse(localStorage.getItem(PERM_KEY) || 'null');
-    currentNav = JSON.parse(localStorage.getItem(NAV_KEY) || 'null');
-    gatedPages = JSON.parse(localStorage.getItem(GATED_KEY) || '[]') || [];
+    const raw = JSON.parse(localStorage.getItem(SESSION_KEY) || 'null');
+    if (!raw) return;
+    session = raw;
+    currentRole = raw.role || null;
+    currentPermissions = Array.isArray(raw.permissions) ? raw.permissions : null;
+    currentNav = Array.isArray(raw.nav) ? raw.nav : null;
+    gatedPages = Array.isArray(raw.gatedPages) ? raw.gatedPages : [];
   } catch (e) { /* private window, or nothing stored yet */ }
 }
 function writeCache() {
   try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify(session || {}));
     if (currentRole) localStorage.setItem(ROLE_KEY, currentRole);
-    localStorage.setItem(PERM_KEY, JSON.stringify(currentPermissions || []));
-    localStorage.setItem(NAV_KEY, JSON.stringify(currentNav || []));
-    localStorage.setItem(GATED_KEY, JSON.stringify(gatedPages || []));
   } catch (e) { /* private window */ }
+}
+function clearCache() {
+  session = null;
+  try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(ROLE_KEY); } catch (e) {}
+}
+// A session is usable while it has not expired and belongs to the account
+// that is actually signed in.
+function sessionUsableFor(uid) {
+  return !!(session && session.uid === uid && session.expiresAt &&
+    Date.parse(session.expiresAt) > Date.now() && Array.isArray(session.nav));
 }
 readCache();
 // Before the sidebar is built, so the very first paint is already correct.
@@ -124,12 +143,22 @@ function gatePage() {
   return true;
 }
 
-function applyProfile(json) {
+function applyProfile(json, uid) {
   const before = JSON.stringify([currentPermissions, currentNav]);
   currentRole = json.role || currentRole || 'superAdmin';
   if (Array.isArray(json.permissions)) currentPermissions = json.permissions;
   if (Array.isArray(json.nav)) currentNav = json.nav;
   if (Array.isArray(json.gatedPages)) gatedPages = json.gatedPages;
+  session = {
+    uid: uid || (session && session.uid) || null,
+    email: json.email || (session && session.email) || null,
+    role: currentRole,
+    permissions: currentPermissions || [],
+    nav: currentNav || [],
+    gatedPages: gatedPages || [],
+    // If the server does not say, trust it for a day.
+    expiresAt: json.sessionExpiresAt || new Date(Date.now() + 24 * 3600 * 1000).toISOString()
+  };
   document.documentElement.setAttribute('data-admin-role', currentRole);
   writeCache();
   // Redraw only if what was remembered turned out to be wrong.
@@ -175,7 +204,7 @@ function renderGate() {
       const idToken = await result.user.getIdToken();
       const res = await fetch(API_BASE + '/auth/verify', { headers: { Authorization: 'Bearer ' + idToken } });
       const json = await res.json();
-      if (json.ok) { applyProfile(json); overlay.remove(); onReady(); return; }
+      if (json.ok) { applyProfile(json, result.user.uid); overlay.remove(); onReady(); return; }
       msg.textContent = json.error || 'Sign-in failed.';
       await signOut(auth);
     } catch (err) {
@@ -190,21 +219,48 @@ const readyPromise = new Promise(resolve => { readyResolve = resolve; });
 let onReady = () => {};
 let currentToken = null;
 
+// Asks the server who this is, and puts the answer away as the session.
+async function verifyNow(user) {
+  const idToken = await user.getIdToken();
+  const res = await fetch(API_BASE + '/auth/verify', { headers: { Authorization: 'Bearer ' + idToken } });
+  const json = await res.json();
+  if (json.ok) currentToken = idToken;
+  return json;
+}
+
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
+    clearCache();
     document.getElementById('admin-auth-overlay') || renderGate();
     return;
   }
+
+  // Already signed in, within the session the server granted: open the page
+  // straight away and confirm in the background. Navigation between admin
+  // pages therefore costs nothing, while a change of access still lands on
+  // the next page load rather than at the end of the day.
+  if (sessionUsableFor(user.uid)) {
+    renderNav();
+    if (gatePage()) readyResolve();
+    verifyNow(user).then(json => {
+      if (json && json.ok) { applyProfile(json, user.uid); return; }
+      // Access was taken away while the session was still valid.
+      clearCache();
+      signOut(auth);
+    }).catch(err => {
+      // Offline or the API is down: the session stands until it expires.
+      console.warn('[admin-auth] background check did not complete', err);
+    });
+    return;
+  }
+
   try {
-    const idToken = await user.getIdToken();
-    const res = await fetch(API_BASE + '/auth/verify', { headers: { Authorization: 'Bearer ' + idToken } });
-    const json = await res.json();
+    const json = await verifyNow(user);
     if (json.ok) {
-      currentToken = idToken;
       const overlay = document.getElementById('admin-auth-overlay');
       if (overlay) overlay.remove();
       // False means a redirect is under way; leave the page as it is.
-      if (applyProfile(json)) readyResolve();
+      if (applyProfile(json, user.uid)) readyResolve();
       return;
     }
   } catch (err) {
@@ -212,6 +268,7 @@ onAuthStateChanged(auth, async (user) => {
   }
   // Signed in, but not an authorized account (or verify failed) — show the
   // gate and sign this identity out so a retry starts clean.
+  clearCache();
   await signOut(auth);
   document.getElementById('admin-auth-overlay') || renderGate();
 });
@@ -229,8 +286,9 @@ window.adminAuth = {
     const headers = { ...(opts.headers || {}), Authorization: 'Bearer ' + idToken };
     return fetch(API_BASE + path, { ...opts, headers });
   },
+  get session() { return session; },
   signOut: async () => {
-    try { [ROLE_KEY, PERM_KEY, NAV_KEY, GATED_KEY].forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    clearCache();
     await signOut(auth);
     location.reload();
   },

@@ -212,6 +212,11 @@ app.get('/auth/verify', requireAdminRead, async (req, res) => {
   let nav = [], gatedPages = [];
   try { ({ nav, gatedPages } = await navFor(permissions)); }
   catch (e) { console.error('[auth] nav lookup failed:', e.message); }
+  // How long the browser may trust this answer for. Navigation between
+  // admin pages reads the cached session instead of verifying again; every
+  // API call is still verified on its own, so this only sets how quickly a
+  // change of access shows up in the menus.
+  const SESSION_HOURS = 24;
   res.json({
     ok: true,
     email: req.adminEmail,
@@ -219,6 +224,7 @@ app.get('/auth/verify', requireAdminRead, async (req, res) => {
     permissions,
     nav,
     gatedPages,
+    sessionExpiresAt: new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString(),
     businessId: req.adminBusinessId,
     profileComplete: req.adminProfileComplete
   });
