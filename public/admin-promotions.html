@@ -403,8 +403,9 @@
         const tbody = document.getElementById('promoTableBody');
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">Loading promotions…</td></tr>';
         try {
-          const res = await fetch(API_BASE + '/api/promotions');
-          promos = await res.json();
+          const res = await window.adminAuth.fetch('/api/promotions/all');
+          const json = await res.json();
+          promos = json.ok ? json.promotions : [];
           if (!promos.length) {
             tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">No promotions yet — create one above.</td></tr>';
             return;

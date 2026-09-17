@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="user-auth.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Apply for a Loan — Loan It Financing</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --blue: #0f6fbe; --blue-dark: #0a4f8b; --blue-soft: #f2f8ff; --line: #d6e2ee;
+      --ink: #16202a; --muted: #5f7186; --paper: #fff; --screen: #eef3f8; --gold: #d3a63b;
+      --ok: #1d7a53; --ok-bg: #e6f4ed; --wait: #8a6a14; --wait-bg: #fdf6e3;
+      --bad: #b3261e; --bad-bg: #fdecea;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--screen); color: var(--ink);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; line-height: 1.55; }
+    .bar { background: #fff; border-bottom: 1px solid var(--line); padding: 14px 20px;
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .bar h1 { margin: 0; font-size: 18px; color: var(--blue-dark); }
+    .bar .who { margin-left: auto; color: var(--muted); font-size: 13px; display: flex; align-items: center; gap: 10px; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 22px 20px 60px; }
+    .card { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 18px; }
+    .card h2 { margin: 0 0 4px; font-size: 16px; color: var(--blue-dark); }
+    .card .sub { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
+    label { display: block; font-weight: 600; font-size: 13px; margin: 0 0 4px; }
+    input, select, textarea { width: 100%; padding: 9px 10px; border: 1px solid var(--line);
+      border-radius: 6px; font: inherit; background: #fff; color: var(--ink); }
+    .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    @media (max-width: 620px) { .grid2 { grid-template-columns: 1fr; } }
+    .field { margin-bottom: 12px; }
+    .btn { border: 1px solid var(--blue-dark); background: var(--blue); color: #fff; font: inherit;
+      font-weight: 600; padding: 11px 18px; border-radius: 6px; cursor: pointer; }
+    .btn.ghost { background: #fff; color: var(--blue-dark); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .status { font-size: 13px; color: var(--muted); min-height: 18px; margin: 10px 0 0; }
+    .status.bad { color: var(--bad); }
+    .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+      background: var(--blue-soft); color: var(--blue-dark); }
+    .pill.approved { background: var(--ok-bg); color: var(--ok); }
+    .pill.waiting { background: var(--wait-bg); color: var(--wait); }
+    .pill.rejected { background: var(--bad-bg); color: var(--bad); }
+    .app { border: 1px solid var(--line); border-radius: 8px; padding: 13px 15px; margin-bottom: 10px; }
+    .app .top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+    .app .name { font-weight: 700; }
+    .app .meta { color: var(--muted); font-size: 12px; }
+    .terms { margin: 0; color: var(--muted); font-size: 13px; }
+    .muted { color: var(--muted); }
+    .steps { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; padding: 0; list-style: none; font-size: 12px; }
+    .steps li { padding: 5px 11px; border-radius: 999px; background: #fff; border: 1px solid var(--line); color: var(--muted); }
+    .steps li.done { background: var(--ok-bg); border-color: transparent; color: var(--ok); font-weight: 600; }
+    .steps li.now { background: var(--blue-soft); border-color: var(--blue); color: var(--blue-dark); font-weight: 600; }
+    .signin { max-width: 440px; margin: 60px auto; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="bar">
+    <h1><i class="fas fa-file-signature"></i> Apply for a Loan</h1>
+    <span class="muted" style="font-size:13px;">Loan It Financing</span>
+    <div class="who" id="who"></div>
+  </div>
+
+  <div class="wrap">
+    <ul class="steps" id="steps" hidden>
+      <li id="s1">1 · Sign in</li>
+      <li id="s2">2 · Your details</li>
+      <li id="s3">3 · Choose a campaign</li>
+      <li id="s4">4 · Await a decision</li>
+    </ul>
+
+    <div id="signed-out" class="signin card" hidden>
+      <h2>Sign in to apply</h2>
+      <p class="sub">Use your Google account. Your details are saved to your profile so you only enter them once.</p>
+      <button class="btn" id="signin-btn"><i class="fab fa-google"></i> Sign in with Google</button>
+      <p class="status" id="signin-status"></p>
+    </div>
+
+    <div id="profile-card" class="card" hidden>
+      <h2>Your details</h2>
+      <p class="sub">We need these before you can apply. Which campaigns you can choose from depends on where you work and what you earn.</p>
+      <div class="grid2">
+        <div class="field"><label for="firstName">First name</label><input id="firstName" maxlength="60"></div>
+        <div class="field"><label for="lastName">Last name</label><input id="lastName" maxlength="60"></div>
+        <div class="field"><label for="phone">Phone</label><input id="phone" maxlength="30" placeholder="876-000-0000"></div>
+        <div class="field"><label for="trn">TRN</label><input id="trn" maxlength="11" placeholder="123-456-789" inputmode="numeric"></div>
+        <div class="field"><label for="addressLine1">Address line 1</label><input id="addressLine1" maxlength="120"></div>
+        <div class="field"><label for="addressLine2">Address line 2 <span class="muted">(optional)</span></label><input id="addressLine2" maxlength="120"></div>
+        <div class="field"><label for="town">Town / city</label><input id="town" maxlength="60"></div>
+        <div class="field"><label for="parish">Parish</label><select id="parish"></select></div>
+        <div class="field"><label for="employer">Employer</label><input id="employer" maxlength="120" placeholder="Where you work, or Self-employed"></div>
+        <div class="field"><label for="monthlyIncome">Monthly income (J$)</label><input id="monthlyIncome" maxlength="15" inputmode="decimal" placeholder="80000"></div>
+      </div>
+      <button class="btn" id="save-profile">Save and continue</button>
+      <p class="status" id="profile-status"></p>
+    </div>
+
+    <div id="apply-card" class="card" hidden>
+      <h2>Choose a campaign</h2>
+      <p class="sub" id="apply-sub">These are the campaigns open to you.</p>
+      <div class="field">
+        <label for="campaign">Campaign</label>
+        <select id="campaign"></select>
+      </div>
+      <p class="terms" id="campaign-terms"></p>
+      <div class="field" style="margin-top:12px;">
+        <label for="term">Repayment term</label>
+        <select id="term"></select>
+      </div>
+      <button class="btn" id="apply-btn">Send my application</button>
+      <button class="btn ghost" id="edit-profile-btn">Edit my details</button>
+      <p class="status" id="apply-status"></p>
+      <p class="status" id="none-eligible" hidden>
+        There are no campaigns open to you at the moment. If you think that is wrong,
+        <a href="support.html">open a support ticket</a> and we will look into it.
+      </p>
+    </div>
+
+    <div id="mine-card" class="card" hidden>
+      <h2>Your applications</h2>
+      <p class="sub">We will review these and come back to you.</p>
+      <div id="mine"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const money = (c, n) => (c || 'J$') === 'JMD' ? 'J$' + Number(n || 0).toLocaleString() : (c + ' ' + Number(n || 0).toLocaleString());
+    const when = v => { try { return new Date(v).toLocaleDateString(); } catch (e) { return ''; } };
+    const PARISHES = ['Kingston', 'St. Andrew', 'St. Catherine', 'Clarendon', 'Manchester',
+      'St. Elizabeth', 'Westmoreland', 'Hanover', 'St. James', 'Trelawny', 'St. Ann',
+      'St. Mary', 'Portland', 'St. Thomas'];
+    $('parish').innerHTML = '<option value="">Choose…</option>' +
+      PARISHES.map(p => `<option>${p}</option>`).join('');
+
+    // Same 9-digit TRN rule as the printed forms.
+    $('trn').addEventListener('input', () => {
+      const d = $('trn').value.replace(/\D/g, '').slice(0, 9);
+      $('trn').value = d.length > 6 ? d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6)
+                     : d.length > 3 ? d.slice(0,3) + '-' + d.slice(3) : d;
+    });
+
+    let me = null, campaigns = [], applications = [];
+
+    function step(n) {
+      $('steps').hidden = false;
+      [1,2,3,4].forEach(i => {
+        const el = $('s' + i);
+        el.className = i < n ? 'done' : (i === n ? 'now' : '');
+      });
+    }
+
+    function fillProfileForm(p) {
+      ['firstName','lastName','phone','trn','addressLine1','addressLine2','town','parish','employer','monthlyIncome']
+        .forEach(k => { if ($(k) && p && p[k]) $(k).value = p[k]; });
+    }
+
+    async function loadCampaigns() {
+      const res = await window.userAuth.fetch('/api/promotions/eligible');
+      const json = await res.json();
+      campaigns = json.ok ? json.promotions : [];
+      const sel = $('campaign');
+      sel.innerHTML = campaigns.map((c, i) =>
+        `<option value="${i}">${esc(c.name)} — ${esc(money(c.currency, c.principal))}${c.staffOnly ? ' (internal)' : ''}</option>`).join('');
+      $('none-eligible').hidden = campaigns.length > 0;
+      $('campaign').hidden = campaigns.length === 0;
+      $('term').parentElement.hidden = campaigns.length === 0;
+      $('apply-btn').hidden = campaigns.length === 0;
+      if (campaigns.length) showTerms();
+    }
+
+    function showTerms() {
+      const c = campaigns[Number($('campaign').value) || 0];
+      if (!c) return;
+      $('campaign-terms').textContent =
+        `${c.description || ''} ${c.description ? '·' : ''} ${money(c.currency, c.principal)} at ${c.monthlyInterestPct}% a month`.trim();
+      const terms = c.termMode === 'fixed'
+        ? (c.fixedTermMonths ? [c.fixedTermMonths] : [])
+        : (c.allowedTerms || []);
+      $('term').innerHTML = terms.map(t => `<option value="${t}">${t} months</option>`).join('')
+        || '<option value="">No term set</option>';
+    }
+
+    async function loadMine() {
+      const res = await window.userAuth.fetch('/api/me/applications');
+      const json = await res.json();
+      applications = json.ok ? json.applications : [];
+      $('mine-card').hidden = applications.length === 0;
+      const cls = s => s === 'Approved' || s === 'Completed' ? 'approved'
+                     : s === 'Rejected' ? 'rejected'
+                     : 'waiting';
+      $('mine').innerHTML = applications.map(a => `
+        <div class="app">
+          <div class="top">
+            <span class="name">${esc(a.promoSnapshot?.name || 'Loan application')}</span>
+            <span class="pill ${cls(a.status)}">${esc(a.status === 'Submitted' || a.status === 'Pending' ? 'Awaiting a decision' : a.status)}</span>
+          </div>
+          <div class="meta">Reference ${esc(a.applicationCode || '—')} ·
+            ${esc(money(a.promoSnapshot?.currency, a.promoSnapshot?.principal))} ·
+            ${esc(a.selectedTermMonths || '—')} months · sent ${esc(when(a.createdAt))}</div>
+          ${a.reason ? `<div class="meta" style="margin-top:6px;">${esc(a.reason)}</div>` : ''}
+        </div>`).join('');
+      if (applications.length) step(4);
+    }
+
+    function showProfile() {
+      $('profile-card').hidden = false;
+      $('apply-card').hidden = true;
+      step(2);
+    }
+    async function showApply() {
+      $('profile-card').hidden = true;
+      $('apply-card').hidden = false;
+      step(3);
+      await loadCampaigns();
+    }
+
+    $('campaign').addEventListener('change', showTerms);
+    $('edit-profile-btn').addEventListener('click', showProfile);
+
+    $('save-profile').addEventListener('click', async () => {
+      const payload = {};
+      ['firstName','lastName','phone','trn','addressLine1','addressLine2','town','parish','employer','monthlyIncome']
+        .forEach(k => { payload[k] = $(k).value.trim(); });
+      $('save-profile').disabled = true;
+      $('profile-status').className = 'status';
+      $('profile-status').textContent = 'Saving…';
+      try {
+        const res = await window.userAuth.fetch('/api/me/profile', { method: 'PUT', body: JSON.stringify(payload) });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Could not save.');
+        me = { ...me, profile: json.profile, profileComplete: true };
+        $('profile-status').textContent = '';
+        await showApply();
+        await loadMine();
+      } catch (err) {
+        $('profile-status').className = 'status bad';
+        $('profile-status').textContent = err.message;
+      } finally {
+        $('save-profile').disabled = false;
+      }
+    });
+
+    $('apply-btn').addEventListener('click', async () => {
+      const c = campaigns[Number($('campaign').value) || 0];
+      if (!c) return;
+      $('apply-btn').disabled = true;
+      $('apply-status').className = 'status';
+      $('apply-status').textContent = 'Sending…';
+      try {
+        const res = await window.userAuth.fetch('/api/applications', {
+          method: 'POST',
+          body: JSON.stringify({ promotionId: c.id, selectedTermMonths: Number($('term').value) })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Could not send your application.');
+        $('apply-status').textContent = 'Sent. We will review it and come back to you.';
+        await loadMine();
+      } catch (err) {
+        $('apply-status').className = 'status bad';
+        $('apply-status').textContent = err.message;
+      } finally {
+        $('apply-btn').disabled = false;
+      }
+    });
+
+    $('signin-btn').addEventListener('click', async () => {
+      $('signin-status').textContent = '';
+      try { await window.userAuth.signIn(); }
+      catch (err) { $('signin-status').textContent = err.message || 'Sign-in failed.'; }
+    });
+
+    async function paint(user) {
+      me = user;
+      $('signed-out').hidden = !!me;
+      $('who').innerHTML = me
+        ? `${esc(me.name || me.email)} <button class="btn ghost" id="out-btn" style="padding:5px 10px;">Sign out</button>`
+        : '';
+      const out = $('out-btn');
+      if (out) out.addEventListener('click', () => window.userAuth.signOut());
+
+      if (!me) {
+        $('steps').hidden = false;
+        step(1);
+        $('profile-card').hidden = true; $('apply-card').hidden = true; $('mine-card').hidden = true;
+        return;
+      }
+      fillProfileForm(me.profile);
+      if (me.profileComplete) { await showApply(); } else { showProfile(); }
+      await loadMine();
+    }
+
+    window.addEventListener('user-auth', e => paint(e.detail));
+    window.userAuth.ready().then(paint);
+  </script>
+</body>
+</html>

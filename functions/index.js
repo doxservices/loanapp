@@ -603,30 +603,130 @@ app.post('/api/payments', async (req, res) => {
   res.status(201).json(paymentToApi(await ref.get()));
 });
 
-function promoToApi(doc) {
+// A campaign is one of:
+//   unpublished — a draft, nobody sees it
+//   published   — offered to applicants who are in its cohort
+//   staffOnly   — live, but only staff see it: the below-the-line campaigns
+const VISIBILITIES = ['unpublished', 'published', 'staffOnly'];
+const visibilityOf = d => (VISIBILITIES.includes(d.visibility) ? d.visibility : 'published');
+
+// Who a campaign is for. An empty cohort means everyone.
+//   employers — the applicant's employer must be one of these
+//   rules     — every rule must hold, e.g. monthlyIncome at least 80000
+const COHORT_FIELDS = ['monthlyIncome', 'employer', 'parish', 'town'];
+const COHORT_OPS = ['gte', 'lte', 'eq', 'contains'];
+const normText = v => String(v == null ? '' : v).trim().toLowerCase();
+const asNumber = v => Number(String(v == null ? '' : v).replace(/[^0-9.-]/g, ''));
+
+function ruleHolds(rule, person) {
+  if (!rule || !COHORT_FIELDS.includes(rule.field) || !COHORT_OPS.includes(rule.op)) return false;
+  const have = person[rule.field];
+  if (rule.op === 'gte' || rule.op === 'lte') {
+    const a = asNumber(have), b = asNumber(rule.value);
+    if (!Number.isFinite(a) || !Number.isFinite(b)) return false;
+    return rule.op === 'gte' ? a >= b : a <= b;
+  }
+  if (rule.op === 'eq') return normText(have) === normText(rule.value);
+  return normText(have).includes(normText(rule.value));
+}
+
+function cleanCohort(raw) {
+  const employers = Array.isArray(raw && raw.employers)
+    ? raw.employers.map(e => String(e || '').trim()).filter(Boolean).slice(0, 50) : [];
+  const rules = Array.isArray(raw && raw.rules)
+    ? raw.rules.filter(r => r && COHORT_FIELDS.includes(r.field) && COHORT_OPS.includes(r.op))
+        .map(r => ({ field: r.field, op: r.op, value: String(r.value == null ? '' : r.value).slice(0, 80) }))
+        .slice(0, 20) : [];
+  return { employers, rules };
+}
+
+// Employer is matched leniently — the values people type carry stray spaces
+// and case — while the rules are exact about numbers.
+function inCohort(cohort, person) {
+  if (!cohort) return true;
+  const employers = (cohort.employers || []).map(normText).filter(Boolean);
+  if (employers.length && !employers.includes(normText(person.employer))) return false;
+  return (cohort.rules || []).every(r => ruleHolds(r, person));
+}
+
+// Said in words, so an applicant can be told why, and an admin can see what
+// they built without reading JSON.
+function describeCohort(cohort) {
+  if (!cohort) return 'Open to everyone';
+  const parts = [];
+  if ((cohort.employers || []).length) parts.push('works at ' + cohort.employers.join(' or '));
+  (cohort.rules || []).forEach(r => {
+    const label = { monthlyIncome: 'monthly income', employer: 'employer', parish: 'parish', town: 'town' }[r.field];
+    const op = { gte: 'at least', lte: 'at most', eq: 'is', contains: 'contains' }[r.op];
+    parts.push(label + ' ' + op + ' ' + r.value);
+  });
+  return parts.length ? parts.join(', and ') : 'Open to everyone';
+}
+
+function promoToApi(doc, opts) {
   const d = doc.data();
   return {
     id: doc.id, name: d.name, description: d.description || '', currency: d.currency || 'JMD',
     principal: d.principal, monthlyInterestPct: d.monthlyInterestPct, termMode: d.termMode || 'selectable',
     fixedTermMonths: d.fixedTermMonths ?? null, allowedTerms: d.allowedTerms || [],
+    visibility: visibilityOf(d),
+    ...((opts && opts.includeCohort) ? { cohort: d.cohort || { employers: [], rules: [] },
+      cohortSummary: describeCohort(d.cohort) } : {}),
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }
 app.get('/api/promotions', async (req, res) => {
   const snap = await db.collection('promotions').orderBy('createdAt', 'asc').get();
-  res.json(snap.docs.map(promoToApi));
+  res.json(snap.docs.filter(d => visibilityOf(d.data()) === 'published').map(d => promoToApi(d)));
+});
+
+// The admin's own list: drafts, below-the-line campaigns and cohorts included.
+app.get('/api/promotions/all', requireGoogleAuth, async (req, res) => {
+  const snap = await db.collection('promotions').orderBy('createdAt', 'asc').get();
+  res.json({ ok: true, promotions: snap.docs.map(d => promoToApi(d, { includeCohort: true })) });
+});
+
+// What this person may actually apply to. Staff also see the below-the-line
+// campaigns, which is what "available only to the loan officer" means.
+app.get('/api/promotions/eligible', requireSignedIn, async (req, res) => {
+  try {
+    const person = req.user.profile || {};
+    const snap = await db.collection('promotions').orderBy('createdAt', 'asc').get();
+    const staff = isStaff(req.user);
+    const promotions = snap.docs.filter(doc => {
+      const d = doc.data();
+      const v = visibilityOf(d);
+      if (v === 'unpublished') return false;
+      if (v === 'staffOnly' && !staff) return false;
+      return inCohort(d.cohort, person);
+    }).map(doc => ({ ...promoToApi(doc), staffOnly: visibilityOf(doc.data()) === 'staffOnly' }));
+    res.json({ ok: true, profileComplete: req.user.profileComplete, promotions });
+  } catch (e) {
+    console.error('[promotions] eligible failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load campaigns.' });
+  }
 });
 app.get('/api/promotions/:id', async (req, res) => {
   const doc = await db.collection('promotions').doc(req.params.id).get();
   if (!doc.exists) return res.status(404).json({ error: 'Promotion not found' });
   res.json(promoToApi(doc));
 });
+// Accepts visibility and cohort alongside the campaign's own figures.
+function promoWriteFields(body) {
+  const out = {};
+  if (VISIBILITIES.includes(body.visibility)) out.visibility = body.visibility;
+  if (body.cohort !== undefined) out.cohort = cleanCohort(body.cohort);
+  return out;
+}
+
 app.post('/api/promotions', requireGoogleAuth, async (req, res) => {
   const p = req.body || {};
   const ref = await db.collection('promotions').add({
     name: p.name, description: p.description || '', currency: p.currency || 'JMD',
     principal: p.principal, monthlyInterestPct: p.monthlyInterestPct, termMode: p.termMode || 'selectable',
     fixedTermMonths: p.fixedTermMonths ?? null, allowedTerms: p.allowedTerms || [],
+    ...promoWriteFields(p),
+    businessId: await defaultBusinessId(),
     createdAt: FieldValue.serverTimestamp()
   });
   res.status(201).json(promoToApi(await ref.get()));
@@ -637,7 +737,8 @@ app.put('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   await ref.update({
     name: p.name, description: p.description || '', currency: p.currency || 'JMD',
     principal: p.principal, monthlyInterestPct: p.monthlyInterestPct, termMode: p.termMode || 'selectable',
-    fixedTermMonths: p.fixedTermMonths ?? null, allowedTerms: p.allowedTerms || []
+    fixedTermMonths: p.fixedTermMonths ?? null, allowedTerms: p.allowedTerms || [],
+    ...promoWriteFields(p)
   });
   res.json(promoToApi(await ref.get()));
 });
@@ -838,24 +939,83 @@ app.get('/api/applications/:id', async (req, res) => {
   if (!doc.exists) return res.status(404).json({ error: 'Application not found' });
   res.json(appToApi(doc));
 });
-app.post('/api/applications', async (req, res) => {
-  const { promotionId, selectedTermMonths, applicant } = req.body || {};
-  const promoDoc = await db.collection('promotions').doc(String(promotionId)).get();
-  if (!promoDoc.exists) return res.status(400).json({ error: 'Unknown promotion' });
-  const promo = promoDoc.data();
-  const promoSnapshot = {
-    name: promo.name, currency: promo.currency, principal: promo.principal,
-    monthlyInterestPct: promo.monthlyInterestPct, termMode: promo.termMode,
-    fixedTermMonths: promo.fixedTermMonths ?? null, allowedTerms: promo.allowedTerms || []
-  };
-  const applicationCode = await nextApplicationCode();
-  const ref = await db.collection('applications').add({
-    applicationCode, contractToken: newContractToken(),
-    promotionId: promoDoc.id, selectedTermMonths, promoSnapshot,
-    applicant: applicant || {}, status: 'Submitted', reason: '', reviewFlags: {}, attachments: {}, messages: [],
-    createdAt: FieldValue.serverTimestamp()
-  });
-  res.status(201).json(appToApi(await ref.get()));
+// Applying is a signed-in act: the applicant's details come from their own
+// profile rather than the request, and the campaign has to be one they may
+// actually see — otherwise a cohort would be a suggestion rather than a rule.
+app.post('/api/applications', requireSignedIn, async (req, res) => {
+  try {
+    const { promotionId, selectedTermMonths } = req.body || {};
+    if (!req.user.profileComplete) {
+      return res.status(400).json({ ok: false, error: 'Fill in your profile before applying.' });
+    }
+    const promoDoc = await db.collection('promotions').doc(String(promotionId || '')).get();
+    if (!promoDoc.exists) return res.status(400).json({ ok: false, error: 'Unknown campaign' });
+
+    const promo = promoDoc.data();
+    const visibility = visibilityOf(promo);
+    const staff = isStaff(req.user);
+    if (visibility === 'unpublished' || (visibility === 'staffOnly' && !staff)) {
+      return res.status(403).json({ ok: false, error: 'That campaign is not open to you.' });
+    }
+    if (!inCohort(promo.cohort, req.user.profile || {})) {
+      return res.status(403).json({ ok: false, error: 'You are not in the group this campaign is for.' });
+    }
+
+    const terms = promo.termMode === 'fixed'
+      ? [promo.fixedTermMonths].filter(Boolean)
+      : (promo.allowedTerms || []);
+    const term = Number(selectedTermMonths);
+    if (terms.length && !terms.includes(term)) {
+      return res.status(400).json({ ok: false, error: 'Choose one of the terms this campaign offers.' });
+    }
+
+    const p = req.user.profile || {};
+    const ref = await db.collection('applications').add({
+      applicationCode: await nextApplicationCode(),
+      contractToken: newContractToken(),
+      businessId: req.user.businessId || await defaultBusinessId(),
+      promotionId: promoDoc.id,
+      selectedTermMonths: term || null,
+      promoSnapshot: {
+        name: promo.name, currency: promo.currency, principal: promo.principal,
+        monthlyInterestPct: promo.monthlyInterestPct, termMode: promo.termMode,
+        fixedTermMonths: promo.fixedTermMonths ?? null, allowedTerms: promo.allowedTerms || []
+      },
+      applicant: {
+        userId: req.user.userId, email: req.user.email,
+        firstName: p.firstName || '', lastName: p.lastName || '', phone: p.phone || '',
+        trn: p.trn || '', addressLine1: p.addressLine1 || '', addressLine2: p.addressLine2 || '',
+        town: p.town || '', parish: p.parish || '', employer: p.employer || '',
+        monthlyIncome: p.monthlyIncome || ''
+      },
+      status: 'Submitted', reason: '', reviewFlags: {}, attachments: {}, messages: [],
+      createdAt: FieldValue.serverTimestamp()
+    });
+    res.status(201).json({ ok: true, application: appToApi(await ref.get()) });
+  } catch (e) {
+    console.error('[applications] apply failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not send your application.' });
+  }
+});
+
+// An applicant's own applications, so they can watch for a decision.
+app.get('/api/me/applications', requireSignedIn, async (req, res) => {
+  try {
+    const snap = await db.collection('applications').where('applicant.userId', '==', req.user.userId || '~none~').get();
+    const mine = snap.docs.map(d => {
+      const x = d.data();
+      return {
+        id: d.id, applicationCode: x.applicationCode || null, status: x.status || 'Submitted',
+        reason: x.reason || '', selectedTermMonths: x.selectedTermMonths ?? null,
+        promoSnapshot: x.promoSnapshot || {},
+        createdAt: x.createdAt && x.createdAt.toDate ? x.createdAt.toDate().toISOString() : null
+      };
+    }).sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    res.json({ ok: true, applications: mine });
+  } catch (e) {
+    console.error('[applications] mine failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load your applications.' });
+  }
 });
 
 // ---- Attachments: base64 data URI -> Cloud Storage (private bucket, proxied read) ----
@@ -985,12 +1145,16 @@ async function ensureUser(email, decoded) {
   const snap = await db.collection('users').where('email', '==', email).limit(1).get();
   if (!snap.empty) {
     const d = snap.docs[0].data();
+    const profile = {};
+    ['firstName', 'lastName', 'phone', 'trn', 'addressLine1', 'addressLine2',
+      'town', 'parish', 'employer', 'monthlyIncome'].forEach(k => { profile[k] = d[k] || ''; });
     return {
       userId: snap.docs[0].id, email,
       role: d.role || 'applicant',
       businessId: d.businessId || null,
       name: [d.firstName, d.lastName].filter(Boolean).join(' ') || decoded.name || email,
       trn: d.trn || '',
+      profile,
       profileComplete: !!d.profileCompletedAt
     };
   }
@@ -1004,7 +1168,7 @@ async function ensureUser(email, decoded) {
     lastLoginAt: FieldValue.serverTimestamp()
   });
   return { userId: ref.id, email, role: 'applicant', businessId: await defaultBusinessId(),
-    name: full || email, trn: '', profileComplete: false };
+    name: full || email, trn: '', profile: {}, profileComplete: false };
 }
 
 // Any verified Google account, customer or staff. Distinct from requireRole,
@@ -1021,7 +1185,7 @@ async function requireSignedIn(req, res, next) {
     const email = decoded.email.toLowerCase();
     if (SYSTEM_ADMIN_EMAIL && email === SYSTEM_ADMIN_EMAIL) {
       req.user = { userId: null, email, role: 'superAdmin', businessId: null,
-        name: decoded.name || 'Administrator', trn: '', profileComplete: true };
+        name: decoded.name || 'Administrator', trn: '', profile: {}, profileComplete: true };
       return next();
     }
     req.user = await ensureUser(email, decoded);
@@ -1190,6 +1354,39 @@ app.patch('/api/tickets/:id', requireSignedIn, async (req, res) => {
   } catch (e) {
     console.error('[tickets] update failed:', e.message);
     res.status(500).json({ ok: false, error: 'Could not update the ticket.' });
+  }
+});
+
+// The profile an applicant fills in before they can apply. Employer and
+// monthly income are here because campaign cohorts are judged on them.
+const PROFILE_FIELDS = ['firstName', 'lastName', 'phone', 'trn', 'addressLine1',
+  'addressLine2', 'town', 'parish', 'employer', 'monthlyIncome'];
+const PROFILE_REQUIRED = ['firstName', 'lastName', 'phone', 'trn', 'addressLine1',
+  'town', 'parish', 'employer', 'monthlyIncome'];
+
+app.put('/api/me/profile', requireSignedIn, async (req, res) => {
+  try {
+    if (!req.user.userId) return res.status(400).json({ ok: false, error: 'This account has no profile to fill in.' });
+    const body = req.body || {};
+    const profile = {};
+    PROFILE_FIELDS.forEach(k => { if (body[k] !== undefined) profile[k] = String(body[k]).trim().slice(0, 200); });
+
+    const missing = PROFILE_REQUIRED.filter(k => !profile[k]);
+    if (missing.length) return res.status(400).json({ ok: false, error: 'Still needed: ' + missing.join(', '), missing });
+    const bad = trnProblem(profile.trn, true);
+    if (bad) return res.status(400).json({ ok: false, error: bad });
+    if (!(asNumber(profile.monthlyIncome) > 0)) {
+      return res.status(400).json({ ok: false, error: 'Monthly income must be an amount.' });
+    }
+    profile.monthlyIncome = String(asNumber(profile.monthlyIncome));
+
+    await db.collection('users').doc(req.user.userId).set({
+      ...profile, profileCompletedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp()
+    }, { merge: true });
+    res.json({ ok: true, profile, profileComplete: true });
+  } catch (e) {
+    console.error('[profile] save failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not save your profile.' });
   }
 });
 
