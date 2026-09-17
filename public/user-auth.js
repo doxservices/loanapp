@@ -39,9 +39,30 @@ onAuthStateChanged(auth, async (user) => {
   announce();
 });
 
+async function loadMe(user) {
+  const token = await user.getIdToken();
+  const res = await fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + token } });
+  const json = await res.json();
+  return json && json.ok ? json : null;
+}
+
 window.userAuth = {
   ready: () => first,
   get me() { return me; },
+  // The Google account itself — the name and picture it carries, which is what
+  // a profile is pre-filled from the first time somebody signs in.
+  get google() {
+    const u = auth.currentUser;
+    return u ? { displayName: u.displayName || '', email: u.email || '', photoURL: u.photoURL || '' } : null;
+  },
+  // Ask the server again, after something about this person has changed.
+  refresh: async () => {
+    const user = auth.currentUser;
+    if (!user) return null;
+    me = await loadMe(user);
+    window.dispatchEvent(new CustomEvent('user-auth', { detail: me }));
+    return me;
+  },
   signIn: () => signInWithPopup(auth, new GoogleAuthProvider()),
   signOut: async () => { await signOut(auth); location.reload(); },
   fetch: async (path, opts = {}) => {
