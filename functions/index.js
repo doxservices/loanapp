@@ -56,15 +56,26 @@ const BUSINESS_ADMIN_EMAILS = new Set(
 // Who this email is. The users collection is the register; the two
 // environment variables stay only as a bootstrap, so an empty or broken users
 // table can never lock everyone out of the admin.
+// Email addresses are case-insensitive, and the sign-in token always carries
+// the lowercase form — but a user record typed with capitals stores them as
+// typed. Try the exact match first, then compare case-insensitively, so an
+// address entered as "Robert.J@bank.com" still signs in.
+async function findUserByEmail(email) {
+  const direct = await db.collection('users').where('email', '==', email).limit(1).get();
+  if (!direct.empty) return direct.docs[0];
+  const all = await db.collection('users').limit(500).get();
+  return all.docs.find(d => String(d.data().email || '').trim().toLowerCase() === email) || null;
+}
+
 async function identify(email) {
   if (!email) return null;
   if (SYSTEM_ADMIN_EMAIL && email === SYSTEM_ADMIN_EMAIL) {
     return { role: 'superAdmin', businessId: null, userId: null, profileComplete: true };
   }
 
-  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
-  if (!snap.empty) {
-    const u = snap.docs[0].data();
+  const found = await findUserByEmail(email);
+  if (found) {
+    const u = found.data();
     // 'pending' is someone who has not set their profile up yet, so they still
     // sign in — the profile step is what greets them. Only a deliberately
     // closed account is refused.
@@ -73,7 +84,7 @@ async function identify(email) {
       return {
         role: u.role,
         businessId: u.businessId || null,
-        userId: snap.docs[0].id,
+        userId: found.id,
         profileComplete: !!u.profileCompletedAt
       };
     }
@@ -146,22 +157,107 @@ const permissionsFor = role => PERMISSIONS[role] || [];
 // These mirror the table above: every staff role holds forms.view, while
 // applications.view belongs to the super admin and the underwriter. Keeping
 // them in step is what stops the UI offering something the API refuses.
+// The admin navigation, as data. Each entry names the permission that opens
+// it, so the nav a person sees is worked out once, on the server, and sent
+// with their profile. Nothing is added or taken away in the browser.
+const NAV_DEFAULTS = [
+  { key: 'dashboard', label: 'Dashboard', href: 'admin-dashboard.html', icon: 'fa-tachometer-alt', permission: 'dashboard.view', order: 10 },
+  { key: 'promotions', label: 'Manage Promotions', href: 'admin-promotions.html', icon: 'fa-tags', permission: 'promotions.manage', order: 20 },
+  { key: 'applications', label: 'Applications List', href: 'applications-list.html', icon: 'fa-list-alt', permission: 'applications.view', order: 30 },
+  { key: 'standingOrders', label: 'Standing Orders', href: 'admin-standing-orders.html', icon: 'fa-file-invoice', permission: 'forms.view', order: 40 },
+  { key: 'salaryDeductions', label: 'Salary Deductions', href: 'admin-salary-deductions.html', icon: 'fa-file-signature', permission: 'forms.view', order: 50 },
+  { key: 'contracts', label: 'Loan Contracts', href: 'admin-contracts.html', icon: 'fa-file-contract', permission: 'forms.view', order: 60 },
+  { key: 'tickets', label: 'Support Tickets', href: 'admin-tickets.html', icon: 'fa-life-ring', permission: 'tickets.view', order: 70 },
+  { key: 'users', label: 'User Management', href: 'user-management.html', icon: 'fa-users', permission: 'users.manage', order: 80 },
+  { key: 'navigation', label: 'Navigation', href: 'admin-navigation.html', icon: 'fa-bars', permission: 'settings.view', order: 90 },
+  { key: 'settings', label: 'Settings', href: 'admin.html', icon: 'fa-cog', permission: 'settings.view', order: 100 },
+  { key: 'logout', label: 'Logout', href: 'index.html', icon: 'fa-sign-out-alt', permission: '', order: 110 }
+];
+
+// Seeded on first use, then edited from the navigation console rather than
+// from the source.
+async function navItems() {
+  const snap = await db.collection('navItems').get();
+  if (snap.empty) {
+    const batch = db.batch();
+    NAV_DEFAULTS.forEach(item => batch.set(db.collection('navItems').doc(item.key), { ...item, enabled: true }));
+    await batch.commit();
+    return NAV_DEFAULTS.map(i => ({ id: i.key, ...i, enabled: true }));
+  }
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.order || 0) - (b.order || 0));
+}
+
+// What this person's nav actually is, and which pages the nav governs — so
+// the browser can tell "not for you" from "not a nav page at all".
+async function navFor(permissions) {
+  const items = await navItems();
+  const held = permissions || [];
+  return {
+    nav: items.filter(i => i.enabled !== false && (!i.permission || held.includes(i.permission)))
+      .map(i => ({ key: i.key, label: i.label, href: i.href, icon: i.icon })),
+    gatedPages: items.filter(i => i.permission).map(i => i.href)
+  };
+}
+
 const requireGoogleAuth = requireRole('superAdmin');
 const requireAdminRead = requireRole('superAdmin', 'businessAdmin', 'support', 'underwriter');
 const requireApplicationsRead = requireRole('superAdmin', 'underwriter');
 
 // Lets the client confirm which account it is signed in as, and what that
 // account is allowed to do, before rendering admin UI.
-app.get('/auth/verify', requireAdminRead, (req, res) => {
+app.get('/auth/verify', requireAdminRead, async (req, res) => {
   touchLastLogin(req.adminUserId);
+  const permissions = permissionsFor(req.adminRole);
+  let nav = [], gatedPages = [];
+  try { ({ nav, gatedPages } = await navFor(permissions)); }
+  catch (e) { console.error('[auth] nav lookup failed:', e.message); }
   res.json({
     ok: true,
     email: req.adminEmail,
     role: req.adminRole,
-    permissions: permissionsFor(req.adminRole),
+    permissions,
+    nav,
+    gatedPages,
     businessId: req.adminBusinessId,
     profileComplete: req.adminProfileComplete
   });
+});
+
+// ---- The navigation console: see every nav entry and which permission
+// opens it, and change that without touching the source. ----
+app.get('/api/nav-items', requireGoogleAuth, async (req, res) => {
+  try {
+    res.json({ ok: true, items: await navItems(), permissions: Object.keys(PERMISSIONS).reduce((all, role) => {
+      permissionsFor(role).forEach(p => { if (!all.includes(p)) all.push(p); });
+      return all;
+    }, []).sort(), roles: PERMISSIONS });
+  } catch (e) {
+    console.error('[nav] list failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load the navigation.' });
+  }
+});
+
+app.put('/api/nav-items/:id', requireGoogleAuth, async (req, res) => {
+  try {
+    await navItems();   // make sure the registry exists before editing it
+    const ref = db.collection('navItems').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ ok: false, error: 'No such nav item' });
+    const b = req.body || {};
+    const update = {};
+    if (typeof b.label === 'string' && b.label.trim()) update.label = b.label.trim().slice(0, 60);
+    if (typeof b.permission === 'string') update.permission = b.permission.trim().slice(0, 60);
+    if (typeof b.icon === 'string' && b.icon.trim()) update.icon = b.icon.trim().slice(0, 40);
+    if (b.order !== undefined && Number.isFinite(Number(b.order))) update.order = Number(b.order);
+    if (b.enabled !== undefined) update.enabled = b.enabled !== false;
+    if (!Object.keys(update).length) return res.status(400).json({ ok: false, error: 'Nothing to change.' });
+    await ref.update(update);
+    res.json({ ok: true, item: { id: ref.id, ...(await ref.get()).data() } });
+  } catch (e) {
+    console.error('[nav] update failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not save that.' });
+  }
 });
 
 // ---- Businesses: the directory the super admin browses, and the one
@@ -1142,14 +1238,14 @@ async function defaultBusinessId() {
 }
 
 async function ensureUser(email, decoded) {
-  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
-  if (!snap.empty) {
-    const d = snap.docs[0].data();
+  const found = await findUserByEmail(email);
+  if (found) {
+    const d = found.data();
     const profile = {};
     ['firstName', 'lastName', 'phone', 'trn', 'addressLine1', 'addressLine2',
       'town', 'parish', 'employer', 'monthlyIncome'].forEach(k => { profile[k] = d[k] || ''; });
     return {
-      userId: snap.docs[0].id, email,
+      userId: found.id, email,
       role: d.role || 'applicant',
       businessId: d.businessId || null,
       name: [d.firstName, d.lastName].filter(Boolean).join(' ') || decoded.name || email,

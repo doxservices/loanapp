@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Navigation (Admin)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-theme.css">
+  <script src="theme.js"></script>
+  <script src="admin-shell.js" defer></script>
+  <style>
+    .nav-row td { vertical-align: middle; }
+    .nav-row input[type="text"], .nav-row select, .nav-row input[type="number"] {
+      width: 100%; padding: 7px 9px; border-radius: 6px; font: inherit;
+      border: 1px solid rgba(15,111,190,.28); background: rgba(255,255,255,.7); color: inherit;
+    }
+    .nav-row input[type="number"] { width: 82px; }
+    .who-sees { font-size: 12px; opacity: .8; }
+    .who-sees b { font-weight: 700; }
+    .dirty td { background: rgba(211,166,59,.14); }
+    .save-cell { white-space: nowrap; }
+    .matrix td, .matrix th { font-size: 12px; }
+    .matrix .yes { color: #1d7a53; font-weight: 700; }
+    .matrix .no { opacity: .35; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="container wide">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-bars"></i> Navigation</h1>
+          <p class="page-subtitle">Every entry in the admin menu, and the permission that opens it. This is the list the server sends with each sign-in, so a change here is what people see next time they load a page — nothing is added or removed in the browser.</p>
+        </div>
+        <div class="user-info"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-list"></i> Menu entries</div>
+        <div class="bar">
+          <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <span id="status" class="status"></span>
+        </div>
+        <div class="table-wrap">
+          <table id="tbl">
+            <thead><tr>
+              <th style="width:70px;">Order</th><th>Label</th><th>Page</th>
+              <th style="width:190px;">Permission</th><th style="width:150px;">Who sees it</th>
+              <th style="width:90px;">Shown</th><th style="width:90px;"></th>
+            </tr></thead>
+            <tbody><tr><td colspan="7" class="muted" style="text-align:center; padding:20px;">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title"><i class="fas fa-user-shield"></i> What each role holds</div>
+        <p class="card-desc">Permissions come from the role on a person's user record. A menu entry with no permission is shown to everyone who can sign in.</p>
+        <div class="table-wrap">
+          <table class="matrix" id="matrix">
+            <thead><tr><th>Permission</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+    let items = [], allPermissions = [], roles = {};
+
+    // Which roles hold a given permission — the answer to "who will see this?"
+    function holders(permission) {
+      if (!permission) return Object.keys(roles);
+      return Object.keys(roles).filter(r => (roles[r] || []).includes(permission));
+    }
+
+    function render() {
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = items.map(it => {
+        const who = holders(it.permission);
+        return `
+        <tr class="nav-row" data-id="${esc(it.id)}">
+          <td><input type="number" data-f="order" value="${esc(it.order ?? 0)}"></td>
+          <td><input type="text" data-f="label" value="${esc(it.label)}"></td>
+          <td class="mono">${esc(it.href)}</td>
+          <td>
+            <select data-f="permission">
+              <option value="">Everyone signed in</option>
+              ${allPermissions.map(p => `<option value="${esc(p)}"${p === it.permission ? ' selected' : ''}>${esc(p)}</option>`).join('')}
+            </select>
+          </td>
+          <td class="who-sees">${who.length === Object.keys(roles).length ? '<b>All roles</b>' : who.map(esc).join(', ') || '<b>Nobody</b>'}</td>
+          <td><label><input type="checkbox" data-f="enabled"${it.enabled !== false ? ' checked' : ''}> Shown</label></td>
+          <td class="save-cell"><button class="btn btn-primary" data-save="${esc(it.id)}">Save</button></td>
+        </tr>`;
+      }).join('');
+
+      const mtbody = document.querySelector('#matrix tbody');
+      const roleNames = Object.keys(roles);
+      document.querySelector('#matrix thead tr').innerHTML =
+        '<th>Permission</th>' + roleNames.map(r => `<th>${esc(r)}</th>`).join('');
+      mtbody.innerHTML = allPermissions.map(p => `
+        <tr><td class="mono">${esc(p)}</td>` +
+        roleNames.map(r => (roles[r] || []).includes(p)
+          ? '<td class="yes">yes</td>' : '<td class="no">—</td>').join('') + '</tr>').join('');
+    }
+
+    async function load() {
+      $('status').textContent = 'Loading…';
+      try {
+        const res = await window.adminAuth.fetch('/api/nav-items');
+        const json = await res.json();
+        if (!json.ok) { $('status').textContent = 'Error: ' + (json.error || res.status); return; }
+        items = json.items; allPermissions = json.permissions; roles = json.roles;
+        render();
+        $('status').textContent = `${items.length} entries · ${allPermissions.length} permissions`;
+      } catch (e) { $('status').textContent = 'Request failed'; }
+    }
+
+    document.querySelector('#tbl tbody').addEventListener('input', e => {
+      const row = e.target.closest('.nav-row');
+      if (row) row.classList.add('dirty');
+    });
+
+    document.querySelector('#tbl tbody').addEventListener('click', async e => {
+      const btn = e.target.closest('[data-save]');
+      if (!btn) return;
+      const row = btn.closest('.nav-row');
+      const body = {
+        label: row.querySelector('[data-f="label"]').value,
+        permission: row.querySelector('[data-f="permission"]').value,
+        order: Number(row.querySelector('[data-f="order"]').value),
+        enabled: row.querySelector('[data-f="enabled"]').checked
+      };
+      btn.disabled = true;
+      $('status').textContent = 'Saving…';
+      try {
+        const res = await window.adminAuth.fetch('/api/nav-items/' + encodeURIComponent(btn.dataset.save), {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Could not save.');
+        row.classList.remove('dirty');
+        $('status').textContent = 'Saved. It applies on the next page load.';
+        await load();
+      } catch (err) {
+        $('status').textContent = err.message;
+      } finally { btn.disabled = false; }
+    });
+
+    $('refresh').addEventListener('click', load);
+    window.adminAuth.ready().then(load);
+  </script>
+</body>
+</html>

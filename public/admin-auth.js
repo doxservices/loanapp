@@ -4,12 +4,113 @@
 //   <script type="module" src="admin-auth.js"></script>
 // Then call window.adminAuth.ready() before rendering, and use
 // window.adminAuth.fetch(path, opts) instead of bare fetch() for API calls.
+//
+// Navigation is not decided here. The server works out which nav entries this
+// account may see, from the permission each entry names, and sends that list
+// with the profile. This file renders exactly that list — it never renders a
+// full menu and then takes items away, which is what used to make options
+// flash on screen. The list is remembered between visits so the first paint
+// of the next page is already right.
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
 const API_BASE = window.LOANIT_API_BASE || 'https://doxservices-loanapp.web.app';
 const fbApp = initializeApp(window.FIREBASE_CONFIG);
 const auth = getAuth(fbApp);
+
+const ROLE_KEY = 'adminRole';
+const PERM_KEY = 'adminPermissions';
+const NAV_KEY = 'adminNav';
+const GATED_KEY = 'adminGatedPages';
+
+let currentRole = null;
+let currentPermissions = null;
+let currentNav = null;
+let gatedPages = [];
+
+const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const pageName = () => location.pathname.split('/').pop() || 'index.html';
+
+function readCache() {
+  try {
+    currentRole = localStorage.getItem(ROLE_KEY) || null;
+    currentPermissions = JSON.parse(localStorage.getItem(PERM_KEY) || 'null');
+    currentNav = JSON.parse(localStorage.getItem(NAV_KEY) || 'null');
+    gatedPages = JSON.parse(localStorage.getItem(GATED_KEY) || '[]') || [];
+  } catch (e) { /* private window, or nothing stored yet */ }
+}
+function writeCache() {
+  try {
+    if (currentRole) localStorage.setItem(ROLE_KEY, currentRole);
+    localStorage.setItem(PERM_KEY, JSON.stringify(currentPermissions || []));
+    localStorage.setItem(NAV_KEY, JSON.stringify(currentNav || []));
+    localStorage.setItem(GATED_KEY, JSON.stringify(gatedPages || []));
+  } catch (e) { /* private window */ }
+}
+readCache();
+// Before the sidebar is built, so the very first paint is already correct.
+if (currentRole) document.documentElement.setAttribute('data-admin-role', currentRole);
+
+// Renders the sidebar and the header links from the nav list. Called by
+// admin-shell.js once it has built the shell, and again if the server's
+// answer differs from what was remembered.
+function renderNav() {
+  if (!Array.isArray(currentNav)) return;
+  const page = pageName();
+
+  const side = document.querySelector('.sidebar .nav-links');
+  if (side) {
+    side.innerHTML = currentNav.map(i =>
+      `<li><a href="${esc(i.href)}"${i.href === page ? ' class="active"' : ''}>` +
+      `<i class="fas ${esc(i.icon)}"></i> ${esc(i.label)}</a></li>`).join('');
+  }
+
+  // The header carries a few of the same links, so every admin page offers the
+  // same set rather than whatever was hard-coded into its markup.
+  const bar = document.querySelector('.top-bar .user-info');
+  if (bar) {
+    const quick = currentNav.filter(i => i.href !== page && i.key !== 'logout').slice(0, 3);
+    bar.innerHTML = quick.map(i =>
+      `<a href="${esc(i.href)}" class="nav-btn"><i class="fas ${esc(i.icon)}"></i> ${esc(i.label)}</a>`).join('');
+    if (currentPermissions && !currentPermissions.includes('records.edit')) {
+      const pill = document.createElement('span');
+      pill.id = 'admin-role-pill';
+      pill.textContent = 'View only';
+      pill.style.cssText = 'align-self:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;' +
+        'background:rgba(15,111,190,.12);color:#0a4f8b;border:1px solid rgba(15,111,190,.30);';
+      bar.insertBefore(pill, bar.firstChild);
+    }
+  }
+  document.documentElement.setAttribute('data-nav-ready', '1');
+}
+window.__renderAdminNav = renderNav;
+
+// A page the nav governs, that this account's nav does not include, is not
+// theirs to open — send them to the first page that is. Pages outside the nav
+// registry (the public forms, the contract) are left alone.
+function gatePage() {
+  if (!Array.isArray(currentNav) || !gatedPages.length) return true;
+  const page = pageName();
+  if (!gatedPages.includes(page)) return true;
+  if (currentNav.some(i => i.href === page)) return true;
+  const home = currentNav.find(i => i.key !== 'logout');
+  if (home) { location.replace(home.href); return false; }
+  return true;
+}
+
+function applyProfile(json) {
+  const before = JSON.stringify([currentPermissions, currentNav]);
+  currentRole = json.role || currentRole || 'superAdmin';
+  if (Array.isArray(json.permissions)) currentPermissions = json.permissions;
+  if (Array.isArray(json.nav)) currentNav = json.nav;
+  if (Array.isArray(json.gatedPages)) gatedPages = json.gatedPages;
+  document.documentElement.setAttribute('data-admin-role', currentRole);
+  writeCache();
+  // Redraw only if what was remembered turned out to be wrong.
+  if (before !== JSON.stringify([currentPermissions, currentNav])) renderNav();
+  else document.documentElement.setAttribute('data-nav-ready', '1');
+  return gatePage();
+}
 
 // The gate is styled to match the app's default theme (banking backdrop,
 // deep-blue glass card, gold action) so the sign-in step doesn't look like
@@ -48,7 +149,7 @@ function renderGate() {
       const idToken = await result.user.getIdToken();
       const res = await fetch(API_BASE + '/auth/verify', { headers: { Authorization: 'Bearer ' + idToken } });
       const json = await res.json();
-      if (json.ok) { applyRole(json.role, json.permissions); overlay.remove(); onReady(); return; }
+      if (json.ok) { applyProfile(json); overlay.remove(); onReady(); return; }
       msg.textContent = json.error || 'Sign-in failed.';
       await signOut(auth);
     } catch (err) {
@@ -56,92 +157,6 @@ function renderGate() {
     }
   });
   return overlay;
-}
-
-// Two admin roles, matching functions/index.js: 'system' sees everything,
-// 'business' gets a read-only view of the three form collections. The server
-// enforces this; what follows only keeps the UI from offering an account
-// actions it cannot take, and from stranding it on a page it cannot read.
-// loan-contract.html is here so the view-only account can open a contract
-// prefilled from a stored record and print it. It is a public page and does
-// not load this script; it is listed so its links survive the pruning below.
-const BUSINESS_PAGES = new Set(['admin-contracts.html', 'admin-standing-orders.html',
-  'admin-salary-deductions.html', 'loan-contract.html']);
-const BUSINESS_HOME = 'admin-contracts.html';
-let currentRole = null;
-let currentPermissions = null;
-let pruneQueued = false;
-
-// The permission set is remembered so the next page can draw its nav from it
-// before first paint instead of drawing everything and trimming. It is not a
-// secret and it is not trusted — the server decides every request itself.
-const PERM_KEY = 'adminPermissions';
-const ROLE_KEY = 'adminRole';
-function remembered(key) {
-  try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
-}
-function rememberedPermissions() {
-  try { const v = JSON.parse(remembered(PERM_KEY) || '[]'); return Array.isArray(v) ? v : null; }
-  catch (e) { return null; }
-}
-// Runs before the sidebar is built, so the first paint is already correct.
-currentPermissions = rememberedPermissions();
-if (remembered(ROLE_KEY)) document.documentElement.setAttribute('data-admin-role', remembered(ROLE_KEY));
-
-function pruneForBusiness() {
-  pruneQueued = false;
-  if (currentRole !== 'businessAdmin') return;
-  // Links out to anything this account cannot open, including the blank
-  // forms — it may read what was filled in, not fill one in.
-  document.querySelectorAll('a[href]').forEach(a => {
-    const href = a.getAttribute('href') || '';
-    if (/^(https?:|mailto:|tel:|#)/.test(href)) return;
-    const target = href.split('?')[0].split('#')[0].split('/').pop();
-    if (!target || target === 'index.html' || BUSINESS_PAGES.has(target)) return;
-    (a.closest('li') || a).remove();
-  });
-  document.querySelectorAll('[data-system-only]').forEach(el => el.remove());
-
-  const bar = document.querySelector('.top-bar .user-info');
-  if (bar && !document.getElementById('admin-role-pill')) {
-    const pill = document.createElement('span');
-    pill.id = 'admin-role-pill';
-    pill.textContent = 'View only';
-    pill.style.cssText = 'align-self:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;' +
-      'background:rgba(15,111,190,.12);color:#0a4f8b;border:1px solid rgba(15,111,190,.30);';
-    bar.insertBefore(pill, bar.firstChild);
-  }
-  // Only now are the header links safe to show.
-  document.documentElement.setAttribute('data-nav-ready', '1');
-}
-
-function applyRole(role, permissions) {
-  currentRole = role || 'superAdmin';
-  const before = JSON.stringify(currentPermissions || []);
-  if (Array.isArray(permissions)) currentPermissions = permissions;
-  document.documentElement.setAttribute('data-admin-role', currentRole);
-  try {
-    localStorage.setItem(ROLE_KEY, currentRole);
-    localStorage.setItem(PERM_KEY, JSON.stringify(currentPermissions || []));
-  } catch (e) { /* private window */ }
-  // Redraw only when what was remembered turned out to be wrong; normally the
-  // nav was already rendered from the right permissions.
-  if (before !== JSON.stringify(currentPermissions || []) && typeof window.__renderAdminNav === 'function') {
-    window.__renderAdminNav();
-  }
-  if (currentRole !== 'businessAdmin') { document.documentElement.setAttribute('data-nav-ready', '1'); return true; }
-  if (!BUSINESS_PAGES.has(location.pathname.split('/').pop() || 'index.html')) {
-    location.replace(BUSINESS_HOME);
-    return false;
-  }
-  pruneForBusiness();
-  // The sidebar and the row menus are built after this runs, so keep watching.
-  new MutationObserver(() => {
-    if (pruneQueued) return;
-    pruneQueued = true;
-    requestAnimationFrame(pruneForBusiness);
-  }).observe(document.documentElement, { childList: true, subtree: true });
-  return true;
 }
 
 let readyResolve;
@@ -162,14 +177,14 @@ onAuthStateChanged(auth, async (user) => {
       currentToken = idToken;
       const overlay = document.getElementById('admin-auth-overlay');
       if (overlay) overlay.remove();
-      // A redirect is under way when this is false; leave the page as it is.
-      if (applyRole(json.role, json.permissions)) readyResolve();
+      // False means a redirect is under way; leave the page as it is.
+      if (applyProfile(json)) readyResolve();
       return;
     }
   } catch (err) {
     console.error('[admin-auth] verify failed', err);
   }
-  // Signed in, but not the allowed account (or verify failed) — show the
+  // Signed in, but not an authorized account (or verify failed) — show the
   // gate and sign this identity out so a retry starts clean.
   await signOut(auth);
   document.getElementById('admin-auth-overlay') || renderGate();
@@ -179,6 +194,7 @@ window.adminAuth = {
   ready: () => readyPromise,
   get role() { return currentRole; },
   get permissions() { return currentPermissions; },
+  get nav() { return currentNav; },
   can: id => !currentPermissions || currentPermissions.indexOf(id) > -1,
   get viewOnly() { return !!currentPermissions && currentPermissions.indexOf('records.edit') === -1; },
   fetch: async (path, opts = {}) => {
@@ -187,6 +203,15 @@ window.adminAuth = {
     const headers = { ...(opts.headers || {}), Authorization: 'Bearer ' + idToken };
     return fetch(API_BASE + path, { ...opts, headers });
   },
-  signOut: async () => { await signOut(auth); location.reload(); },
+  signOut: async () => {
+    try { [ROLE_KEY, PERM_KEY, NAV_KEY, GATED_KEY].forEach(k => localStorage.removeItem(k)); } catch (e) {}
+    await signOut(auth);
+    location.reload();
+  },
   apiBase: API_BASE
 };
+
+// The header exists in the page's own markup, so it can be filled before the
+// shell is built.
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', renderNav);
+else renderNav();

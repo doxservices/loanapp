@@ -4,49 +4,15 @@
 // the standard admin-container + sidebar structure and wires the same
 // floating/attached mode and mobile drawer behaviour.
 (function () {
-  // Every link names the permission that opens it, and the nav is rendered
-  // from the permissions this browser already remembers — admin-auth.js puts
-  // them in place before this runs. So a restricted account never watches the
-  // full list appear and then lose items.
-  var LINKS = [
-    { href: 'admin-dashboard.html', icon: 'fa-tachometer-alt', label: 'Dashboard', perm: 'dashboard.view' },
-    { href: 'admin-promotions.html', icon: 'fa-tags', label: 'Manage Promotions', perm: 'promotions.manage' },
-    { href: 'applications-list.html', icon: 'fa-list-alt', label: 'Applications List', perm: 'applications.view' },
-    { href: 'admin-standing-orders.html', icon: 'fa-file-invoice', label: 'Standing Orders', perm: 'forms.view' },
-    { href: 'admin-salary-deductions.html', icon: 'fa-file-signature', label: 'Salary Deductions', perm: 'forms.view' },
-    { href: 'admin-contracts.html', icon: 'fa-file-contract', label: 'Loan Contracts', perm: 'forms.view' },
-    { href: 'admin-tickets.html', icon: 'fa-life-ring', label: 'Support Tickets', perm: 'tickets.view' },
-    { href: 'user-management.html', icon: 'fa-users', label: 'User Management', perm: 'users.manage' },
-    { href: 'admin.html', icon: 'fa-cog', label: 'Settings', perm: 'settings.view' },
-    { href: 'index.html', icon: 'fa-sign-out-alt', label: 'Logout', perm: null }
-  ];
+  // The nav itself comes from the signed-in profile: the server decides which
+  // entries this account may see, from the permission each one names, and
+  // admin-auth.js renders them. Nothing is listed here, so nothing can be
+  // rendered and then removed.
 
-  function held() {
-    // Before the first sign-in on a browser nothing is known, so only the
-    // permissions every admin role shares are assumed. The list can then only
-    // grow, never shrink in front of the user.
-    if (window.adminAuth && window.adminAuth.permissions) return window.adminAuth.permissions;
-    return ['forms.view', 'tickets.view'];
-  }
-  function navHtml(current) {
-    var have = held();
-    return LINKS.filter(function (l) { return !l.perm || have.indexOf(l.perm) > -1; })
-      .map(function (l) {
-        return '<li><a href="' + l.href + '"' + (l.href === current ? ' class="active"' : '') +
-          '><i class="fas ' + l.icon + '"></i> ' + l.label + '</a></li>';
-      }).join('');
-  }
-  // admin-auth.js calls this if the confirmed permissions differ from what
-  // this browser remembered.
-  window.__renderAdminNav = function () {
-    var list = document.querySelector('.sidebar .nav-links');
-    if (list) list.innerHTML = navHtml(location.pathname.split('/').pop() || 'index.html');
-  };
 
   function build() {
     var page = document.querySelector('.page');
     if (!page || document.querySelector('.admin-container')) return;
-    var current = location.pathname.split('/').pop() || 'index.html';
 
     var container = document.createElement('div');
     container.className = 'admin-container';
@@ -55,7 +21,7 @@
     aside.className = 'sidebar';
     aside.innerHTML =
       '<div class="logo"><i class="fas fa-university"></i><h1>LoanAdmin Pro</h1></div>' +
-      '<ul class="nav-links">' + navHtml(current) + '</ul>';
+      '<ul class="nav-links"></ul>';
 
     var main = document.createElement('main');
     main.className = 'main-content';
@@ -108,6 +74,9 @@
     backdrop.addEventListener('click', closeMobile);
     aside.querySelectorAll('.nav-links a').forEach(function (a) { a.addEventListener('click', closeMobile); });
 
+    // Fill the nav now the shell exists; admin-auth.js redraws it only if
+    // the server disagrees with what this browser remembered.
+    if (window.__renderAdminNav) window.__renderAdminNav();
     if (window.__renderThemeToggle) window.__renderThemeToggle();
   }
 
