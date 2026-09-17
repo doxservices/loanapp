@@ -160,7 +160,7 @@
               titleOf: r => r.borrowerName || 'Contract',
               subtitleOf: r => (r.autosaved ? 'Autosaved draft' : 'Printed contract') + ' · ' + fmtWhen(r.submittedAt)
             }) },
-          { label: 'Open in form', icon: 'fa-pen-to-square', system: true,
+          { label: 'Open in form', icon: 'fa-pen-to-square', perm: 'records.edit',
             href: 'loan-contract.html?record=' + encodeURIComponent(record.id) },
           { label: 'Copy record id', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(record.id) }
         ]

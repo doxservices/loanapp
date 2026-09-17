@@ -1,6 +1,13 @@
 /* Shared theme for the lightweight admin utility pages (admin navigation,
  * submissions and applications tables). Light/white surfaces with the same
  * blue and gold accents used on the printed authorization documents. */
+/* The header's links appear only once the role is known, so a restricted
+   account never sees a button appear and then vanish. The remembered role is
+   stamped on <html> before first paint, so this shows only on a first sign-in
+   in a new browser. */
+html:not([data-admin-role]) .top-bar .user-info,
+html[data-admin-role="businessAdmin"]:not([data-nav-ready]) .top-bar .user-info { visibility: hidden; }
+
 :root {
   --blue: #0f6fbe;
   --blue-dark: #0a4f8b;

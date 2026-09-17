@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script src="analytics.js"></script>
+  <script src="firebase-config.js"></script><script type="module" src="admin-auth.js"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Support Tickets (Admin)</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="admin-theme.css">
+  <link rel="stylesheet" href="record-actions.css">
+  <script src="record-actions.js" defer></script>
+  <script src="theme.js"></script>
+  <script src="admin-shell.js" defer></script>
+  <style>
+    .ticket-layout { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 18px; align-items: start; }
+    @media (max-width: 1000px) { .ticket-layout { grid-template-columns: 1fr; } }
+    .thread-msg { border: 1px solid var(--admin-line, #d6e2ee); border-radius: 8px; padding: 11px 13px; margin-bottom: 9px; }
+    .thread-msg .from { font-size: 12px; opacity: .75; margin-bottom: 4px; }
+    .thread-msg .body { white-space: pre-wrap; }
+    .thread-msg.staff { background: rgba(15,111,190,.07); }
+    .tstatus { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+      background: rgba(15,111,190,.12); }
+    .tstatus.resolved { background: rgba(29,122,83,.15); }
+    .tstatus.waiting { background: rgba(176,138,26,.18); }
+    .thigh { font-weight: 700; color: #b3261e; }
+    #thread-card textarea { width: 100%; min-height: 96px; padding: 9px 10px; border-radius: 6px;
+      border: 1px solid var(--admin-line, #d6e2ee); font: inherit; resize: vertical; }
+    tr.row-open td { background: rgba(15,111,190,.08); }
+    #tbl tbody tr { cursor: pointer; }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="container wide">
+      <div class="top-bar">
+        <div>
+          <h1 class="page-title"><i class="fas fa-life-ring"></i> Support Tickets</h1>
+          <p class="page-subtitle">Every ticket raised by a customer, with the record it concerns. Replying moves a ticket to waiting on the customer; their reply reopens it.</p>
+        </div>
+        <div class="user-info">
+          <a href="admin-contracts.html" class="nav-btn"><i class="fas fa-file-contract"></i> Loan Contracts</a>
+          <a href="admin.html" class="nav-btn"><i class="fas fa-compass"></i> Admin Navigation</a>
+        </div>
+      </div>
+
+      <div class="ticket-layout">
+        <div class="card">
+          <div class="card-title"><i class="fas fa-table"></i> Tickets</div>
+          <div class="bar">
+            <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+            <label for="status-filter">Show</label>
+            <select id="status-filter">
+              <option value="open-ish">Needs attention</option>
+              <option value="all">All tickets</option>
+              <option value="open">Open</option>
+              <option value="waiting on customer">Waiting on customer</option>
+              <option value="resolved">Resolved</option>
+            </select>
+            <span id="status" class="status"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="tbl">
+              <thead><tr>
+                <th class="nowrap">Last reply</th><th>Subject</th><th>Customer</th>
+                <th>About</th><th class="nowrap">Status</th><th class="nowrap">Priority</th>
+              </tr></thead>
+              <tbody><tr><td colspan="6" class="muted" style="text-align:center; padding:20px;">Loading…</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="thread-card">
+          <div class="card-title"><i class="fas fa-comments"></i> <span id="thread-title">No ticket selected</span></div>
+          <p class="muted" id="thread-meta" style="margin-top:-6px;">Pick a ticket to read the conversation.</p>
+          <div id="thread"></div>
+          <div id="thread-actions" hidden>
+            <label for="reply" style="display:block; font-weight:600; font-size:13px; margin:12px 0 4px;">Reply to the customer</label>
+            <textarea id="reply" maxlength="5000" placeholder="They see this."></textarea>
+            <div class="bar" style="margin-top:10px;">
+              <button class="btn btn-primary" id="reply-btn"><i class="fas fa-paper-plane"></i> Send</button>
+              <label for="set-status">Status</label>
+              <select id="set-status">
+                <option value="open">Open</option>
+                <option value="waiting on customer">Waiting on customer</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            </div>
+            <p class="status" id="thread-status"></p>
+          </div>
+        </div>
+      </div>
+
+      <footer>
+        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+      </footer>
+    </div>
+  </div>
+
+  <script type="module">
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const when = v => { if (!v) return ''; try { return new Date(v).toLocaleString(); } catch { return String(v); } };
+    const cls = s => s === 'resolved' ? 'resolved' : (s === 'waiting on customer' ? 'waiting' : '');
+    const ABOUT = { contract: 'Loan contract', standingOrder: 'Standing order',
+                    salaryDeduction: 'Salary deduction', application: 'Application' };
+
+    let tickets = [];
+    let openId = null;
+
+    function render() {
+      const filter = $('status-filter').value;
+      const shown = tickets.filter(t =>
+        filter === 'all' ? true :
+        filter === 'open-ish' ? t.status !== 'resolved' : t.status === filter);
+      const tbody = document.querySelector('#tbl tbody');
+      if (!shown.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding:20px;">No tickets match this filter.</td></tr>';
+      } else {
+        tbody.innerHTML = shown.map(t => `
+          <tr data-id="${esc(t.id)}" class="${t.id === openId ? 'row-open' : ''}">
+            <td class="nowrap">${esc(when(t.lastReplyAt || t.createdAt))}</td>
+            <td>${esc(t.subject)}</td>
+            <td>${esc(t.customer?.name || t.customer?.email || '')}<div class="applicant-sub">${esc(t.customer?.email || '')}</div></td>
+            <td>${t.about ? esc(ABOUT[t.about.type] || t.about.type) + (t.about.label ? ' <span class="muted">· ' + esc(t.about.label) + '</span>' : '') : '<span class="muted">—</span>'}</td>
+            <td class="nowrap"><span class="tstatus ${cls(t.status)}">${esc(t.status)}</span></td>
+            <td class="nowrap">${t.priority === 'high' ? '<span class="thigh">High</span>' : 'Normal'}</td>
+          </tr>`).join('');
+      }
+      const openCount = tickets.filter(t => t.status !== 'resolved').length;
+      $('status').textContent = `${shown.length} shown · ${openCount} needing attention · ${tickets.length} total`;
+    }
+
+    async function load() {
+      $('status').textContent = 'Loading…';
+      try {
+        const res = await window.adminAuth.fetch('/api/tickets');
+        const json = await res.json();
+        if (!json.ok) { $('status').textContent = 'Error: ' + (json.error || res.status); return; }
+        tickets = json.tickets;
+        render();
+      } catch (e) { $('status').textContent = 'Request failed'; }
+    }
+
+    async function openTicket(id) {
+      const res = await window.adminAuth.fetch('/api/tickets/' + encodeURIComponent(id));
+      const json = await res.json();
+      if (!json.ok) { $('thread-meta').textContent = json.error || 'Could not open that ticket.'; return; }
+      openId = id;
+      const t = json.ticket;
+      $('thread-title').textContent = t.subject;
+      $('thread-meta').innerHTML =
+        `${esc(t.customer?.name || '')} &lt;${esc(t.customer?.email || '')}&gt;` +
+        (t.customer?.trn ? ' · TRN ' + esc(t.customer.trn) : '') +
+        ` · opened ${esc(when(t.createdAt))}` +
+        (t.about ? ` · about a ${esc((ABOUT[t.about.type] || t.about.type).toLowerCase())}` : '');
+      $('thread').innerHTML = json.messages.map(m => `
+        <div class="thread-msg ${m.author === 'staff' ? 'staff' : ''}">
+          <div class="from">${m.author === 'staff' ? 'Staff · ' + esc(m.authorName || '') : esc(m.authorName || 'Customer')} · ${esc(when(m.createdAt))}</div>
+          <div class="body">${esc(m.body)}</div>
+        </div>`).join('');
+      $('set-status').value = t.status;
+      $('thread-actions').hidden = false;
+      render();
+    }
+
+    document.querySelector('#tbl tbody').addEventListener('click', e => {
+      const tr = e.target.closest('tr[data-id]');
+      if (tr) openTicket(tr.dataset.id);
+    });
+
+    $('reply-btn').addEventListener('click', async () => {
+      const message = $('reply').value.trim();
+      if (!message || !openId) return;
+      $('reply-btn').disabled = true;
+      $('thread-status').textContent = 'Sending…';
+      try {
+        const res = await window.adminAuth.fetch('/api/tickets/' + encodeURIComponent(openId) + '/messages', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ message })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Could not send.');
+        $('reply').value = '';
+        $('thread-status').textContent = '';
+        await load();
+        await openTicket(openId);
+      } catch (err) { $('thread-status').textContent = err.message; }
+      finally { $('reply-btn').disabled = false; }
+    });
+
+    $('set-status').addEventListener('change', async () => {
+      if (!openId) return;
+      $('thread-status').textContent = 'Updating…';
+      try {
+        const res = await window.adminAuth.fetch('/api/tickets/' + encodeURIComponent(openId), {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: $('set-status').value })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Could not update.');
+        $('thread-status').textContent = '';
+        await load();
+      } catch (err) { $('thread-status').textContent = err.message; }
+    });
+
+    $('refresh').addEventListener('click', load);
+    $('status-filter').addEventListener('change', render);
+    window.adminAuth.ready().then(load);
+  </script>
+</body>
+</html>

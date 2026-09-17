@@ -56,7 +56,7 @@ Additive first, enforcing second, so nothing breaks halfway:
 
 ## The CRM, in stages
 
-### Stage 1 — the ticket thread (build now)
+### Stage 1 — the ticket thread (built)
 
 - `tickets`: `pid`, `businessId`, `subject`, `status` (open / waiting on
   customer / resolved), `priority`, customer (`userId`, name, email, TRN),

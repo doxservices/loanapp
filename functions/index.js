@@ -129,8 +129,26 @@ function requireRole(...roles) {
   };
 }
 
-const requireGoogleAuth = requireRole('superAdmin');                 // full access
-const requireAdminRead = requireRole('superAdmin', 'businessAdmin'); // reading form records
+// What each role may do, by permission id. This is the single place the
+// answer lives: the API enforces with it, and the UI is drawn from the same
+// list, so a button can never offer something the server will refuse.
+const PERMISSIONS = {
+  superAdmin: ['dashboard.view', 'applications.view', 'promotions.manage', 'users.manage',
+    'businesses.browse', 'settings.view', 'forms.view', 'records.edit', 'contracts.create',
+    'tickets.view', 'tickets.manage'],
+  businessAdmin: ['forms.view', 'contracts.create', 'tickets.view', 'tickets.manage'],
+  support: ['forms.view', 'tickets.view', 'tickets.manage'],
+  underwriter: ['applications.view', 'forms.view', 'tickets.view'],
+  applicant: ['tickets.own']
+};
+const permissionsFor = role => PERMISSIONS[role] || [];
+
+// These mirror the table above: every staff role holds forms.view, while
+// applications.view belongs to the super admin and the underwriter. Keeping
+// them in step is what stops the UI offering something the API refuses.
+const requireGoogleAuth = requireRole('superAdmin');
+const requireAdminRead = requireRole('superAdmin', 'businessAdmin', 'support', 'underwriter');
+const requireApplicationsRead = requireRole('superAdmin', 'underwriter');
 
 // Lets the client confirm which account it is signed in as, and what that
 // account is allowed to do, before rendering admin UI.
@@ -140,6 +158,7 @@ app.get('/auth/verify', requireAdminRead, (req, res) => {
     ok: true,
     email: req.adminEmail,
     role: req.adminRole,
+    permissions: permissionsFor(req.adminRole),
     businessId: req.adminBusinessId,
     profileComplete: req.adminProfileComplete
   });
@@ -424,7 +443,7 @@ function toFlatRow(doc, promoNames) {
     created_at: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }
-app.get('/applications', requireGoogleAuth, async (req, res) => {
+app.get('/applications', requireApplicationsRead, async (req, res) => {
   const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
   try {
     const [snap, promos] = await Promise.all([
@@ -669,7 +688,7 @@ function appToApi(doc, opts) {
     reviewFlags: d.reviewFlags || {}, attachments: d.attachments || {}, messages: d.messages || []
   };
 }
-app.get('/api/applications', requireGoogleAuth, async (req, res) => {
+app.get('/api/applications', requireApplicationsRead, async (req, res) => {
   const snap = await db.collection('applications').orderBy('createdAt', 'desc').get();
   res.json(snap.docs.map(doc => appToApi(doc, { includeContractToken: true })));
 });
@@ -934,6 +953,250 @@ app.patch('/api/applications/:id', async (req, res) => {
   }
   await ref.update(update);
   res.json(appToApi(await ref.get()));
+});
+
+// =========================================================================
+// Support tickets — stage 1 of the CRM: one thread per ticket, linked to the
+// record it is about.
+//
+// Customers sign in with Google like everyone else. Any verified Google
+// account may raise a ticket, and a user record is created for it the first
+// time it appears, so the ticket has an owner and the profile step has
+// somewhere to write. Staff roles are never created this way — they are set
+// deliberately in the users table.
+// =========================================================================
+const STAFF_ROLES = ['superAdmin', 'businessAdmin', 'support', 'underwriter'];
+const TICKET_STATUSES = ['open', 'waiting on customer', 'resolved'];
+const TICKET_PRIORITIES = ['normal', 'high'];
+// What a ticket can be about, and the collection each one lives in.
+const ABOUT_TYPES = {
+  contract: 'contracts',
+  standingOrder: 'standingOrders',
+  salaryDeduction: 'salaryDeductions',
+  application: 'applications'
+};
+
+async function defaultBusinessId() {
+  const snap = await db.collection('businesses').limit(1).get();
+  return snap.empty ? null : snap.docs[0].id;
+}
+
+async function ensureUser(email, decoded) {
+  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
+  if (!snap.empty) {
+    const d = snap.docs[0].data();
+    return {
+      userId: snap.docs[0].id, email,
+      role: d.role || 'applicant',
+      businessId: d.businessId || null,
+      name: [d.firstName, d.lastName].filter(Boolean).join(' ') || decoded.name || email,
+      trn: d.trn || '',
+      profileComplete: !!d.profileCompletedAt
+    };
+  }
+  const full = String(decoded.name || '').trim();
+  const ref = await db.collection('users').add({
+    pid: randomCode(12), email, role: 'applicant',
+    businessId: await defaultBusinessId(),
+    firstName: full.split(' ')[0] || '', lastName: full.split(' ').slice(1).join(' '),
+    status: 'active',
+    createdAt: FieldValue.serverTimestamp(),
+    lastLoginAt: FieldValue.serverTimestamp()
+  });
+  return { userId: ref.id, email, role: 'applicant', businessId: await defaultBusinessId(),
+    name: full || email, trn: '', profileComplete: false };
+}
+
+// Any verified Google account, customer or staff. Distinct from requireRole,
+// which is the allow-listed admin gate.
+async function requireSignedIn(req, res, next) {
+  const hdr = req.get('authorization') || '';
+  const token = hdr.startsWith('Bearer ') ? hdr.slice(7) : null;
+  if (!token) return res.status(401).json({ ok: false, error: 'Missing bearer token' });
+  try {
+    const decoded = await firebaseAuth.verifyIdToken(token);
+    if (!decoded.email || !decoded.email_verified) {
+      return res.status(403).json({ ok: false, error: 'A verified Google account is required.' });
+    }
+    const email = decoded.email.toLowerCase();
+    if (SYSTEM_ADMIN_EMAIL && email === SYSTEM_ADMIN_EMAIL) {
+      req.user = { userId: null, email, role: 'superAdmin', businessId: null,
+        name: decoded.name || 'Administrator', trn: '', profileComplete: true };
+      return next();
+    }
+    req.user = await ensureUser(email, decoded);
+    // The bootstrap list still names the business admins until they have a
+    // user record of their own.
+    if (BUSINESS_ADMIN_EMAILS.has(email) && req.user.role === 'applicant') req.user.role = 'businessAdmin';
+    next();
+  } catch (e) {
+    console.error('[tickets] auth failed:', e.message);
+    res.status(401).json({ ok: false, error: 'Invalid or expired sign-in token.' });
+  }
+}
+
+const isStaff = u => STAFF_ROLES.includes(u.role);
+const iso = t => (t && t.toDate ? t.toDate().toISOString() : null);
+
+function ticketToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, pid: d.pid || null, businessId: d.businessId || null,
+    subject: d.subject || '', status: d.status || 'open', priority: d.priority || 'normal',
+    customer: d.customer || {}, about: d.about || null, assignedTo: d.assignedTo || null,
+    messageCount: d.messageCount || 0,
+    createdAt: iso(d.createdAt), lastReplyAt: iso(d.lastReplyAt)
+  };
+}
+
+// A ticket is readable by staff of the same business, and by the person who
+// raised it. Nobody else, whatever they hold.
+function mayseeTicket(user, t) {
+  if (user.role === 'superAdmin') return true;
+  if (isStaff(user)) return !!t.businessId && t.businessId === user.businessId;
+  return !!(t.customer && t.customer.userId && t.customer.userId === user.userId);
+}
+
+app.post('/api/tickets', requireSignedIn, async (req, res) => {
+  try {
+    const body = req.body || {};
+    const subject = String(body.subject || '').trim().slice(0, 200);
+    const message = String(body.message || '').trim().slice(0, 5000);
+    if (!subject || !message) {
+      return res.status(400).json({ ok: false, error: 'A subject and a message are both needed.' });
+    }
+    const priority = TICKET_PRIORITIES.includes(body.priority) ? body.priority : 'normal';
+
+    // The record the ticket is about, kept only if it is a kind we know and
+    // the record actually exists.
+    let about = null;
+    const type = body.about && body.about.type;
+    const aboutId = body.about && String(body.about.id || '');
+    if (ABOUT_TYPES[type] && aboutId) {
+      const doc = await db.collection(ABOUT_TYPES[type]).doc(aboutId).get();
+      if (doc.exists) {
+        const d = doc.data();
+        about = { type, id: aboutId, label: d.borrowerName || d.applicationCode ||
+          ((d.applicant && [d.applicant.firstName, d.applicant.lastName].filter(Boolean).join(' ')) || aboutId) };
+      }
+    }
+
+    const now = FieldValue.serverTimestamp();
+    const ref = await db.collection('tickets').add({
+      pid: randomCode(12),
+      businessId: req.user.businessId || await defaultBusinessId(),
+      subject, status: 'open', priority, about, assignedTo: null,
+      customer: { userId: req.user.userId, name: req.user.name, email: req.user.email, trn: req.user.trn || '' },
+      messageCount: 1, createdAt: now, lastReplyAt: now
+    });
+    await ref.collection('messages').add({
+      author: isStaff(req.user) ? 'staff' : 'customer',
+      authorId: req.user.userId, authorName: req.user.name,
+      body: message, createdAt: now
+    });
+    res.status(201).json({ ok: true, ticket: ticketToApi(await ref.get()) });
+  } catch (e) {
+    console.error('[tickets] create failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not open the ticket.' });
+  }
+});
+
+app.get('/api/tickets', requireSignedIn, async (req, res) => {
+  try {
+    // Sorted in memory: the filter and the sort are on different fields, which
+    // would otherwise need a composite index for what is a small collection.
+    let docs;
+    if (req.user.role === 'superAdmin') {
+      docs = (await db.collection('tickets').get()).docs;
+    } else if (isStaff(req.user)) {
+      docs = (await db.collection('tickets').where('businessId', '==', req.user.businessId || '~none~').get()).docs;
+    } else {
+      docs = (await db.collection('tickets').where('customer.userId', '==', req.user.userId || '~none~').get()).docs;
+    }
+    const tickets = docs.map(ticketToApi)
+      .sort((a, b) => String(b.lastReplyAt || '').localeCompare(String(a.lastReplyAt || '')));
+    res.json({ ok: true, role: req.user.role, staff: isStaff(req.user), tickets });
+  } catch (e) {
+    console.error('[tickets] list failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load tickets.' });
+  }
+});
+
+app.get('/api/tickets/:id', requireSignedIn, async (req, res) => {
+  try {
+    const doc = await db.collection('tickets').doc(req.params.id).get();
+    if (!doc.exists) return res.status(404).json({ ok: false, error: 'Ticket not found' });
+    if (!mayseeTicket(req.user, doc.data())) return res.status(403).json({ ok: false, error: 'Not your ticket.' });
+    const msgs = await doc.ref.collection('messages').orderBy('createdAt').get();
+    res.json({
+      ok: true, staff: isStaff(req.user), ticket: ticketToApi(doc),
+      messages: msgs.docs.map(m => {
+        const d = m.data();
+        return { id: m.id, author: d.author, authorName: d.authorName || '', body: d.body || '', createdAt: iso(d.createdAt) };
+      })
+    });
+  } catch (e) {
+    console.error('[tickets] read failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load the ticket.' });
+  }
+});
+
+app.post('/api/tickets/:id/messages', requireSignedIn, async (req, res) => {
+  try {
+    const body = String((req.body || {}).message || '').trim().slice(0, 5000);
+    if (!body) return res.status(400).json({ ok: false, error: 'A reply cannot be empty.' });
+    const ref = db.collection('tickets').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ ok: false, error: 'Ticket not found' });
+    if (!mayseeTicket(req.user, doc.data())) return res.status(403).json({ ok: false, error: 'Not your ticket.' });
+
+    const staff = isStaff(req.user);
+    const now = FieldValue.serverTimestamp();
+    await ref.collection('messages').add({
+      author: staff ? 'staff' : 'customer',
+      authorId: req.user.userId, authorName: req.user.name, body, createdAt: now
+    });
+    // A reply moves the ticket to whoever now owes an answer, and a resolved
+    // ticket reopens when either side says something more.
+    await ref.update({
+      messageCount: FieldValue.increment(1),
+      lastReplyAt: now,
+      status: staff ? 'waiting on customer' : 'open'
+    });
+    res.json({ ok: true, ticket: ticketToApi(await ref.get()) });
+  } catch (e) {
+    console.error('[tickets] reply failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not send the reply.' });
+  }
+});
+
+app.patch('/api/tickets/:id', requireSignedIn, async (req, res) => {
+  try {
+    if (!isStaff(req.user)) return res.status(403).json({ ok: false, error: 'Only staff can change a ticket.' });
+    const ref = db.collection('tickets').doc(req.params.id);
+    const doc = await ref.get();
+    if (!doc.exists) return res.status(404).json({ ok: false, error: 'Ticket not found' });
+    if (!mayseeTicket(req.user, doc.data())) return res.status(403).json({ ok: false, error: 'Not your ticket.' });
+
+    const update = {};
+    const body = req.body || {};
+    if (TICKET_STATUSES.includes(body.status)) update.status = body.status;
+    if (TICKET_PRIORITIES.includes(body.priority)) update.priority = body.priority;
+    if (body.assignedTo !== undefined) update.assignedTo = body.assignedTo ? String(body.assignedTo).slice(0, 120) : null;
+    if (!Object.keys(update).length) return res.status(400).json({ ok: false, error: 'Nothing to change.' });
+
+    await ref.update(update);
+    res.json({ ok: true, ticket: ticketToApi(await ref.get()) });
+  } catch (e) {
+    console.error('[tickets] update failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not update the ticket.' });
+  }
+});
+
+// Who am I, for the customer-facing pages.
+app.get('/api/me', requireSignedIn, (req, res) => {
+  touchLastLogin(req.user.userId);
+  res.json({ ok: true, ...req.user, staff: isStaff(req.user), permissions: permissionsFor(req.user.role) });
 });
 
 exports.api = onRequest({ region: 'us-central1' }, app);

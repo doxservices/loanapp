@@ -48,7 +48,7 @@ function renderGate() {
       const idToken = await result.user.getIdToken();
       const res = await fetch(API_BASE + '/auth/verify', { headers: { Authorization: 'Bearer ' + idToken } });
       const json = await res.json();
-      if (json.ok) { applyRole(json.role); overlay.remove(); onReady(); return; }
+      if (json.ok) { applyRole(json.role, json.permissions); overlay.remove(); onReady(); return; }
       msg.textContent = json.error || 'Sign-in failed.';
       await signOut(auth);
     } catch (err) {
@@ -69,7 +69,24 @@ const BUSINESS_PAGES = new Set(['admin-contracts.html', 'admin-standing-orders.h
   'admin-salary-deductions.html', 'loan-contract.html']);
 const BUSINESS_HOME = 'admin-contracts.html';
 let currentRole = null;
+let currentPermissions = null;
 let pruneQueued = false;
+
+// The permission set is remembered so the next page can draw its nav from it
+// before first paint instead of drawing everything and trimming. It is not a
+// secret and it is not trusted — the server decides every request itself.
+const PERM_KEY = 'adminPermissions';
+const ROLE_KEY = 'adminRole';
+function remembered(key) {
+  try { return localStorage.getItem(key) || ''; } catch (e) { return ''; }
+}
+function rememberedPermissions() {
+  try { const v = JSON.parse(remembered(PERM_KEY) || '[]'); return Array.isArray(v) ? v : null; }
+  catch (e) { return null; }
+}
+// Runs before the sidebar is built, so the first paint is already correct.
+currentPermissions = rememberedPermissions();
+if (remembered(ROLE_KEY)) document.documentElement.setAttribute('data-admin-role', remembered(ROLE_KEY));
 
 function pruneForBusiness() {
   pruneQueued = false;
@@ -94,12 +111,25 @@ function pruneForBusiness() {
       'background:rgba(15,111,190,.12);color:#0a4f8b;border:1px solid rgba(15,111,190,.30);';
     bar.insertBefore(pill, bar.firstChild);
   }
+  // Only now are the header links safe to show.
+  document.documentElement.setAttribute('data-nav-ready', '1');
 }
 
-function applyRole(role) {
-  currentRole = role || 'system';
-  if (currentRole !== 'businessAdmin') return true;
-  document.body && document.body.setAttribute('data-admin-role', 'businessAdmin');
+function applyRole(role, permissions) {
+  currentRole = role || 'superAdmin';
+  const before = JSON.stringify(currentPermissions || []);
+  if (Array.isArray(permissions)) currentPermissions = permissions;
+  document.documentElement.setAttribute('data-admin-role', currentRole);
+  try {
+    localStorage.setItem(ROLE_KEY, currentRole);
+    localStorage.setItem(PERM_KEY, JSON.stringify(currentPermissions || []));
+  } catch (e) { /* private window */ }
+  // Redraw only when what was remembered turned out to be wrong; normally the
+  // nav was already rendered from the right permissions.
+  if (before !== JSON.stringify(currentPermissions || []) && typeof window.__renderAdminNav === 'function') {
+    window.__renderAdminNav();
+  }
+  if (currentRole !== 'businessAdmin') { document.documentElement.setAttribute('data-nav-ready', '1'); return true; }
   if (!BUSINESS_PAGES.has(location.pathname.split('/').pop() || 'index.html')) {
     location.replace(BUSINESS_HOME);
     return false;
@@ -133,7 +163,7 @@ onAuthStateChanged(auth, async (user) => {
       const overlay = document.getElementById('admin-auth-overlay');
       if (overlay) overlay.remove();
       // A redirect is under way when this is false; leave the page as it is.
-      if (applyRole(json.role)) readyResolve();
+      if (applyRole(json.role, json.permissions)) readyResolve();
       return;
     }
   } catch (err) {
@@ -148,7 +178,9 @@ onAuthStateChanged(auth, async (user) => {
 window.adminAuth = {
   ready: () => readyPromise,
   get role() { return currentRole; },
-  get viewOnly() { return currentRole === 'businessAdmin'; },
+  get permissions() { return currentPermissions; },
+  can: id => !currentPermissions || currentPermissions.indexOf(id) > -1,
+  get viewOnly() { return !!currentPermissions && currentPermissions.indexOf('records.edit') === -1; },
   fetch: async (path, opts = {}) => {
     const user = auth.currentUser;
     const idToken = user ? await user.getIdToken() : currentToken;
