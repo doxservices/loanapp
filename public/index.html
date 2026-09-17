@@ -124,6 +124,68 @@
       line-height: 1.22; color: var(--text-strong); text-wrap: balance; }
     .section-head p { margin: 0; font-size: 16px; color: var(--text-dim); }
 
+    /* ---- the lifecycle rail ---- */
+    .lifecycle { display: grid; gap: 26px; }
+    .rail {
+      display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0;
+      position: relative; padding-top: 6px;
+    }
+    /* the line the stages sit on, drawn behind them */
+    .rail::before {
+      content: ""; position: absolute; left: 6%; right: 6%; top: 27px; height: 2px;
+      background: linear-gradient(90deg, rgba(0,180,216,.5), rgba(125,160,205,.22));
+    }
+    .stage {
+      position: relative; display: flex; flex-direction: column; align-items: center; gap: 10px;
+      padding: 0 6px 4px; background: none; border: 0; cursor: pointer; font: inherit;
+      color: var(--text-dim); text-align: center; transition: color .2s ease;
+    }
+    .stage .dot {
+      width: 42px; height: 42px; border-radius: 50%; display: grid; place-items: center;
+      font-size: 12.5px; font-weight: 700; letter-spacing: .02em;
+      background: #0d1f33; color: var(--text-dim);
+      border: 2px solid rgba(125,160,205,.3); transition: all .22s ease;
+    }
+    .stage .name { font-size: 13px; font-weight: 600; line-height: 1.3; max-width: 13ch; }
+    .stage:hover { color: var(--text); }
+    .stage:hover .dot { border-color: rgba(0,180,216,.6); color: var(--text); }
+    .stage[aria-selected="true"] { color: var(--text-strong); }
+    .stage[aria-selected="true"] .dot {
+      background: var(--accent); border-color: var(--accent); color: #04222c;
+      box-shadow: 0 0 0 6px rgba(0,180,216,.14);
+    }
+
+    .stage-detail {
+      display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 22px; align-items: start;
+      background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius);
+      padding: 30px 32px; min-height: 186px;
+    }
+    .stage-detail .circle { margin: 0; }
+    .stage-detail h3 { margin: 0 0 10px; font-size: 21px; font-weight: 600; color: var(--text-strong); }
+    .stage-detail p { margin: 0; font-size: 15.5px; color: var(--text); max-width: 68ch; }
+    .stage-detail .produces {
+      margin-top: 18px; padding-top: 14px; border-top: 1px solid rgba(255,255,255,.08);
+      font-size: 13.5px; color: var(--text-dim);
+    }
+    .stage-detail .produces b {
+      color: var(--accent); font-weight: 600; text-transform: uppercase;
+      letter-spacing: .1em; font-size: 11.5px; margin-right: 9px;
+    }
+    .stage-detail.swapping { opacity: .25; }
+    .stage-detail { transition: opacity .16s ease; }
+    @media (prefers-reduced-motion: reduce) { .stage-detail { transition: none; } }
+
+    @media (max-width: 860px) {
+      .rail { grid-auto-flow: row; grid-auto-columns: auto; gap: 2px; }
+      .rail::before { display: none; }
+      .stage { flex-direction: row; justify-content: flex-start; gap: 14px; padding: 9px 10px;
+        border-radius: 10px; text-align: left; }
+      .stage[aria-selected="true"] { background: rgba(0,180,216,.08); }
+      .stage .dot { width: 34px; height: 34px; font-size: 11.5px; }
+      .stage .name { max-width: none; font-size: 14px; }
+      .stage-detail { grid-template-columns: 1fr; gap: 16px; padding: 24px 22px; }
+    }
+
     /* ---- cards ---- */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
     .grid.four { grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); }
@@ -182,7 +244,6 @@
         </span>
       </a>
       <nav>
-        <a class="link" href="#platform">Platform</a>
         <a class="link" href="https://www.doxservices.com" target="_blank" rel="noopener noreferrer">DoxServices</a>
         <span class="who" id="who"></span>
       </nav>
@@ -200,8 +261,7 @@
              employers act on, and the analysis that tells you how the book is performing. Every institution on it
              operates as its own tenant &mdash; its own people, its own portfolio, its own data.</p>
           <div class="cta">
-            <a class="btn" href="#signin" id="hero-signin"><i class="fas fa-user-shield"></i> Administrator sign-in</a>
-            <a class="btn outline" href="#platform"><i class="fas fa-diagram-project"></i> See the platform</a>
+            <a class="btn" id="hero-signin" role="button" tabindex="0"><i class="fas fa-user-shield"></i> Administrator sign-in</a>
           </div>
         </div>
 
@@ -215,50 +275,17 @@
       </div>
     </div>
 
-    <section id="platform">
+    <section>
       <div class="shell">
         <div class="section-head">
           <span class="eyebrow">The platform</span>
           <h2>From campaign design to final settlement</h2>
-          <p>Six parts of one system, rather than six systems and a reconciliation problem.</p>
+          <p>One system, six stages. Take any one of them to see what it does and what it leaves behind.</p>
         </div>
-        <div class="grid">
-          <div class="card">
-            <div class="circle"><i class="fas fa-bullseye"></i></div>
-            <h3>Campaigns and segmentation</h3>
-            <p>Build a credit product once &mdash; amount, rate, terms &mdash; then decide who it is for: by employer,
-               by income, by parish. Take it to market, hold it back, or keep it to your officers.</p>
-          </div>
-          <div class="card">
-            <div class="circle"><i class="fas fa-clipboard-check"></i></div>
-            <h3>Origination and underwriting</h3>
-            <p>Applications arrive complete and already qualified, go to an underwriter for review and a loan officer
-               for the decision, and carry every status change on the record.</p>
-          </div>
-          <div class="card">
-            <div class="circle"><i class="fas fa-file-signature"></i></div>
-            <h3>Agreement execution</h3>
-            <p>Agreements generated from the record itself, print-ready to the page, and shared on a link that
-               reveals nothing about the borrower or the loan behind it.</p>
-          </div>
-          <div class="card">
-            <div class="circle"><i class="fas fa-building-columns"></i></div>
-            <h3>Repayment instruments</h3>
-            <p>Standing orders and salary deductions issued with their full schedule, in the form a bank or a payroll
-               department will act on without being chased for it.</p>
-          </div>
-          <div class="card">
-            <div class="circle"><i class="fas fa-chart-line"></i></div>
-            <h3>Portfolio and analysis</h3>
-            <p>What is out, what is owed and what has been paid across the book &mdash; with the record behind any
-               figure one click from the figure itself.</p>
-          </div>
-          <div class="card">
-            <div class="circle"><i class="fas fa-headset"></i></div>
-            <h3>Servicing</h3>
-            <p>A customer's question held against the loan, the application or the agreement it concerns, and
-               answered by whoever holds that part of the book.</p>
-          </div>
+
+        <div class="lifecycle">
+          <div class="rail" id="rail" role="tablist" aria-label="Stages of the credit lifecycle"></div>
+          <div class="stage-detail" id="stage-detail" role="tabpanel" aria-live="polite"></div>
         </div>
       </div>
     </section>
@@ -324,6 +351,87 @@
       underwriter: 'underwriter', support: 'support', applicant: 'customer'
     };
 
+    // The credit lifecycle, as a sequence rather than a wall of cards. Each
+    // stage names what it does and what it leaves behind, because in lending
+    // every stage produces a document somebody else acts on.
+    const STAGES = [
+      { key: 'Campaigns', icon: 'fa-bullseye', title: 'Campaigns and segmentation',
+        text: 'Build a credit product once — amount, rate, terms — then decide who it is for: by employer, '
+            + 'by income, by parish. Take it to market, hold it back, or keep it to your officers.',
+        produces: 'a credit product with the cohort rules that decide who may see it' },
+      { key: 'Origination', icon: 'fa-clipboard-check', title: 'Origination and underwriting',
+        text: 'Applications arrive complete and already qualified, go to an underwriter for review and a loan '
+            + 'officer for the decision, and carry every status change on the record.',
+        produces: 'an application, its decision, and the trail behind both' },
+      { key: 'Agreement', icon: 'fa-file-signature', title: 'Agreement execution',
+        text: 'Agreements generated from the record itself, print-ready to the page, and shared on a link that '
+            + 'reveals nothing about the borrower or the loan behind it.',
+        produces: 'a signed agreement, and a link that gives nothing away' },
+      { key: 'Instruments', icon: 'fa-building-columns', title: 'Repayment instruments',
+        text: 'Standing orders and salary deductions issued with their full schedule, in the form a bank or a '
+            + 'payroll department will act on without being chased for it.',
+        produces: 'a standing order or salary deduction, with every instalment on it' },
+      { key: 'Portfolio', icon: 'fa-chart-line', title: 'Portfolio and analysis',
+        text: 'What is out, what is owed and what has been paid across the book — with the record behind any '
+            + 'figure one click from the figure itself.',
+        produces: 'balances, arrears, and every payment made against a loan' },
+      { key: 'Servicing', icon: 'fa-headset', title: 'Servicing',
+        text: 'A customer\'s question held against the loan, the application or the agreement it concerns, and '
+            + 'answered by whoever holds that part of the book.',
+        produces: 'a ticket tied to the record it is about' }
+    ];
+
+    let stage = 0;
+
+    function drawRail() {
+      $('rail').innerHTML = STAGES.map((s, i) => `
+        <button class="stage" role="tab" id="stage-tab-${i}" aria-controls="stage-detail"
+                aria-selected="${i === stage}" tabindex="${i === stage ? 0 : -1}" data-stage="${i}">
+          <span class="dot">${String(i + 1).padStart(2, '0')}</span>
+          <span class="name">${esc(s.key)}</span>
+        </button>`).join('');
+    }
+
+    function drawStage(next) {
+      const s = STAGES[next];
+      const panel = $('stage-detail');
+      panel.classList.add('swapping');
+      window.setTimeout(() => {
+        panel.innerHTML = `
+          <div class="circle"><i class="fas ${esc(s.icon)}"></i></div>
+          <div>
+            <h3>${esc(s.title)}</h3>
+            <p>${esc(s.text)}</p>
+            <div class="produces"><b>Leaves behind</b> ${esc(s.produces)}</div>
+          </div>`;
+        panel.classList.remove('swapping');
+      }, 120);
+    }
+
+    function select(next) {
+      stage = (next + STAGES.length) % STAGES.length;
+      drawRail();
+      drawStage(stage);
+    }
+
+    $('rail').addEventListener('click', e => {
+      const btn = e.target.closest('.stage');
+      if (btn) select(Number(btn.dataset.stage));
+    });
+
+    // A rail is a list: the arrow keys should walk it.
+    $('rail').addEventListener('keydown', e => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Home' && e.key !== 'End') return;
+      e.preventDefault();
+      select(e.key === 'ArrowRight' ? stage + 1 : e.key === 'ArrowLeft' ? stage - 1
+           : e.key === 'Home' ? 0 : STAGES.length - 1);
+      const el = $('stage-tab-' + stage);
+      if (el) el.focus({ preventScroll: true });
+    });
+
+    drawRail();
+    drawStage(0);
+
     // Where an account belongs: staff go to the admin area, a customer to
     // their own lender's page.
     const landing = me => me.staff ? 'admin-home.html' : window.Tenant.home(me.tenant && me.tenant.slug);
@@ -355,7 +463,7 @@
         $('panel-actions').innerHTML = '<button class="btn" id="signin-btn"><i class="fab fa-google"></i> Sign in with Google</button>';
         $('signin-btn').addEventListener('click', startSignIn);
         $('panel-note').textContent = '';
-        $('hero-signin').setAttribute('href', '#signin');
+        $('hero-signin').removeAttribute('href');
         $('hero-signin').innerHTML = '<i class="fas fa-user-shield"></i> Administrator sign-in';
         return;
       }
@@ -386,6 +494,12 @@
     }
 
     $('hero-signin').addEventListener('click', () => { if (!window.userAuth.me) startSignIn(); });
+    $('hero-signin').addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ' ') && !$('hero-signin').hasAttribute('href')) {
+        e.preventDefault();
+        startSignIn();
+      }
+    });
 
     window.addEventListener('user-auth', e => paint(e.detail));
     window.userAuth.ready().then(paint);
