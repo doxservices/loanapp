@@ -510,6 +510,7 @@
     .record-bar-btn:hover { background: #fffaf0; }
     .record-bar-btn.primary { background: linear-gradient(180deg, #f1c75a, #dfa938); border-color: #b8912f; color: #1f2430; }
     .record-bar-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .toolbar button:disabled { opacity: .45; cursor: not-allowed; }
 
     @media print { .record-bar { display: none !important; } }
   </style>
@@ -519,6 +520,8 @@
     <nav class="toolbar-nav" aria-label="Forms"></nav>
     <button type="button" onclick="printIfValid()">Print / Save as PDF</button>
     <button type="button" class="secondary" onclick="resetForm()">Reset Fields</button>
+    <button type="button" id="contractBtn" class="secondary" disabled
+      title="Complete this form first — the loan contract opens from the saved record.">Loan Contract</button>
   </div>
   <script src="forms-nav.js"></script>
 
@@ -1342,7 +1345,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ ...data, draftId: formDraftId }),
           keepalive: true
-        }).catch(() => {});
+        }).then(noteSaved).catch(() => {});
       } catch (e) { /* recording must never block the print flow */ }
     }
 
@@ -1355,12 +1358,35 @@
     let lastAutosavedSnapshot = '';
     let autosaveTimer = null;
 
+    // The loan contract is reached through this form rather than from a nav,
+    // because it needs a saved record to draw from. The button therefore stays
+    // inactive until the form is complete AND that record has come back saved.
+    let contractToken = '';
+    function refreshContractButton() {
+      const btn = document.getElementById('contractBtn');
+      if (!btn) return;
+      const ready = !!contractToken && formIsComplete();
+      btn.disabled = !ready;
+      btn.title = ready
+        ? 'Open the loan contract, prefilled from this form'
+        : 'Complete this form first — the loan contract opens from the saved record.';
+    }
+    // The save returns the record's own contract token, which is what opens
+    // the contract for it.
+    function noteSaved(res) {
+      return res.json().then(function (json) {
+        if (json && json.contractToken) contractToken = json.contractToken;
+        refreshContractButton();
+      }).catch(function () { /* the button simply stays inactive */ });
+    }
+
     function formIsComplete() {
       return !Array.from(document.querySelectorAll('[required]')).some(isRequiredMissing);
     }
 
     function scheduleAutosave() {
       if (window.__formEditMode) return;
+      refreshContractButton();
       clearTimeout(autosaveTimer);
       autosaveTimer = setTimeout(() => {
         try {
@@ -1374,10 +1400,15 @@
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...data, autosaved: true, draftId: formDraftId }),
             keepalive: true
-          }).catch(() => { lastAutosavedSnapshot = ''; });
+          }).then(noteSaved).catch(() => { lastAutosavedSnapshot = ''; });
         } catch (e) { /* autosave must never surface to the user */ }
       }, 1500);
     }
+
+    document.getElementById('contractBtn').addEventListener('click', function () {
+      if (!contractToken) return;
+      location.href = 'loan-contract.html?c=' + encodeURIComponent(contractToken);
+    });
 
     function setDefaultDates() {
       const today = formatInputDate(new Date());

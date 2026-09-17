@@ -235,13 +235,23 @@ function formRoutes(path, collection, logLabel, opts) {
       }
 
       let removed = 0;
+      let savedData = null;
       try {
         const saved = await ref.get();
-        if (saved.exists) removed = await dropDuplicateAutosaves(collection, ref.id, saved.data());
+        if (saved.exists) {
+          savedData = saved.data();
+          removed = await dropDuplicateAutosaves(collection, ref.id, savedData);
+        }
       } catch (e) {
         console.error('[' + logLabel + '] duplicate cleanup failed:', e.message);
       }
-      res.json({ ok: true, id: ref.id, printed, removed });
+      // The form opens the loan contract from its own saved record, so it gets
+      // that record's token back — the token of what this caller just wrote.
+      res.json({
+        ok: true, id: ref.id, printed, removed,
+        ...(seedsContract && savedData && savedData.contractToken
+          ? { contractToken: savedData.contractToken } : {})
+      });
     } catch (e) {
       console.error('[' + logLabel + '] write error:', e.message);
       res.status(500).json({ ok: false, error: 'Failed to save record' });
@@ -677,21 +687,15 @@ function contractFromForm(d, source) {
 const CONTRACT_FIELDS = ['principal', 'borrowerName', 'trn', 'contactNo', 'email',
   'addressLine1', 'addressLine2', 'town', 'parish', 'agreementDate', 'processingFee',
   'dailyRate', 'lateFee', 'firstPaymentDate', 'frequency', 'instalments', 'maturityDate',
-  'instalmentAmount', 'totalRepayable', 'pricing', 'seededFrom', 'sourceReference'];
+  'instalmentAmount', 'totalRepayable', 'pricing', 'seededFrom', 'sourceReference', 'sourceRecordId'];
 
-// A contract already drawn up for this borrower beats rebuilding one from the
+// A contract already drawn up from this record beats rebuilding one from the
 // authorization form, because its charges, dates and instalment were settled
-// at the time. TRN is the only identifier the two kinds of record share.
-async function latestContractFor(trn) {
-  const digits = String(trn || '').replace(/\D/g, '');
-  if (digits.length !== 9) return null;
-
-  let docs = (await db.collection('contracts').where('trn', '==', trn).get()).docs;
-  if (!docs.length) {
-    // Same TRN, punctuated differently. Bounded, and the collection is small.
-    const all = await db.collection('contracts').limit(500).get();
-    docs = all.docs.filter(d => String(d.data().trn || '').replace(/\D/g, '') === digits);
-  }
+// at the time. The contract stores the id of the record it was drawn up from,
+// so this is an explicit link rather than a guess at who the borrower is.
+async function latestContractForRecord(recordId) {
+  if (!recordId) return null;
+  const docs = (await db.collection('contracts').where('sourceRecordId', '==', recordId).get()).docs;
   if (!docs.length) return null;
 
   const when = rec => { const t = rec.updatedAt || rec.submittedAt; return t && t.toMillis ? t.toMillis() : 0; };
@@ -727,8 +731,9 @@ app.get('/api/contract/:token', async (req, res) => {
     const body = source === 'application' ? contractFromApplication(d) : contractFromForm(d, source);
     // Only for the authorization forms: an application is the start of a loan,
     // so a contract opened from one is meant to be drawn up fresh.
-    const existing = source === 'application' ? null : await latestContractFor(body.borrower.trn);
-    return res.json({ source, sourceLabel: label, existing, ...body });
+    const recordId = snap.docs[0].id;
+    const existing = source === 'application' ? null : await latestContractForRecord(recordId);
+    return res.json({ source, sourceLabel: label, recordId, existing, ...body });
   }
   res.status(404).json({ error: 'Unknown contract link' });
 });

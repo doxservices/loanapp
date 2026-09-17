@@ -5,9 +5,11 @@
   var links = [
     { href: 'index.html', label: 'Home' },
     { href: 'standing-order.html', label: 'Standing Order' },
-    { href: 'salary-deduction.html', label: 'Salary Deduction' },
-    { href: 'loan-contract.html', label: 'Loan Contract' }
+    { href: 'salary-deduction.html', label: 'Salary Deduction' }
   ];
+  // The loan contract is deliberately absent: it is reached from a completed
+  // standing order or salary deduction, so that it always has a saved record
+  // to draw from rather than starting blank.
   var current = location.pathname.split('/').pop() || 'index.html';
   document.querySelectorAll('.toolbar-nav').forEach(function (nav) {
     nav.innerHTML = links.map(function (link) {

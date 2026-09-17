@@ -1023,6 +1023,9 @@
       // back to the application or authorization form behind it.
       data.seededFrom = (linkedRecord && linkedRecord.source) || '';
       data.sourceReference = (linkedRecord && linkedRecord.reference) || '';
+      // The record this contract was drawn up from, so reopening that record
+      // finds this contract again without having to match on the borrower.
+      data.sourceRecordId = (linkedRecord && linkedRecord.recordId) || '';
 
       // The schedule as printed, so reopening this contract shows the same
       // rows rather than deriving them a second time.
@@ -1184,7 +1187,8 @@
         carriedTotalSource = (rec.sourceLabel || 'linked record').toLowerCase();
       }
       carriedSchedule = Array.isArray(existing.schedule) && existing.schedule.length ? existing.schedule : null;
-      linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '' };
+      linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '',
+        recordId: rec.recordId || '' };
 
       const note = $('linkedNote');
       note.style.display = 'block';
@@ -1262,7 +1266,8 @@
       }
       if (Array.isArray(loan.schedule) && loan.schedule.length) carriedSchedule = loan.schedule;
 
-      linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '' };
+      linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '',
+        recordId: rec.recordId || '' };
 
       note.style.display = 'block';
       note.textContent = 'Prefilled from ' + (rec.sourceLabel || 'a record').toLowerCase() +
