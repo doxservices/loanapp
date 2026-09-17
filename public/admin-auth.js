@@ -51,11 +51,38 @@ readCache();
 // Before the sidebar is built, so the very first paint is already correct.
 if (currentRole) document.documentElement.setAttribute('data-admin-role', currentRole);
 
+// These links are rendered by this file, so their appearance comes with them.
+// The admin pages do not share one stylesheet — the sidebar pages carry their
+// own CSS and never defined .nav-btn — so relying on a class the page might
+// style left them as bare underlined links. The palette matches the theme
+// toggle, which already sits correctly on every admin page.
+function injectNavStyles() {
+  if (document.getElementById('admin-nav-styles')) return;
+  const css = document.createElement('style');
+  css.id = 'admin-nav-styles';
+  css.textContent = [
+    '.admin-quicklink{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;',
+    'border-radius:8px;font-size:13px;font-weight:600;line-height:1;text-decoration:none;',
+    'background:#f2f8ff;color:#0a4f8b;border:1px solid #b9d8f2;transition:background .16s ease;}',
+    '.admin-quicklink:hover{background:#e4f0fd;text-decoration:none;}',
+    '.admin-quicklink i{font-size:12px;opacity:.85;}',
+    ':root[data-theme="dark"] .admin-quicklink{background:rgba(13,62,164,.70);',
+    'color:rgba(255,255,255,.97);border-color:rgba(205,226,255,.20);}',
+    ':root[data-theme="dark"] .admin-quicklink:hover{background:rgba(13,62,164,.92);}',
+    '.admin-role-pill{align-self:center;padding:6px 12px;border-radius:999px;font-size:12px;',
+    'font-weight:700;background:rgba(15,111,190,.12);color:#0a4f8b;border:1px solid rgba(15,111,190,.30);}',
+    ':root[data-theme="dark"] .admin-role-pill{background:rgba(205,226,255,.14);',
+    'color:rgba(255,255,255,.92);border-color:rgba(205,226,255,.24);}'
+  ].join('');
+  document.head.appendChild(css);
+}
+
 // Renders the sidebar and the header links from the nav list. Called by
 // admin-shell.js once it has built the shell, and again if the server's
 // answer differs from what was remembered.
 function renderNav() {
   if (!Array.isArray(currentNav)) return;
+  injectNavStyles();
   const page = pageName();
 
   const side = document.querySelector('.sidebar .nav-links');
@@ -71,13 +98,12 @@ function renderNav() {
   if (bar) {
     const quick = currentNav.filter(i => i.href !== page && i.key !== 'logout').slice(0, 3);
     bar.innerHTML = quick.map(i =>
-      `<a href="${esc(i.href)}" class="nav-btn"><i class="fas ${esc(i.icon)}"></i> ${esc(i.label)}</a>`).join('');
+      `<a href="${esc(i.href)}" class="admin-quicklink"><i class="fas ${esc(i.icon)}"></i> ${esc(i.label)}</a>`).join('');
     if (currentPermissions && !currentPermissions.includes('records.edit')) {
       const pill = document.createElement('span');
       pill.id = 'admin-role-pill';
+      pill.className = 'admin-role-pill';
       pill.textContent = 'View only';
-      pill.style.cssText = 'align-self:center;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;' +
-        'background:rgba(15,111,190,.12);color:#0a4f8b;border:1px solid rgba(15,111,190,.30);';
       bar.insertBefore(pill, bar.firstChild);
     }
   }
