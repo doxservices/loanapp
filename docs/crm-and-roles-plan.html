@@ -1,0 +1,340 @@
+<title>Tickets, Roles &amp; Tenancy</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --ground: #f2f5f9;
+    --surface: #ffffff;
+    --surface-sunk: #e9eef5;
+    --ink: #0e1b2a;
+    --ink-soft: #3d4f63;
+    --muted: #6a7c90;
+    --line: #d4dde8;
+    --accent: #0f6fbe;
+    --accent-deep: #0a4f8b;
+    --flag: #8a6a14;
+    --flag-bg: #fdf6e3;
+    --flag-line: #e3cd92;
+    --done: #1d7a53;
+    --done-bg: #e6f4ed;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0a1420;
+      --surface: #111f2e;
+      --surface-sunk: #0d1927;
+      --ink: #e7eef6;
+      --ink-soft: #b3c3d4;
+      --muted: #8095ab;
+      --line: #23364a;
+      --accent: #5aa6e8;
+      --accent-deep: #8cc3f2;
+      --flag: #e3bd63;
+      --flag-bg: #241d0c;
+      --flag-line: #5a4718;
+      --done: #5fc99a;
+      --done-bg: #0e2a1f;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0a1420;
+    --surface: #111f2e;
+    --surface-sunk: #0d1927;
+    --ink: #e7eef6;
+    --ink-soft: #b3c3d4;
+    --muted: #8095ab;
+    --line: #23364a;
+    --accent: #5aa6e8;
+    --accent-deep: #8cc3f2;
+    --flag: #e3bd63;
+    --flag-bg: #241d0c;
+    --flag-line: #5a4718;
+    --done: #5fc99a;
+    --done-bg: #0e2a1f;
+  }
+
+  body {
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+  }
+  .wrap { max-width: 50rem; margin: 0 auto; padding-block: 3rem 4rem; padding-left: 1.25rem; padding-right: 1.25rem; }
+
+  h1, h2, h3 { font-family: "Newsreader", Georgia, "Times New Roman", serif; font-weight: 600; text-wrap: balance; line-height: 1.2; }
+  h1 { font-size: clamp(2rem, 5vw, 2.85rem); margin: 0 0 .5rem; letter-spacing: -.01em; }
+  h2 { font-size: 1.5rem; margin: 0; }
+  h3 { font-size: 1.12rem; margin: 0 0 .35rem; }
+  p { margin: 0 0 1rem; }
+  p:last-child { margin-bottom: 0; }
+  a { color: var(--accent-deep); }
+
+  .eyebrow {
+    font-size: .72rem; font-weight: 700; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 .75rem;
+  }
+  .lede { font-size: 1.08rem; color: var(--ink-soft); max-width: 38rem; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.5rem; }
+  .chip {
+    font-size: .78rem; font-weight: 700; padding: .3rem .7rem; border-radius: 999px;
+    border: 1px solid var(--line); color: var(--ink-soft); background: var(--surface);
+  }
+  .chip.done { color: var(--done); background: var(--done-bg); border-color: transparent; }
+  .chip.now { color: var(--accent-deep); background: var(--surface-sunk); border-color: transparent; }
+
+  .rule { border: 0; border-top: 1px solid var(--line); margin: 3rem 0; }
+
+  section { margin-top: 2.5rem; }
+  .sec-head { display: flex; align-items: baseline; gap: .85rem; margin-bottom: 1.1rem; }
+  .sec-head .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .85rem; color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 10px;
+    padding: 1.25rem 1.35rem;
+  }
+  .stack { display: flex; flex-direction: column; gap: 1rem; }
+
+  .tbl-scroll { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: .6rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: .72rem; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  tr:last-child td { border-bottom: 0; }
+  code, .mono {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .86em;
+    background: var(--surface-sunk); padding: .1rem .35rem; border-radius: 4px;
+  }
+  td code { background: none; padding: 0; color: var(--accent-deep); }
+
+  /* The stages are a real sequence, so they are numbered; the steps below
+     them are too. Nothing else on the page is. */
+  .stage { display: grid; grid-template-columns: 2.6rem 1fr; gap: 1rem; align-items: start; }
+  .stage + .stage { margin-top: 1.4rem; padding-top: 1.4rem; border-top: 1px solid var(--line); }
+  .stage-n {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .95rem; font-weight: 500;
+    color: var(--accent); padding-top: .12rem; font-variant-numeric: tabular-nums;
+  }
+  .stage.current .stage-n { color: var(--ink); }
+  .stage p { color: var(--ink-soft); margin-bottom: 0; }
+  .stage ul { margin: .5rem 0 0; padding-left: 1.1rem; color: var(--ink-soft); }
+  .stage li { margin-bottom: .3rem; }
+  .tag {
+    display: inline-block; margin-left: .55rem; font-size: .7rem; font-weight: 700;
+    letter-spacing: .07em; text-transform: uppercase; color: var(--accent-deep);
+    background: var(--surface-sunk); padding: .15rem .5rem; border-radius: 4px;
+    font-family: "Public Sans", sans-serif; vertical-align: .12em;
+  }
+
+  .steps { counter-reset: step; list-style: none; margin: 0; padding: 0; }
+  .steps li {
+    counter-increment: step; position: relative; padding-left: 2.2rem; margin-bottom: .8rem;
+    color: var(--ink-soft);
+  }
+  .steps li:last-child { margin-bottom: 0; }
+  .steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 0;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .8rem; font-weight: 500;
+    color: var(--accent); border: 1px solid var(--line); border-radius: 50%;
+    width: 1.5rem; height: 1.5rem; display: grid; place-items: center;
+  }
+
+  .flag {
+    background: var(--flag-bg); border: 1px solid var(--flag-line); border-left-width: 4px;
+    border-radius: 8px; padding: 1.15rem 1.3rem;
+  }
+  .flag h2 { color: var(--flag); font-size: 1.25rem; margin-bottom: .6rem; }
+  .flag p { color: var(--ink-soft); }
+  .flag .fact {
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: .84rem;
+    color: var(--flag); display: block; margin-top: .9rem; padding-top: .9rem;
+    border-top: 1px dashed var(--flag-line);
+  }
+
+  footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+  footer a { color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Loan It Financing &middot; agreed 17 September 2026</p>
+    <h1>Tickets, Roles &amp; Tenancy</h1>
+    <p class="lede">
+      How support gets a ticket queue, how everyone who signs in gets a role and a business,
+      and the order those two land in so nothing breaks halfway.
+    </p>
+    <div class="chips">
+      <span class="chip done">Foundation shipped</span>
+      <span class="chip now">Stage 1 next</span>
+      <span class="chip">Google sign-in for customers</span>
+      <span class="chip">Multi-tenant from the start</span>
+    </div>
+  </header>
+
+  <hr class="rule">
+
+  <section>
+    <div class="sec-head"><h2>Businesses</h2></div>
+    <div class="stack">
+      <p class="lede" style="font-size:1rem">
+        One document per lending company. Every record that belongs to a business carries its
+        <code>businessId</code>. Loan It Financing is seeded and all 57 existing records sit under it.
+      </p>
+      <div class="panel tbl-scroll">
+        <table>
+          <thead><tr><th>Field</th><th>Notes</th></tr></thead>
+          <tbody>
+            <tr><td><code>pid</code></td><td>Opaque public id &mdash; the same 12-character Crockford scheme as application references</td></tr>
+            <tr><td><code>tradingName</code></td><td>Loan It Financing</td></tr>
+            <tr><td><code>legalName</code> / <code>trn</code></td><td>Registered company name and company TRN</td></tr>
+            <tr><td><code>regulator</code>, <code>licenceNumber</code>, <code>licenceVerified</code></td><td>BOJ licence under the Microcredit Act, 2021 &mdash; see the flag below</td></tr>
+            <tr><td><code>address</code>, <code>parish</code>, <code>phone</code>, <code>email</code></td><td>What gets printed on the loan agreement</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Roles</h2></div>
+    <div class="stack">
+      <p class="lede" style="font-size:1rem">
+        Role lives on the user record, not in an environment variable. The doxservices address
+        stays in <code>functions/.env</code> purely as the bootstrap for <code>superAdmin</code>,
+        so a broken or empty users table can never lock everyone out.
+      </p>
+      <div class="panel tbl-scroll">
+        <table>
+          <thead><tr><th>Role</th><th>Who</th><th>Sees</th></tr></thead>
+          <tbody>
+            <tr><td><code>superAdmin</code></td><td>doxservices</td><td>Everything, every business, the business directory</td></tr>
+            <tr><td><code>businessAdmin</code></td><td>loanit1876@gmail.com<br>ejunkiex@gmail.com</td><td>Their own business&rsquo;s contracts, standing orders and salary deductions &mdash; <strong>read-only</strong>, unchanged from today. Widening this is a separate decision.</td></tr>
+            <tr><td><code>support</code></td><td>internal staff, <span class="mono">@loanapp.com</span></td><td>Tickets, and the record a ticket points at</td></tr>
+            <tr><td><code>underwriter</code></td><td><span class="mono">@bank.com</span></td><td>Applications and contracts for their business</td></tr>
+            <tr><td><code>applicant</code></td><td>customers, <span class="mono">@gmail.com</span></td><td>Only their own records and tickets</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="panel">
+        <h3>Users</h3>
+        <p style="margin-bottom:.6rem; color:var(--ink-soft)">
+          <code>pid</code>, <code>email</code>, <code>role</code>, <code>businessId</code>, name, phone,
+          TRN, address, <code>status</code>, <code>createdAt</code>, <code>lastLoginAt</code>,
+          <code>profileCompletedAt</code>.
+        </p>
+        <p style="color:var(--ink-soft)">
+          <code>lastLoginAt</code> is a real timestamp. The collection currently holds free text
+          like &ldquo;Today, 10:20&nbsp;AM&rdquo;, which can&rsquo;t be sorted or reported on.
+          On first sign-in, anyone without <code>profileCompletedAt</code> is held in a modal that
+          collects their details before the app opens &mdash; one component, every role, so staff
+          and customers get the same experience.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><h2>Migration order</h2></div>
+    <div class="panel">
+      <p style="margin-bottom:1rem; color:var(--ink-soft)">Additive first, enforcing second, so nothing breaks halfway.</p>
+      <ol class="steps">
+        <li><strong>Create <code>businesses</code></strong>, seed Loan It Financing, backfill <code>businessId</code> onto every existing record. <em>Done.</em></li>
+        <li><strong>Resolve roles from the users table</strong>, keeping the env bootstrap. <em>Done.</em></li>
+        <li><strong>Only then filter every query by <code>businessId</code>.</strong></li>
+      </ol>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <div class="sec-head"><span class="num">05 stages</span><h2>The CRM</h2></div>
+
+    <div class="panel">
+      <div class="stage current">
+        <div class="stage-n">01</div>
+        <div>
+          <h3>The ticket thread <span class="tag">building now</span></h3>
+          <ul>
+            <li><code>tickets</code> &mdash; <code>pid</code>, <code>businessId</code>, subject, status (open / waiting on customer / resolved), priority, customer, <code>assignedTo</code>, <code>createdAt</code>, <code>lastReplyAt</code></li>
+            <li><code>about</code> &mdash; a link to the contract, standing order, salary deduction or application the ticket concerns, so support opens it already knowing the case</li>
+            <li><code>tickets/{id}/messages</code> &mdash; author side, body, timestamp</li>
+            <li>An admin list in the same table / &#8942; menu / detail modal pattern as the rest of the admin</li>
+            <li>A customer page to raise a ticket and follow the thread</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">02</div>
+        <div>
+          <h3>Working the queue</h3>
+          <p>Assignment to a person, status transitions with timestamps, internal notes the customer never sees, and filters for &ldquo;mine&rdquo; and &ldquo;unassigned&rdquo;.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">03</div>
+        <div>
+          <h3>Customer view</h3>
+          <p>One page per customer pulling together their applications, authorization forms, contracts, loans, payments and tickets &mdash; the thing support actually wants open while talking to someone.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">04</div>
+        <div>
+          <h3>Service levels and reporting</h3>
+          <p>First-response and resolution timers, breach flags, and ticket counts on the admin dashboard alongside the loan figures.</p>
+        </div>
+      </div>
+
+      <div class="stage">
+        <div class="stage-n">05</div>
+        <div>
+          <h3>Channels</h3>
+          <p>Email in and out of a thread, attachments, and canned replies.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="rule">
+
+  <section>
+    <div class="flag">
+      <h2>The licence details are not confirmed</h2>
+      <p>
+        TAJ does not license or list lenders &mdash; the Bank of Jamaica does, under the
+        Microcredit Act, 2021.
+      </p>
+      <p>
+        BOJ&rsquo;s published list cannot settle the question either way. Pulling the page&rsquo;s
+        full stored content through the WordPress API returns ten institutions, nothing hidden
+        behind pagination, and no &ldquo;Loan It&rdquo; &mdash; but the page carries a
+        <code>modified</code> date of <strong>12 September 2023</strong>. It has not been touched in
+        three years; JIS reported thirteen licensed institutions as far back as May 2023, so the
+        list was already incomplete then, and a licence numbered
+        <code>MCA-016-2025</code> would postdate the page entirely.
+        <strong>Absence from that list is not evidence of anything.</strong>
+      </p>
+      <p>
+        The business record therefore carries <code>licenceVerified: false</code>, which means
+        &ldquo;not yet confirmed&rdquo; &mdash; not &ldquo;not licensed&rdquo;. The licence number
+        and legal name should be set from the licence document itself, because
+        <code>MCA-016-2025</code> is printed on the loan agreement above the borrower&rsquo;s
+        signature.
+      </p>
+      <span class="fact">boj.org.jm &middot; wp-json/wp/v2/pages/30705 &middot; modified 2023-09-12T12:11:13</span>
+    </div>
+  </section>
+
+  <footer>
+    Source of record: <code>docs/crm-and-roles-plan.md</code> in the Loanapp repository.
+    Foundation shipped in commit <code>1c794c4</code>.
+  </footer>
+</div>
