@@ -17,11 +17,26 @@
 //
 // The choice is remembered per browser and applies to every table at once, so
 // switching to demo data does not have to be done five times.
+// Turning it off: this control is scaffolding — it exists because the app was
+// built alongside seeded demo records. When those are gone it should leave
+// without a trace, so it is written to be removable by one switch rather than
+// by editing five pages:
+//
+//   window.LOANIT_SHOW_DATA_FILTER = false;   // in api-base.js, or any page
+//
+// With that set, nothing is rendered, the styles are never injected, any
+// placeholder left in the markup is hidden, and every table is served real
+// records regardless of what this browser last chose. The strip is a plain
+// block in normal flow that carries its own margin and nothing else depends
+// on its presence — no sibling or nth-child rule in any of the four pages
+// refers to it — so removing it reclaims its space and changes nothing else.
 (function () {
   var KEY = 'adminDataScope';
   var last = { kept: null, total: null };
+  var shown = window.LOANIT_SHOW_DATA_FILTER !== false;
 
   function get() {
+    if (!shown) return 'real';
     try { return localStorage.getItem(KEY) || 'real'; } catch (e) { return 'real'; }
   }
   function set(value) {
@@ -57,6 +72,15 @@
     document.querySelectorAll('.data-scope-note').forEach(function (el) { el.textContent = text; });
   }
 
+  // A placeholder left in the markup should take up no room at all.
+  function hideAny() {
+    if (document.getElementById('data-scope-hidden')) return;
+    var css = document.createElement('style');
+    css.id = 'data-scope-hidden';
+    css.textContent = '[data-scope-filter]{display:none !important;}';
+    document.head.appendChild(css);
+  }
+
   function injectStyles() {
     if (document.getElementById('data-scope-styles')) return;
     var css = document.createElement('style');
@@ -81,6 +105,7 @@
   }
 
   function mount(onChange) {
+    if (!shown) { hideAny(); return; }
     injectStyles();
     document.querySelectorAll('[data-scope-filter]').forEach(function (host) {
       if (host.dataset.scopeMounted) return;
@@ -113,5 +138,6 @@
     note();
   }
 
-  window.DataScope = { get: get, keep: keep, mount: mount, label: label };
+  window.DataScope = { get: get, keep: keep, mount: mount, label: label, get shown() { return shown; } };
+  if (!shown && document.head) hideAny();
 })();
