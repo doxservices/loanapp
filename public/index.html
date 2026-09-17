@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
+  <script src="api-base.js"></script>
+  <script src="firebase-config.js"></script>
+  <script type="module" src="user-auth.js"></script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Loan It Financing</title>
@@ -94,6 +97,9 @@
   </style>
 </head>
 <body>
+  <!-- This is the staff home. Anyone who is not signed in as staff is sent to
+       the customer home instead, so the page is not shown and then withdrawn. -->
+  <div id="staff-check" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0a1a3c;color:rgba(255,255,255,.9);font-family:'Segoe UI',Tahoma,sans-serif;font-size:14px;">Checking your access…</div>
   <div class="page">
     <div class="container">
       <div class="top-bar">
@@ -168,5 +174,15 @@
       </footer>
     </div>
   </div>
+  <script type="module">
+    // Staff land here; everyone else belongs on the customer home. The server
+    // decides who is staff — this only avoids showing a page that is not theirs.
+    function settle(me) {
+      if (me && me.staff) { const g = document.getElementById('staff-check'); if (g) g.remove(); return; }
+      location.replace('home.html');
+    }
+    window.addEventListener('user-auth', e => settle(e.detail));
+    window.userAuth.ready().then(settle);
+  </script>
 </body>
 </html>

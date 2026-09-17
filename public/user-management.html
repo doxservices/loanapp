@@ -609,6 +609,14 @@
     }
     window.DataScope.mount(showUsers);
 
+    // A business admin sees its own customers and loan officers, but does not
+    // add, change or remove them, so those controls are not offered.
+    function applyUserPermissions() {
+      if (window.adminAuth && window.adminAuth.can && window.adminAuth.can('users.manage')) return;
+      document.querySelectorAll('#add-user-btn, .action-btn.edit, .action-btn.delete')
+        .forEach(el => { el.hidden = true; });
+    }
+
     const PAGE_SIZE = 5;
     let currentUsers = [];
     let currentPage = 1;
@@ -620,6 +628,9 @@
     }
 
     function renderPage() {
+      // Anything that changes a user is hidden from an account that may only
+      // look; the rows are redrawn constantly, so this runs with them.
+      setTimeout(applyUserPermissions, 0);
       const tbody = document.getElementById('user-table-body');
       const totalPages = Math.max(1, Math.ceil(currentUsers.length / PAGE_SIZE));
       currentPage = Math.min(currentPage, totalPages);

@@ -131,16 +131,71 @@ function renderNav() {
 window.__renderAdminNav = renderNav;
 
 // A page the nav governs, that this account's nav does not include, is not
-// theirs to open — send them to the first page that is. Pages outside the nav
-// registry (the public forms, the contract) are left alone.
+// theirs to open. Rather than bouncing them somewhere else — which loses the
+// address they typed and gives no reason — the page stays put behind a modal
+// that says so, offers the pages they can open, and lets them sign in as
+// somebody else. Pages outside the nav registry (the public forms, the
+// contract) are left alone.
+function renderNoAccess() {
+  if (document.getElementById('admin-denied')) return;
+  injectNavStyles();
+
+  const style = document.createElement('style');
+  style.textContent = [
+    '#admin-denied{position:fixed;inset:0;z-index:9998;display:flex;align-items:center;',
+    'justify-content:center;padding:20px;background:rgba(6,18,42,.72);',
+    "font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;backdrop-filter:blur(3px);}",
+    '#admin-denied .card{width:100%;max-width:440px;background:#fff;color:#16202a;border-radius:16px;',
+    'padding:26px 28px;box-shadow:0 24px 60px rgba(3,25,89,.34);text-align:left;}',
+    ':root[data-theme="dark"] #admin-denied .card{background:#10203a;color:rgba(255,255,255,.95);}',
+    '#admin-denied h2{margin:0 0 8px;font-size:19px;}',
+    '#admin-denied p{margin:0 0 14px;font-size:14px;line-height:1.55;opacity:.85;}',
+    '#admin-denied .who{font-weight:700;}',
+    '#admin-denied .go{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 18px;}',
+    '#admin-denied .actions{display:flex;flex-wrap:wrap;gap:10px;}',
+    '#admin-denied button{font:inherit;font-size:13px;font-weight:600;padding:10px 15px;',
+    'border-radius:8px;cursor:pointer;border:1px solid #b9d8f2;background:#f2f8ff;color:#0a4f8b;}',
+    '#admin-denied button.primary{background:linear-gradient(180deg,#f1c75a,#dfa938);',
+    'border-color:#b8912f;color:#1f2430;}',
+    ':root[data-theme="dark"] #admin-denied button{background:rgba(13,62,164,.7);',
+    'color:rgba(255,255,255,.95);border-color:rgba(205,226,255,.2);}'
+  ].join('');
+
+  const el = document.createElement('div');
+  el.id = 'admin-denied';
+  const links = (currentNav || []).filter(i => i.key !== 'logout');
+  el.innerHTML =
+    '<div class="card" role="dialog" aria-modal="true" aria-labelledby="admin-denied-title">' +
+      '<h2 id="admin-denied-title">This page is not part of your access</h2>' +
+      '<p>You are signed in as <span class="who">' + esc((session && session.email) || 'this account') +
+      '</span>, which does not include this page. Nothing has gone wrong — it is simply not yours to open.</p>' +
+      (links.length
+        ? '<p>Pages you can open:</p><div class="go">' + links.map(i =>
+            '<a class="admin-quicklink" href="' + esc(i.href) + '">' +
+            '<i class="fas ' + esc(i.icon) + '"></i> ' + esc(i.label) + '</a>').join('') + '</div>'
+        : '<p>There are no admin pages open to this account.</p>') +
+      '<div class="actions">' +
+        '<button type="button" class="primary" id="admin-denied-switch">Sign in as someone else</button>' +
+        '<button type="button" id="admin-denied-back">Go back</button>' +
+      '</div>' +
+    '</div>';
+
+  document.head.appendChild(style);
+  document.body.appendChild(el);
+  document.getElementById('admin-denied-switch').addEventListener('click', () => window.adminAuth.signOut());
+  document.getElementById('admin-denied-back').addEventListener('click', () => {
+    if (history.length > 1) history.back();
+    else if (links.length) location.href = links[0].href;
+  });
+}
+
 function gatePage() {
   if (!Array.isArray(currentNav) || !gatedPages.length) return true;
   const page = pageName();
   if (!gatedPages.includes(page)) return true;
   if (currentNav.some(i => i.href === page)) return true;
-  const home = currentNav.find(i => i.key !== 'logout');
-  if (home) { location.replace(home.href); return false; }
-  return true;
+  renderNoAccess();
+  return false;
 }
 
 function applyProfile(json, uid) {

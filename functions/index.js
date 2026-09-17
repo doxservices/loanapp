@@ -144,14 +144,20 @@ function requireRole(...roles) {
 // answer lives: the API enforces with it, and the UI is drawn from the same
 // list, so a button can never offer something the server will refuse.
 const PERMISSIONS = {
-  superAdmin: ['dashboard.view', 'applications.view', 'promotions.manage', 'users.manage',
+  superAdmin: ['dashboard.view', 'applications.view', 'promotions.manage', 'users.view', 'users.manage',
     'businesses.browse', 'settings.view', 'forms.view', 'records.edit', 'contracts.create',
     'tickets.view', 'tickets.manage'],
-  businessAdmin: ['forms.view', 'contracts.create', 'tickets.view', 'tickets.manage'],
+  // Sees its own people — customers and loan officers — but does not add,
+  // change or remove them.
+  businessAdmin: ['forms.view', 'contracts.create', 'users.view', 'tickets.view', 'tickets.manage'],
+  loanOfficer: ['forms.view', 'applications.view', 'contracts.create', 'tickets.view'],
   support: ['forms.view', 'tickets.view', 'tickets.manage'],
   underwriter: ['applications.view', 'forms.view', 'tickets.view'],
   applicant: ['tickets.own']
 };
+
+// What a business admin may see of its own people.
+const BUSINESS_VISIBLE_ROLES = ['applicant', 'loanOfficer'];
 const permissionsFor = role => PERMISSIONS[role] || [];
 
 // These mirror the table above: every staff role holds forms.view, while
@@ -168,7 +174,7 @@ const NAV_DEFAULTS = [
   { key: 'salaryDeductions', label: 'Salary Deductions', href: 'admin-salary-deductions.html', icon: 'fa-file-signature', permission: 'forms.view', order: 50 },
   { key: 'contracts', label: 'Loan Contracts', href: 'admin-contracts.html', icon: 'fa-file-contract', permission: 'forms.view', order: 60 },
   { key: 'tickets', label: 'Support Tickets', href: 'admin-tickets.html', icon: 'fa-life-ring', permission: 'tickets.view', order: 70 },
-  { key: 'users', label: 'User Management', href: 'user-management.html', icon: 'fa-users', permission: 'users.manage', order: 80 },
+  { key: 'users', label: 'User Management', href: 'user-management.html', icon: 'fa-users', permission: 'users.view', order: 80 },
   { key: 'navigation', label: 'Navigation', href: 'admin-navigation.html', icon: 'fa-bars', permission: 'settings.view', order: 90 },
   { key: 'settings', label: 'Settings', href: 'admin.html', icon: 'fa-cog', permission: 'settings.view', order: 100 },
   { key: 'logout', label: 'Logout', href: 'index.html', icon: 'fa-sign-out-alt', permission: '', order: 110 }
@@ -201,8 +207,9 @@ async function navFor(permissions) {
 }
 
 const requireGoogleAuth = requireRole('superAdmin');
-const requireAdminRead = requireRole('superAdmin', 'businessAdmin', 'support', 'underwriter');
-const requireApplicationsRead = requireRole('superAdmin', 'underwriter');
+const requireAdminRead = requireRole('superAdmin', 'businessAdmin', 'support', 'underwriter', 'loanOfficer');
+const requireApplicationsRead = requireRole('superAdmin', 'underwriter', 'loanOfficer');
+const requireUsersRead = requireRole('superAdmin', 'businessAdmin');
 
 // Lets the client confirm which account it is signed in as, and what that
 // account is allowed to do, before rendering admin UI.
@@ -613,9 +620,20 @@ function userToApi(doc) {
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }
-app.get('/api/users', requireGoogleAuth, async (req, res) => {
-  const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
-  res.json(snap.docs.map(userToApi));
+app.get('/api/users', requireUsersRead, async (req, res) => {
+  // Sorted here rather than by the query: an orderBy drops every document
+  // missing that field, so a user record saved without a createdAt would
+  // quietly never appear in user management.
+  const snap = await db.collection('users').get();
+  const at = d => { const t = d.data().createdAt; return t && t.toMillis ? t.toMillis() : 0; };
+  let docs = snap.docs.sort((a, b) => at(b) - at(a));
+  if (req.adminRole !== 'superAdmin') {
+    docs = docs.filter(d => {
+      const u = d.data();
+      return u.businessId === req.adminBusinessId && BUSINESS_VISIBLE_ROLES.includes(u.role);
+    });
+  }
+  res.json(docs.map(userToApi));
 });
 app.post('/api/users', requireGoogleAuth, async (req, res) => {
   const u = req.body || {};
@@ -1245,7 +1263,7 @@ app.patch('/api/applications/:id', async (req, res) => {
 // somewhere to write. Staff roles are never created this way — they are set
 // deliberately in the users table.
 // =========================================================================
-const STAFF_ROLES = ['superAdmin', 'businessAdmin', 'support', 'underwriter'];
+const STAFF_ROLES = ['superAdmin', 'businessAdmin', 'support', 'underwriter', 'loanOfficer'];
 const TICKET_STATUSES = ['open', 'waiting on customer', 'resolved'];
 const TICKET_PRIORITIES = ['normal', 'high'];
 // What a ticket can be about, and the collection each one lives in.
