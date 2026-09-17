@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="LoanApp">
+  <!-- One platform carrying many lenders: the top layer is the tenant you are
+       looking at, the two beneath it are the platform it stands on.
+       The colours are set here rather than inherited, because a mark loaded
+       through <img> or used as a favicon has no colour to inherit. -->
+  <path fill="#00b4d8" d="M16 3.2 29 11 16 18.8 3 11Z"/>
+  <path fill="none" stroke="#00b4d8" stroke-opacity=".7" stroke-width="2.4"
+        stroke-linecap="round" stroke-linejoin="round" d="M3.4 16.2 16 23.8 28.6 16.2"/>
+  <path fill="none" stroke="#00b4d8" stroke-opacity=".4" stroke-width="2.4"
+        stroke-linecap="round" stroke-linejoin="round" d="M3.4 21.4 16 29 28.6 21.4"/>
+</svg>

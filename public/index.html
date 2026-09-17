@@ -10,6 +10,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LoanApp</title>
   <meta name="description" content="LoanApp by DoxServices — multi-tenant lending software. Each lender with its own site, its own staff and its own customers." />
+  <link rel="icon" href="assets/loanapp-mark.svg" type="image/svg+xml">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap">
@@ -57,7 +58,8 @@
       border-bottom: 1px solid rgba(255, 255, 255, .06);
     }
     .masthead .shell { display: flex; align-items: center; gap: 22px; min-height: 84px; flex-wrap: wrap; }
-    .logo { line-height: 1.1; }
+    .logo { display: flex; align-items: center; gap: 11px; line-height: 1.1; color: var(--text-strong); }
+    .logo .glyph { display: block; flex: none; }
     .logo .name { font-size: 26px; font-weight: 700; color: var(--text-strong); letter-spacing: -.01em; }
     .logo .name span { color: var(--accent); }
     .logo .tag {
@@ -136,14 +138,6 @@
     .card h3 { margin: 0 0 9px; font-size: 19px; font-weight: 600; color: var(--text-strong); }
     .card p { margin: 0; font-size: 14.5px; color: var(--text-dim); line-height: 1.65; }
 
-    /* a lender's card carries its own address and where it trades */
-    .card .meta {
-      margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .08);
-      display: flex; flex-direction: column; gap: 4px; font-size: 13.5px;
-    }
-    .card .path { color: var(--accent); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .card .where { color: var(--text-dim); }
-
     /* ---- tenancy ---- */
     .tenancy { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 34px 44px; }
     .tenancy .n {
@@ -184,11 +178,13 @@
   <header class="masthead">
     <div class="shell">
       <a class="logo" href="/" style="text-decoration:none;">
-        <span class="name">Loan<span>App</span></span>
-        <span class="tag">LENDING PLATFORM</span>
+        <img class="glyph" src="assets/loanapp-mark.svg" alt="" width="30" height="30" />
+        <span>
+          <span class="name">Loan<span>App</span></span>
+          <span class="tag">LENDING PLATFORM</span>
+        </span>
       </a>
       <nav>
-        <a class="link" href="#lenders">Lenders</a>
         <a class="link" href="#platform">Platform</a>
         <a class="link" href="https://www.doxservices.com" target="_blank" rel="noopener noreferrer">DoxServices</a>
         <span class="who" id="who"></span>
@@ -206,7 +202,7 @@
              and roles, and its own customers, kept apart from every other lender's.</p>
           <div class="cta">
             <a class="btn" href="#signin" id="hero-signin"><i class="fas fa-user-shield"></i> Administrator sign-in</a>
-            <a class="btn outline" href="#lenders"><i class="fas fa-building-columns"></i> Lenders on LoanApp</a>
+            <a class="btn outline" href="#platform"><i class="fas fa-circle-nodes"></i> What it runs</a>
           </div>
         </div>
 
@@ -219,17 +215,6 @@
         </div>
       </div>
     </div>
-
-    <section id="lenders">
-      <div class="shell">
-        <div class="section-head">
-          <span class="eyebrow">Who is on it</span>
-          <h2>Lenders on LoanApp</h2>
-          <p>Each one at its own address, with its own site, its own people and its own records.</p>
-        </div>
-        <div class="grid" id="lender-list"><p class="skeleton">Loading…</p></div>
-      </div>
-    </section>
 
     <section id="platform">
       <div class="shell">
@@ -284,7 +269,7 @@
           <div>
             <span class="n"><i class="fas fa-link"></i></span>
             <h3>Its own address</h3>
-            <p>A lender lives at its own path — <span class="mono">/loanit-financing</span> — and that is where its
+            <p>A lender lives at its own path — <span class="mono">/its-own-name</span> — and that is where its
                customers apply, follow a loan and open a ticket.</p>
           </div>
           <div>
@@ -334,20 +319,6 @@
     // Where an account belongs: staff go to the admin area, a customer to
     // their own lender's page.
     const landing = me => me.staff ? 'admin-home.html' : window.Tenant.home(me.tenant && me.tenant.slug);
-
-    window.Tenant.lenders().then(list => {
-      $('lender-list').innerHTML = list.length ? list.map(t => `
-        <a class="card" href="/${esc(t.slug)}">
-          <div class="circle"><i class="fas fa-building-columns"></i></div>
-          <h3>${esc(t.tradingName)}</h3>
-          <p>${esc(t.tagline || t.legalName || '')}</p>
-          <span class="meta">
-            <span class="path">/${esc(t.slug)}</span>
-            <span class="where">${esc([t.town, t.parish].filter(Boolean).join(', ') || t.country || '')}</span>
-          </span>
-        </a>`).join('')
-        : '<p class="skeleton">No lenders are live on this platform yet.</p>';
-    });
 
     // A fresh sign-in carries straight through to the destination; an account
     // already signed in is offered the way in, so this page stays reachable.

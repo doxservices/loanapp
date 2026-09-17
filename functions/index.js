@@ -335,6 +335,9 @@ function tenantToApi(doc) {
     legalName: d.legalName || '',
     tagline: d.tagline || '',
     logoUrl: d.logoUrl || '',
+    // The same mark drawn for a dark ground, where near-black lettering would
+    // disappear. Falls back to the ordinary one when a lender has only the one.
+    logoUrlReverse: d.logoUrlReverse || d.logoUrl || '',
     phone: d.phone || '', email: d.email || '',
     addressLine1: d.addressLine1 || '', town: d.town || '', parish: d.parish || '',
     country: d.country || 'Jamaica',
