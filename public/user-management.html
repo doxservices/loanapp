@@ -682,7 +682,13 @@
       ));
     });
 
-    fetchUsers();
+    // Only once the sign-in has been restored — the list is gated, so asking
+    // before there is a token comes back empty and looks like no users. This
+    // script is a classic one, so it runs while admin-auth.js (a module, and
+    // therefore deferred) has not been evaluated yet; by DOMContentLoaded it
+    // has.
+    if (window.adminAuth) window.adminAuth.ready().then(fetchUsers);
+    else document.addEventListener('DOMContentLoaded', () => window.adminAuth.ready().then(fetchUsers));
 
     document.querySelectorAll('.stat-card, .management-section').forEach((element, index) => {
       element.style.opacity = '0';

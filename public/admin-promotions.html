@@ -482,7 +482,10 @@
       document.getElementById('cancelPromoBtn').addEventListener('click', resetForm);
       document.getElementById('refreshPromosBtn').addEventListener('click', loadPromotions);
 
-      loadPromotions();
+      // Not before the sign-in has been restored: asking at DOMContentLoaded
+      // sent the request with no token, and an empty table read as "there are
+      // no campaigns" rather than "we asked too early".
+      window.adminAuth.ready().then(loadPromotions);
     });
   </script>
 </body>

@@ -81,8 +81,15 @@ async function identify(email) {
     // closed account is refused.
     if (u.status === 'inactive' || u.status === 'suspended') return null;
     if (u.role) {
+      // Signing in on a customer page creates an applicant record for whoever
+      // signs in — including an address named as a business admin here. That
+      // record must not quietly demote them, or they would be shown the admin
+      // sign-in for an account that is already signed in. requireSignedIn
+      // makes the same allowance, so both answers agree.
+      const role = (u.role === 'applicant' && BUSINESS_ADMIN_EMAILS.has(email))
+        ? 'businessAdmin' : u.role;
       return {
-        role: u.role,
+        role,
         businessId: u.businessId || null,
         userId: found.id,
         profileComplete: !!u.profileCompletedAt
@@ -149,7 +156,8 @@ const PERMISSIONS = {
     'tickets.view', 'tickets.manage'],
   // Sees its own people — customers and loan officers — but does not add,
   // change or remove them.
-  businessAdmin: ['forms.view', 'contracts.create', 'users.view', 'tickets.view', 'tickets.manage'],
+  businessAdmin: ['forms.view', 'contracts.create', 'users.view', 'tickets.view', 'tickets.manage',
+    'promotions.manage'],
   loanOfficer: ['forms.view', 'applications.view', 'contracts.create', 'tickets.view'],
   support: ['forms.view', 'tickets.view', 'tickets.manage'],
   underwriter: ['applications.view', 'forms.view', 'tickets.view'],
@@ -200,8 +208,10 @@ async function navFor(permissions) {
   const items = await navItems();
   const held = permissions || [];
   return {
+    // The permission travels with the entry: the page it opens is then able to
+    // tell what this account may do there, without guessing from the role.
     nav: items.filter(i => i.enabled !== false && (!i.permission || held.includes(i.permission)))
-      .map(i => ({ key: i.key, label: i.label, href: i.href, icon: i.icon })),
+      .map(i => ({ key: i.key, label: i.label, href: i.href, icon: i.icon, permission: i.permission || '' })),
     gatedPages: items.filter(i => i.permission).map(i => i.href)
   };
 }
@@ -210,6 +220,12 @@ const requireGoogleAuth = requireRole('superAdmin');
 const requireAdminRead = requireRole('superAdmin', 'businessAdmin', 'support', 'underwriter', 'loanOfficer');
 const requireApplicationsRead = requireRole('superAdmin', 'underwriter', 'loanOfficer');
 const requireUsersRead = requireRole('superAdmin', 'businessAdmin');
+// A lender runs its own campaigns, so a business admin manages promotions —
+// but only its own. Everything below that writes or lists them is scoped by
+// the business on the record, and only the platform admin sees across lenders.
+const requirePromotionsManage = requireRole('superAdmin', 'businessAdmin');
+const ownsPromotion = (req, doc) =>
+  req.adminRole === 'superAdmin' || (doc.data().businessId || null) === req.adminBusinessId;
 
 // Lets the client confirm which account it is signed in as, and what that
 // account is allowed to do, before rendering admin UI.
@@ -891,9 +907,10 @@ app.get('/api/promotions', async (req, res) => {
 });
 
 // The admin's own list: drafts, below-the-line campaigns and cohorts included.
-app.get('/api/promotions/all', requireGoogleAuth, async (req, res) => {
+app.get('/api/promotions/all', requirePromotionsManage, async (req, res) => {
   const snap = await db.collection('promotions').orderBy('createdAt', 'asc').get();
-  res.json({ ok: true, promotions: snap.docs.map(d => promoToApi(d, { includeCohort: true })) });
+  const mine = snap.docs.filter(d => ownsPromotion(req, d));
+  res.json({ ok: true, promotions: mine.map(d => promoToApi(d, { includeCohort: true })) });
 });
 
 // What this person may actually apply to. Staff also see the below-the-line
@@ -929,21 +946,26 @@ function promoWriteFields(body) {
   return out;
 }
 
-app.post('/api/promotions', requireGoogleAuth, async (req, res) => {
+app.post('/api/promotions', requirePromotionsManage, async (req, res) => {
   const p = req.body || {};
   const ref = await db.collection('promotions').add({
     name: p.name, description: p.description || '', currency: p.currency || 'JMD',
     principal: p.principal, monthlyInterestPct: p.monthlyInterestPct, termMode: p.termMode || 'selectable',
     fixedTermMonths: p.fixedTermMonths ?? null, allowedTerms: p.allowedTerms || [],
     ...promoWriteFields(p),
-    businessId: await defaultBusinessId(),
+    businessId: req.adminBusinessId || await defaultBusinessId(),
     createdAt: FieldValue.serverTimestamp()
   });
   res.status(201).json(promoToApi(await ref.get()));
 });
-app.put('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
+app.put('/api/promotions/:id', requirePromotionsManage, async (req, res) => {
   const p = req.body || {};
   const ref = db.collection('promotions').doc(req.params.id);
+  const existing = await ref.get();
+  if (!existing.exists) return res.status(404).json({ ok: false, error: 'Promotion not found' });
+  if (!ownsPromotion(req, existing)) {
+    return res.status(403).json({ ok: false, error: 'That campaign belongs to another lender.' });
+  }
   await ref.update({
     name: p.name, description: p.description || '', currency: p.currency || 'JMD',
     principal: p.principal, monthlyInterestPct: p.monthlyInterestPct, termMode: p.termMode || 'selectable',
@@ -952,8 +974,14 @@ app.put('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
   });
   res.json(promoToApi(await ref.get()));
 });
-app.delete('/api/promotions/:id', requireGoogleAuth, async (req, res) => {
-  await db.collection('promotions').doc(req.params.id).delete();
+app.delete('/api/promotions/:id', requirePromotionsManage, async (req, res) => {
+  const ref = db.collection('promotions').doc(req.params.id);
+  const existing = await ref.get();
+  if (!existing.exists) return res.status(404).json({ ok: false, error: 'Promotion not found' });
+  if (!ownsPromotion(req, existing)) {
+    return res.status(403).json({ ok: false, error: 'That campaign belongs to another lender.' });
+  }
+  await ref.delete();
   res.json({ ok: true });
 });
 

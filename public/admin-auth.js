@@ -96,6 +96,24 @@ function injectNavStyles() {
   document.head.appendChild(css);
 }
 
+// Whether this account may change anything on the page it is looking at.
+// Each nav entry names the permission that opens it, so the area it belongs
+// to is known — 'promotions', 'tickets', 'forms' — and holding a manage,
+// create or edit permission in that same area is what makes the page more
+// than a read. A business admin therefore reads the form records but runs its
+// own campaigns, and only the page it is on decides which it is being told.
+function canWriteHere() {
+  const held = currentPermissions || [];
+  if (held.includes('records.edit')) return true;
+  const entry = (currentNav || []).find(i => i.href === pageName());
+  const area = String((entry && entry.permission) || '').split('.')[0];
+  if (!area) return true;
+  return held.some(p => {
+    const bits = p.split('.');
+    return bits[0] === area && ['manage', 'create', 'edit'].includes(bits[1]);
+  });
+}
+
 // Renders the sidebar and the header links from the nav list. Called by
 // admin-shell.js once it has built the shell, and again if the server's
 // answer differs from what was remembered.
@@ -118,7 +136,7 @@ function renderNav() {
     const quick = currentNav.filter(i => i.href !== page && i.key !== 'logout').slice(0, 3);
     bar.innerHTML = quick.map(i =>
       `<a href="${esc(i.href)}" class="admin-quicklink"><i class="fas ${esc(i.icon)}"></i> ${esc(i.label)}</a>`).join('');
-    if (currentPermissions && !currentPermissions.includes('records.edit')) {
+    if (currentPermissions && !canWriteHere()) {
       const pill = document.createElement('span');
       pill.id = 'admin-role-pill';
       pill.className = 'admin-role-pill';
@@ -196,6 +214,55 @@ function gatePage() {
   if (currentNav.some(i => i.href === page)) return true;
   renderNoAccess();
   return false;
+}
+
+// Somebody signed in, on a page that is not for them. Their sign-in is good —
+// it is simply a customer's, not an administrator's — so it is left alone and
+// they are taken to where they do belong. Asking a signed-in person to sign in
+// again is the one thing this must not do: it reads as a fault, and signing
+// them out to show that prompt would also end the session they were using.
+async function sendWhereTheyBelong(user) {
+  clearCache();
+  document.documentElement.setAttribute('data-nav-ready', '1');
+  let me = null;
+  try {
+    const idToken = await user.getIdToken();
+    const res = await fetch(API_BASE + '/api/me', { headers: { Authorization: 'Bearer ' + idToken } });
+    me = await res.json();
+  } catch (err) {
+    console.warn('[admin-auth] could not look up the signed-in account', err);
+  }
+  const slug = me && me.ok && me.tenant && me.tenant.slug;
+  const home = slug ? '/' + slug
+    : (window.Tenant ? window.Tenant.home() : 'tenant-home.html');
+  location.replace(home);
+}
+
+// The server could not be reached, so nothing is known either way. The sign-in
+// stands and the page says what happened, rather than treating a bad
+// connection as a reason to sign anybody out.
+function renderUnreachable() {
+  if (document.getElementById('admin-offline')) return;
+  injectNavStyles();
+  const el = document.createElement('div');
+  el.id = 'admin-offline';
+  el.style.cssText = [
+    'position:fixed', 'inset:0', 'z-index:9998', 'display:flex', 'align-items:center',
+    'justify-content:center', 'padding:20px', 'background:rgba(6,18,42,.72)',
+    "font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif", 'backdrop-filter:blur(3px)'
+  ].join(';');
+  el.innerHTML =
+    '<div style="width:100%;max-width:420px;background:#fff;color:#16202a;border-radius:16px;' +
+    'padding:26px 28px;box-shadow:0 24px 60px rgba(3,25,89,.34);">' +
+      '<h2 style="margin:0 0 8px;font-size:19px;">We could not check your access</h2>' +
+      '<p style="margin:0 0 16px;font-size:14px;line-height:1.55;opacity:.85;">' +
+      'You are still signed in. The server did not answer, so this page cannot tell yet ' +
+      'what you may open.</p>' +
+      '<button type="button" id="admin-offline-retry" class="admin-quicklink" ' +
+      'style="cursor:pointer;font:inherit;">Try again</button>' +
+    '</div>';
+  document.body.appendChild(el);
+  document.getElementById('admin-offline-retry').addEventListener('click', () => location.reload());
 }
 
 function applyProfile(json, uid) {
@@ -299,9 +366,9 @@ onAuthStateChanged(auth, async (user) => {
     if (gatePage()) readyResolve();
     verifyNow(user).then(json => {
       if (json && json.ok) { applyProfile(json, user.uid); return; }
-      // Access was taken away while the session was still valid.
-      clearCache();
-      signOut(auth);
+      // Access was taken away while the session was still valid: they stay
+      // signed in, and go back to the part of the app that is theirs.
+      sendWhereTheyBelong(user);
     }).catch(err => {
       // Offline or the API is down: the session stands until it expires.
       console.warn('[admin-auth] background check did not complete', err);
@@ -309,23 +376,24 @@ onAuthStateChanged(auth, async (user) => {
     return;
   }
 
+  let json;
   try {
-    const json = await verifyNow(user);
-    if (json.ok) {
-      const overlay = document.getElementById('admin-auth-overlay');
-      if (overlay) overlay.remove();
-      // False means a redirect is under way; leave the page as it is.
-      if (applyProfile(json, user.uid)) readyResolve();
-      return;
-    }
+    json = await verifyNow(user);
   } catch (err) {
     console.error('[admin-auth] verify failed', err);
+    renderUnreachable();
+    return;
   }
-  // Signed in, but not an authorized account (or verify failed) — show the
-  // gate and sign this identity out so a retry starts clean.
-  clearCache();
-  await signOut(auth);
-  document.getElementById('admin-auth-overlay') || renderGate();
+  if (json.ok) {
+    const overlay = document.getElementById('admin-auth-overlay');
+    if (overlay) overlay.remove();
+    // False means the no-access modal is up; leave the page as it is.
+    if (applyProfile(json, user.uid)) readyResolve();
+    return;
+  }
+  // Signed in, but this is not an administrator's account. The sign-in they
+  // already have is kept and they are taken back to their own side of the app.
+  sendWhereTheyBelong(user);
 });
 
 window.adminAuth = {
@@ -334,7 +402,7 @@ window.adminAuth = {
   get permissions() { return currentPermissions; },
   get nav() { return currentNav; },
   can: id => !currentPermissions || currentPermissions.indexOf(id) > -1,
-  get viewOnly() { return !!currentPermissions && currentPermissions.indexOf('records.edit') === -1; },
+  get viewOnly() { return !!currentPermissions && !canWriteHere(); },
   fetch: async (path, opts = {}) => {
     const user = auth.currentUser;
     const idToken = user ? await user.getIdToken() : currentToken;
