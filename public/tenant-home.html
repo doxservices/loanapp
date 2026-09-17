@@ -9,133 +9,396 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Loan It Financing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* A lender's front door. Light, plain and institutional: the page carries
+       money figures and a decision somebody is waiting on, so the type is set
+       for reading numbers and the colour is spent on status, not decoration. */
     :root {
-      --ink: #16202a; --muted: #5f7186; --line: #d6e2ee; --paper: #fff;
-      --blue: #0f6fbe; --blue-dark: #0a4f8b; --blue-soft: #f2f8ff; --gold: #d3a63b;
-      --ok: #1d7a53; --ok-bg: #e6f4ed; --wait: #8a6a14; --wait-bg: #fdf6e3;
-      --bad: #b3261e; --bad-bg: #fdecea;
+      --paper: #ffffff;
+      --ground: #f4f7fb;
+      --ground-deep: #eaf1f9;
+      --ink: #12243a;
+      --ink-soft: #46607a;
+      --muted: #74899f;
+      --line: #e1e9f2;
+      --line-strong: #cddbea;
+      --brand: #0b5ea8;
+      --brand-deep: #084a85;
+      --brand-soft: #eaf3fc;
+      --gold: #b8861f;
+      --gold-soft: #fbf4e3;
+      --ok: #146b4a; --ok-bg: #e6f4ec;
+      --wait: #7d5f12; --wait-bg: #fcf4e1;
+      --bad: #a0231d; --bad-bg: #fbecea;
+      --radius: 12px;
+      --shadow-sm: 0 1px 2px rgba(18, 36, 58, .06);
+      --shadow: 0 10px 28px rgba(18, 36, 58, .08);
     }
     * { box-sizing: border-box; }
+    html, body { margin: 0; }
     body {
-      margin: 0; color: var(--ink); line-height: 1.55;
-      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-      background: linear-gradient(rgba(6,26,66,.72), rgba(6,26,66,.80)),
-                  url('assets/banking-background.jpg') center center / cover no-repeat fixed;
-      min-height: 100vh;
+      background: var(--ground);
+      color: var(--ink);
+      font-family: 'Public Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
     }
-    .bar {
-      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
-      padding: 14px 22px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--line);
+    a { color: var(--brand); }
+    :focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; border-radius: 4px; }
+    .num { font-variant-numeric: tabular-nums; }
+
+    .shell { max-width: 1060px; margin: 0 auto; padding: 0 20px; }
+
+    /* ---- header ---- */
+    .masthead {
+      background: var(--paper);
+      border-bottom: 1px solid var(--line);
+      position: sticky; top: 0; z-index: 20;
     }
-    .bar .logo { display: flex; align-items: center; min-height: 40px; }
-    .bar .logo img { width: 132px; height: 40px; object-fit: contain; }
-    .bar .logo .wordmark { font-weight: 800; font-size: 17px; color: var(--blue-dark); letter-spacing: -.01em; }
-    .bar .who { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
-    .wrap { max-width: 980px; margin: 0 auto; padding: 34px 20px 70px; }
-    .hero { color: #fff; text-align: center; margin-bottom: 30px; text-shadow: 0 1px 3px rgba(0,0,0,.28); }
-    .hero h1 { margin: 0 0 8px; font-size: clamp(25px, 4.4vw, 36px); }
-    .hero p { margin: 0 auto; max-width: 560px; color: rgba(238,244,255,.92); }
-    .card {
-      background: var(--paper); border: 1px solid var(--line); border-radius: 14px;
-      padding: 22px; margin-bottom: 18px; box-shadow: 0 12px 30px rgba(3,25,89,.16);
+    .masthead .shell {
+      display: flex; align-items: center; gap: 18px; min-height: 68px; flex-wrap: wrap;
     }
-    .card h2 { margin: 0 0 4px; font-size: 17px; color: var(--blue-dark); }
-    .card .sub { margin: 0 0 16px; color: var(--muted); font-size: 13px; }
-    .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
-    .tile {
-      display: flex; align-items: flex-start; gap: 12px; padding: 15px 16px; text-decoration: none;
-      border: 1px solid var(--line); border-radius: 11px; background: var(--blue-soft); color: inherit;
-      transition: transform .14s ease, box-shadow .14s ease;
+    .brand { display: flex; align-items: center; gap: 11px; min-height: 40px; }
+    .brand img { width: 128px; height: 40px; object-fit: contain; object-position: left center; }
+    .brand .wordmark { font-weight: 800; font-size: 18px; letter-spacing: -.015em; color: var(--brand-deep); }
+    .masthead nav { display: flex; gap: 4px; margin-left: 10px; }
+    .masthead nav a {
+      padding: 7px 11px; border-radius: 8px; font-size: 14px; font-weight: 600;
+      color: var(--ink-soft); text-decoration: none;
     }
-    .tile:hover { transform: translateY(-2px); box-shadow: 0 8px 18px rgba(16,57,92,.14); }
-    .tile i { font-size: 18px; color: var(--blue); margin-top: 2px; }
-    .tile .t { font-weight: 700; display: block; color: var(--blue-dark); }
-    .tile .d { font-size: 12.5px; color: var(--muted); }
+    .masthead nav a:hover { background: var(--brand-soft); color: var(--brand-deep); }
+    .account { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px; }
+    .account .name { color: var(--ink-soft); font-weight: 600; }
+
+    /* ---- buttons ---- */
     .btn {
-      border: 1px solid var(--blue-dark); background: var(--blue); color: #fff; font: inherit;
-      font-weight: 600; padding: 11px 18px; border-radius: 8px; cursor: pointer; text-decoration: none;
-      display: inline-flex; align-items: center; gap: 9px;
+      display: inline-flex; align-items: center; justify-content: center; gap: 9px;
+      font: inherit; font-weight: 600; text-decoration: none; cursor: pointer;
+      padding: 11px 18px; border-radius: 9px; border: 1px solid transparent;
+      background: var(--brand); color: #fff; transition: background .15s ease, border-color .15s ease;
+      white-space: nowrap;
     }
-    .btn.ghost { background: #fff; color: var(--blue-dark); }
-    .btn.small { padding: 6px 11px; font-size: 13px; }
-    .app { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; margin-bottom: 9px; }
-    .app .top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: baseline; }
-    .app .name { font-weight: 700; }
-    .app .meta { color: var(--muted); font-size: 12px; }
-    .pill { display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
-      background: var(--blue-soft); color: var(--blue-dark); }
+    .btn:hover { background: var(--brand-deep); }
+    .btn.secondary { background: var(--paper); color: var(--brand-deep); border-color: var(--line-strong); }
+    .btn.secondary:hover { background: var(--brand-soft); border-color: var(--brand); }
+    .btn.quiet { background: transparent; color: var(--ink-soft); border-color: var(--line-strong); }
+    .btn.quiet:hover { background: var(--ground-deep); }
+    .btn.small { padding: 7px 12px; font-size: 13.5px; }
+
+    /* ---- hero ---- */
+    .hero { background: var(--paper); border-bottom: 1px solid var(--line); }
+    .hero .shell {
+      display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+      gap: 40px; align-items: start; padding-block: 52px 46px;
+    }
+    .eyebrow {
+      display: inline-flex; align-items: center; gap: 8px;
+      font-size: 11.5px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase;
+      color: var(--gold); margin-bottom: 14px;
+    }
+    .eyebrow::before { content: ""; width: 22px; height: 2px; background: var(--gold); }
+    .hero h1 {
+      margin: 0 0 12px; font-size: clamp(30px, 4.4vw, 42px); line-height: 1.12;
+      letter-spacing: -.025em; font-weight: 800; text-wrap: balance;
+    }
+    .hero .lede { margin: 0; font-size: 16.5px; color: var(--ink-soft); max-width: 46ch; }
+    .hero .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 24px; }
+    .contact-strip {
+      display: flex; flex-wrap: wrap; gap: 6px 22px; margin-top: 28px;
+      padding-top: 20px; border-top: 1px solid var(--line);
+      font-size: 13.5px; color: var(--muted);
+    }
+    .contact-strip span { display: inline-flex; align-items: center; gap: 7px; }
+    .contact-strip i { color: var(--brand); font-size: 12px; }
+
+    /* ---- panels ---- */
+    .panel {
+      background: var(--paper); border: 1px solid var(--line);
+      border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow-sm);
+    }
+    .hero .panel { box-shadow: var(--shadow); }
+    .panel h2 { margin: 0 0 4px; font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
+    .panel .sub { margin: 0 0 18px; font-size: 13.5px; color: var(--muted); }
+    .panel.notice { background: var(--gold-soft); border-color: #eadcb4; }
+    .panel.notice h2 { color: #6b5312; }
+
+    /* ---- sections ---- */
+    section { padding-block: 46px; }
+    section + section { padding-top: 0; }
+    .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 18px; flex-wrap: wrap; }
+    .section-head h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+    .section-head p { margin: 0; font-size: 14px; color: var(--muted); }
+
+    /* ---- what this lender offers ---- */
+    .offers { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .offer {
+      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
+      padding: 20px; display: flex; flex-direction: column; gap: 3px;
+    }
+    .offer .name { font-size: 13px; font-weight: 700; color: var(--brand); letter-spacing: .01em; }
+    .offer .amount { font-size: 27px; font-weight: 800; letter-spacing: -.03em; line-height: 1.2; }
+    .offer dl { margin: 14px 0 0; padding-top: 13px; border-top: 1px solid var(--line); display: grid; gap: 7px; }
+    .offer .row { display: flex; justify-content: space-between; gap: 12px; font-size: 13.5px; }
+    .offer dt { color: var(--muted); }
+    .offer dd { margin: 0; font-weight: 600; text-align: right; }
+
+    /* ---- actions ---- */
+    .actions-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(282px, 1fr)); gap: 26px; }
+    .action-group h3 {
+      margin: 0 0 10px; font-size: 11.5px; font-weight: 700; letter-spacing: .1em;
+      text-transform: uppercase; color: var(--muted);
+    }
+    .action-list { display: flex; flex-direction: column; background: var(--paper);
+      border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    .action {
+      display: flex; align-items: center; gap: 13px; padding: 14px 16px; text-decoration: none;
+      color: inherit; border-bottom: 1px solid var(--line); transition: background .14s ease;
+    }
+    .action:last-child { border-bottom: 0; }
+    .action:hover { background: var(--brand-soft); }
+    .action .icon {
+      flex: none; width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center;
+      background: var(--brand-soft); color: var(--brand); font-size: 14px;
+    }
+    .action .t { font-weight: 600; display: block; line-height: 1.35; }
+    .action .d { font-size: 13px; color: var(--muted); display: block; line-height: 1.4; }
+    .action .chev { margin-left: auto; color: var(--line-strong); font-size: 12px; }
+    .action:hover .chev { color: var(--brand); }
+
+    /* ---- how it works ---- */
+    .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+    .step .n {
+      display: grid; place-items: center; width: 27px; height: 27px; border-radius: 50%;
+      background: var(--brand-deep); color: #fff; font-size: 13px; font-weight: 700; margin-bottom: 11px;
+    }
+    .step h3 { margin: 0 0 4px; font-size: 15.5px; font-weight: 700; }
+    .step p { margin: 0; font-size: 14px; color: var(--ink-soft); }
+
+    /* ---- applications ---- */
+    .app-row {
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+      padding: 14px 0; border-bottom: 1px solid var(--line); flex-wrap: wrap;
+    }
+    .app-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .app-row:first-child { padding-top: 0; }
+    .app-row .what { font-weight: 600; }
+    .app-row .meta { font-size: 13px; color: var(--muted); }
+    .app-row .reason { font-size: 13px; color: var(--ink-soft); margin-top: 5px; flex-basis: 100%; }
+    .pill {
+      display: inline-block; font-size: 11.5px; font-weight: 700; padding: 4px 11px; border-radius: 999px;
+      background: var(--brand-soft); color: var(--brand-deep); white-space: nowrap;
+    }
     .pill.approved { background: var(--ok-bg); color: var(--ok); }
     .pill.waiting { background: var(--wait-bg); color: var(--wait); }
     .pill.rejected { background: var(--bad-bg); color: var(--bad); }
+
     .muted { color: var(--muted); }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
-    .staff-note { background: #fdf6e3; border: 1px solid #e3cd92; color: #6b5a2a; }
-    footer { text-align: center; color: rgba(228,237,255,.8); font-size: 12.5px; padding-bottom: 10px; }
-    footer a { color: var(--gold); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: .95em; }
+    .status-line { margin: 14px 0 0; font-size: 13.5px; }
+    .status-line.bad { color: var(--bad); }
+
+    /* ---- footer ---- */
+    footer { border-top: 1px solid var(--line); background: var(--paper); margin-top: 46px; }
+    footer .shell { padding-block: 26px 34px; display: flex; flex-wrap: wrap; gap: 8px 26px; font-size: 13.5px; }
+    footer .legal { color: var(--ink-soft); }
+    footer .credit { margin-left: auto; color: var(--muted); }
+    footer a { color: var(--muted); text-decoration: none; font-weight: 600; }
+    footer a:hover { color: var(--brand); }
+
+    @media (max-width: 860px) {
+      .hero .shell { grid-template-columns: 1fr; gap: 28px; padding-block: 36px 34px; }
+      .masthead nav { display: none; }
+      .masthead .shell { min-height: 60px; }
+      footer .credit { margin-left: 0; flex-basis: 100%; }
+    }
   </style>
 </head>
 <body>
-  <div class="bar">
-    <div class="logo" id="brand"></div>
-    <div class="who" id="who"></div>
-  </div>
+  <header class="masthead">
+    <div class="shell">
+      <div class="brand" id="brand"></div>
+      <nav id="site-nav" hidden>
+        <a href="apply.html">Apply</a>
+        <a href="my-active-loans.html">My loans</a>
+        <a href="make-a-payment.html">Payments</a>
+        <a href="support.html">Support</a>
+      </nav>
+      <div class="account" id="who"></div>
+    </div>
+  </header>
 
-  <div class="wrap">
-    <div class="hero">
-      <h1 id="hero-name">&nbsp;</h1>
-      <p id="hero-sub">Apply for a loan, follow where it has got to, and reach us if you need help.</p>
+  <main>
+    <div class="hero" id="hero">
+      <div class="shell">
+        <div>
+          <span class="eyebrow" id="hero-eyebrow">Licensed microcredit lending in Jamaica</span>
+          <h1 id="hero-name">&nbsp;</h1>
+          <p class="lede" id="hero-sub">Apply for a loan, follow where it has got to, and reach us if you need help.</p>
+          <div class="actions" id="hero-actions">
+            <a class="btn" href="apply.html"><i class="fas fa-file-signature"></i> Apply for a loan</a>
+            <a class="btn secondary" href="loan-calculator.html"><i class="fas fa-calculator"></i> Work out repayments</a>
+          </div>
+          <div class="contact-strip" id="contact-strip"></div>
+        </div>
+
+        <div id="hero-panel">
+          <div class="panel" id="signin-card" hidden>
+            <h2>Sign in to get started</h2>
+            <p class="sub">Your details stay with your account, so you enter them once and can see where your
+               loan has got to whenever you come back.</p>
+            <button class="btn" id="signin-btn" style="width:100%;"><i class="fab fa-google"></i> Sign in with Google</button>
+            <p class="status-line muted" id="signin-status"></p>
+          </div>
+
+          <div class="panel" id="apps-card" hidden>
+            <h2>Your applications</h2>
+            <p class="sub">We will review these and come back to you here.</p>
+            <div id="apps"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card" id="unknown-card" hidden>
-      <h2>We could not find that lender</h2>
-      <p class="sub">The address <span id="unknown-slug" class="mono"></span> does not belong to any lender on LoanApp.
-         Check the link you followed, or start from the platform page.</p>
-      <a class="btn ghost" href="/"><i class="fas fa-layer-group"></i> LoanApp</a>
-    </div>
+    <div class="shell">
+      <section id="unknown-section" hidden>
+        <div class="panel">
+          <h2>We could not find that lender</h2>
+          <p class="sub">The address <span id="unknown-slug" class="mono"></span> does not belong to any lender on
+             LoanApp. Check the link you followed, or start from the platform page.</p>
+          <a class="btn secondary" href="/"><i class="fas fa-layer-group"></i> Go to LoanApp</a>
+        </div>
+      </section>
 
-    <div class="card" id="signin-card" hidden>
-      <h2>Sign in to get started</h2>
-      <p class="sub">Your details are kept with your account, so you enter them once and we can show you what is happening with your loan.</p>
-      <button class="btn" id="signin-btn"><i class="fab fa-google"></i> Sign in with Google</button>
-      <p class="sub" id="signin-status" style="margin:12px 0 0;"></p>
-    </div>
+      <section id="staff-section" hidden>
+        <div class="panel notice">
+          <h2>You work here</h2>
+          <p class="sub" style="color:#6b5312;">This account has staff access, so the admin area is open to you as well.</p>
+          <a class="btn secondary" href="admin-home.html"><i class="fas fa-user-shield"></i> Go to the admin area</a>
+        </div>
+      </section>
 
-    <div class="card staff-note" id="staff-note" hidden>
-      <h2 style="color:#6b5a2a;">You work here</h2>
-      <p class="sub" style="color:#6b5a2a;">This account has staff access, so the admin area is open to you as well.</p>
-      <a class="btn ghost" href="admin-home.html"><i class="fas fa-user-shield"></i> Go to the admin area</a>
-    </div>
+      <section id="offers-section" hidden>
+        <div class="section-head">
+          <h2>Loans we offer</h2>
+          <p>Which campaigns are open to you depends on your details, so sign in to apply.</p>
+        </div>
+        <div class="offers" id="offers"></div>
+      </section>
 
-    <div class="card" id="apps-card" hidden>
-      <h2>Your applications</h2>
-      <p class="sub">We will review these and come back to you.</p>
-      <div id="apps"></div>
-    </div>
+      <section id="actions-section">
+        <div class="section-head">
+          <h2>What would you like to do?</h2>
+          <p id="actions-sub">Everything here is yours to use once you are signed in.</p>
+        </div>
+        <div class="actions-grid">
+          <div class="action-group">
+            <h3>Borrowing</h3>
+            <div class="action-list">
+              <a class="action" href="apply.html">
+                <span class="icon"><i class="fas fa-file-signature"></i></span>
+                <span><span class="t">Apply for a loan</span><span class="d">Choose from the campaigns open to you</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+              <a class="action" href="loan-calculator.html">
+                <span class="icon"><i class="fas fa-calculator"></i></span>
+                <span><span class="t">Loan calculator</span><span class="d">Work out repayments before you apply</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+              <a class="action" href="status.html">
+                <span class="icon"><i class="fas fa-magnifying-glass"></i></span>
+                <span><span class="t">Check an application</span><span class="d">Look one up by its reference</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+            </div>
+          </div>
 
-    <div class="card" id="tiles-card">
-      <h2>What would you like to do?</h2>
-      <p class="sub" id="tiles-sub">Everything below is yours to use once you are signed in.</p>
-      <div class="tiles" id="tiles"></div>
-    </div>
+          <div class="action-group">
+            <h3>Your loans</h3>
+            <div class="action-list">
+              <a class="action" href="my-active-loans.html">
+                <span class="icon"><i class="fas fa-hand-holding-dollar"></i></span>
+                <span><span class="t">My active loans</span><span class="d">What you owe and what is due</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+              <a class="action" href="make-a-payment.html">
+                <span class="icon"><i class="fas fa-credit-card"></i></span>
+                <span><span class="t">Make a payment</span><span class="d">Pay towards a loan</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+              <a class="action" href="loan-statement.html">
+                <span class="icon"><i class="fas fa-file-invoice-dollar"></i></span>
+                <span><span class="t">Loan statement</span><span class="d">Every payment on a loan</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+            </div>
+          </div>
 
-    <footer>
-      <p id="lender-line"></p>
-      <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>
-         &middot; <a href="/">LoanApp</a>.</p>
-    </footer>
-  </div>
+          <div class="action-group">
+            <h3>Your account</h3>
+            <div class="action-list">
+              <a class="action" href="user-profile.html">
+                <span class="icon"><i class="fas fa-id-card"></i></span>
+                <span><span class="t">My profile</span><span class="d">Your details and contact information</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+              <a class="action" href="support.html">
+                <span class="icon"><i class="fas fa-life-ring"></i></span>
+                <span><span class="t">Support</span><span class="d">Open a ticket and follow the conversation</span></span>
+                <i class="fas fa-chevron-right chev"></i>
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="how-section">
+        <div class="section-head">
+          <h2>How it works</h2>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="n num">1</div>
+            <h3>Apply online</h3>
+            <p>Fill in your details once, pick a campaign you qualify for, and send it.</p>
+          </div>
+          <div class="step">
+            <div class="n num">2</div>
+            <h3>We review it</h3>
+            <p>The decision appears on this page, and we contact you if anything is missing.</p>
+          </div>
+          <div class="step">
+            <div class="n num">3</div>
+            <h3>Set up repayment</h3>
+            <p>A standing order with your bank, or a salary deduction through your employer &mdash; whichever suits you.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    <div class="shell">
+      <span class="legal" id="lender-line"></span>
+      <span class="credit">Technology by
+        <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a> &middot;
+        <a href="/">LoanApp</a></span>
+    </div>
+  </footer>
 
   <script type="module">
     const $ = id => document.getElementById(id);
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-    const money = (c, n) => ((c || 'JMD') === 'JMD' ? 'J$' : (c + ' ')) + Number(n || 0).toLocaleString();
-    const when = v => { try { return new Date(v).toLocaleDateString(); } catch (e) { return ''; } };
+    const money = (c, n) => ((c || 'JMD') === 'JMD' ? 'J$' : (c + ' ')) + Number(n || 0).toLocaleString('en-JM');
+    const when = v => { try { return new Date(v).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }); } catch (e) { return ''; } };
 
-    // This page is one lender's front door. Which lender it is comes from the
-    // path it was opened at (/loanit-financing), so the same page serves every
-    // tenant and none of their details are written into the markup.
+    // ---- whose page is this ----
+    // The lender comes from the path this page was opened at, so one page
+    // serves every tenant and none of their details sit in the markup.
     function brand(t) {
       const name = t.tradingName || 'Loan It Financing';
       document.title = name;
@@ -143,21 +406,32 @@
       $('brand').innerHTML = t.logoUrl
         ? `<img src="${esc(t.logoUrl)}" alt="${esc(name)}" />`
         : `<span class="wordmark">${esc(name)}</span>`;
+      // Set in small caps, so a sentence's full stop reads as a stray mark.
+      if (t.tagline) $('hero-eyebrow').textContent = t.tagline.replace(/\.\s*$/, '');
+
       const where = [t.addressLine1, t.town, t.parish].filter(Boolean).join(', ');
+      $('contact-strip').innerHTML = [
+        where ? `<span><i class="fas fa-location-dot"></i>${esc(where)}</span>` : '',
+        t.phone ? `<span><i class="fas fa-phone"></i>${esc(t.phone)}</span>` : '',
+        t.email ? `<span><i class="fas fa-envelope"></i>${esc(t.email)}</span>` : ''
+      ].join('');
+
       const legal = t.legalName && t.legalName !== name ? `${t.legalName}, trading as ${name}` : name;
       $('lender-line').textContent = [legal, where, t.phone].filter(Boolean).join(' · ');
+      $('site-nav').hidden = false;
     }
 
     function noSuchLender(slug) {
       document.title = 'Lender not found';
       $('hero-name').textContent = 'LoanApp';
+      $('hero-eyebrow').textContent = 'Lending platform';
       $('hero-sub').textContent = '';
+      $('hero-actions').hidden = true;
+      $('hero-panel').hidden = true;
       $('unknown-slug').textContent = '/' + slug;
-      $('unknown-card').hidden = false;
-      $('tiles-card').hidden = true;
-      $('signin-card').hidden = true;
+      $('unknown-section').hidden = false;
+      ['actions-section', 'how-section', 'offers-section'].forEach(id => { $(id).hidden = true; });
       $('brand').innerHTML = '<span class="wordmark">LoanApp</span>';
-      $('lender-line').textContent = '';
     }
 
     const tenantReady = window.Tenant.ready().then(t => {
@@ -165,19 +439,39 @@
       return t;
     });
 
-    const TILES = [
-      { href: 'apply.html', icon: 'fa-file-signature', t: 'Apply for a loan', d: 'Choose from the campaigns open to you' },
-      { href: 'my-active-loans.html', icon: 'fa-hand-holding-dollar', t: 'My active loans', d: 'What you owe and what is due' },
-      { href: 'make-a-payment.html', icon: 'fa-credit-card', t: 'Make a payment', d: 'Pay towards a loan' },
-      { href: 'loan-statement.html', icon: 'fa-file-invoice-dollar', t: 'Loan statement', d: 'Every payment on a loan' },
-      { href: 'loan-calculator.html', icon: 'fa-calculator', t: 'Loan calculator', d: 'Work out repayments before you apply' },
-      { href: 'support.html', icon: 'fa-life-ring', t: 'Support', d: 'Open a ticket and follow the conversation' },
-      { href: 'user-profile.html', icon: 'fa-id-card', t: 'My profile', d: 'Your details and contact information' }
-    ];
-    $('tiles').innerHTML = TILES.map(t =>
-      `<a class="tile" href="${t.href}"><i class="fas ${t.icon}"></i><span><span class="t">${t.t}</span>
-       <span class="d">${t.d}</span></span></a>`).join('');
+    // ---- what this lender offers ----
+    // The published campaigns, with their real figures. Anyone may read these;
+    // whether a person qualifies for one is decided when they apply.
+    const months = n => n + (Number(n) === 1 ? ' month' : ' months');
+    function termsOf(p) {
+      if (p.termMode === 'fixed') {
+        return p.fixedTermMonths != null ? months(p.fixedTermMonths) : '—';
+      }
+      const t = (p.allowedTerms || []).map(Number).filter(Boolean);
+      if (!t.length) return '—';
+      if (t.length === 1) return months(t[0]);
+      return t.slice(0, -1).join(', ') + ' or ' + months(t[t.length - 1]);
+    }
 
+    async function loadOffers() {
+      try {
+        const res = await fetch((window.LOANIT_API_BASE || '') + '/api/promotions');
+        const list = await res.json();
+        if (!Array.isArray(list) || !list.length) return;
+        $('offers').innerHTML = list.map(p => `
+          <div class="offer">
+            <span class="name">${esc(p.name)}</span>
+            <span class="amount num">${esc(money(p.currency, p.principal))}</span>
+            <dl>
+              <div class="row"><dt>Monthly interest</dt><dd class="num">${esc(p.monthlyInterestPct)}%</dd></div>
+              <div class="row"><dt>Repaid over</dt><dd class="num">${esc(termsOf(p))}</dd></div>
+            </dl>
+          </div>`).join('');
+        $('offers-section').hidden = false;
+      } catch (e) { /* the section simply stays out of the way */ }
+    }
+
+    // ---- where a signed-in person's applications stand ----
     async function loadApplications() {
       try {
         const res = await window.userAuth.fetch('/api/me/applications');
@@ -187,51 +481,62 @@
         const cls = s => (s === 'Approved' || s === 'Completed') ? 'approved' : (s === 'Rejected' ? 'rejected' : 'waiting');
         const shown = s => (s === 'Submitted' || s === 'Pending') ? 'Awaiting a decision' : s;
         $('apps').innerHTML = apps.map(a => `
-          <div class="app">
-            <div class="top">
-              <span class="name">${esc(a.promoSnapshot?.name || 'Loan application')}</span>
-              <span class="pill ${cls(a.status)}">${esc(shown(a.status))}</span>
+          <div class="app-row">
+            <div>
+              <div class="what">${esc(a.promoSnapshot?.name || 'Loan application')}</div>
+              <div class="meta num">${esc(money(a.promoSnapshot?.currency, a.promoSnapshot?.principal))} ·
+                ${esc(a.selectedTermMonths || '—')} months · sent ${esc(when(a.createdAt))}</div>
+              <div class="meta mono">${esc(a.applicationCode || '')}</div>
             </div>
-            <div class="meta">Reference ${esc(a.applicationCode || '—')} ·
-              ${esc(money(a.promoSnapshot?.currency, a.promoSnapshot?.principal))} ·
-              ${esc(a.selectedTermMonths || '—')} months · sent ${esc(when(a.createdAt))}</div>
-            ${a.reason ? `<div class="meta" style="margin-top:6px;">${esc(a.reason)}</div>` : ''}
+            <span class="pill ${cls(a.status)}">${esc(shown(a.status))}</span>
+            ${a.reason ? `<div class="reason">${esc(a.reason)}</div>` : ''}
           </div>`).join('');
       } catch (e) { $('apps-card').hidden = true; }
     }
 
-    $('signin-btn').addEventListener('click', async () => {
-      $('signin-status').textContent = '';
+    // ---- signing in ----
+    async function startSignIn() {
+      const status = $('signin-status');
+      status.textContent = '';
+      status.classList.remove('bad');
       try { await window.userAuth.signIn(); }
-      catch (err) { $('signin-status').textContent = err.message || 'Sign-in failed.'; }
-    });
+      catch (err) {
+        status.classList.add('bad');
+        status.textContent = (err && err.message) ? err.message : 'Sign-in failed.';
+      }
+    }
+    $('signin-btn').addEventListener('click', startSignIn);
 
     function paint(me) {
-      if (!$('unknown-card').hidden) return;   // no lender, nothing to offer
+      if (!$('unknown-section').hidden) return;   // no lender, nothing to offer
+
       $('signin-card').hidden = !!me;
-      $('staff-note').hidden = !(me && me.staff);
+      $('staff-section').hidden = !(me && me.staff);
+
       $('who').innerHTML = me
-        ? `${esc(me.name || me.email)} <button class="btn ghost small" id="out-btn">Sign out</button>`
-        : '<a class="btn small" href="#" id="top-signin">Sign in</a>';
+        ? `<span class="name">${esc(me.name || me.email)}</span>
+           <button class="btn quiet small" id="out-btn">Sign out</button>`
+        : '<button class="btn small" id="top-signin"><i class="fas fa-right-to-bracket"></i> Sign in</button>';
       const out = $('out-btn');
       if (out) out.addEventListener('click', () => window.userAuth.signOut());
       const top = $('top-signin');
-      if (top) top.addEventListener('click', e => { e.preventDefault(); $('signin-btn').click(); });
+      if (top) top.addEventListener('click', startSignIn);
 
-      $('hero-sub').textContent = me
-        ? 'Everything to do with your loan, in one place.'
-        : 'Apply for a loan, follow where it has got to, and reach us if you need help.';
-      $('tiles-sub').textContent = me
-        ? 'Pick up where you left off.'
-        : 'Everything below is yours to use once you are signed in.';
-
-      if (me) loadApplications(); else $('apps-card').hidden = true;
+      if (me) {
+        const first = String(me.name || '').trim().split(' ')[0];
+        $('hero-sub').textContent = first
+          ? `Welcome back, ${first}. Everything to do with your loan is in one place.`
+          : 'Everything to do with your loan is in one place.';
+        $('actions-sub').textContent = 'Pick up where you left off.';
+        loadApplications();
+      } else {
+        $('apps-card').hidden = true;
+      }
     }
 
-    // Nothing is painted until we know whose page this is: the sign-in card
-    // would otherwise flash up on a lender that does not exist.
     window.addEventListener('user-auth', e => tenantReady.then(() => paint(e.detail)));
     window.userAuth.ready().then(me => tenantReady.then(() => paint(me)));
+    tenantReady.then(t => { if (t) loadOffers(); });
   </script>
 </body>
 </html>
