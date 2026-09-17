@@ -545,13 +545,14 @@
     .letter-body .sig-caption { font-size: 11.5px; color: #33415a; margin: 3px 0 0; text-align: left; }
   </style>
 </head>
-<body>
+<body data-record-endpoint="/contracts" data-record-label="loan contract">
   <div class="toolbar">
     <nav class="toolbar-nav" aria-label="Forms"></nav>
     <button type="button" onclick="printIfValid()">Print / Save as PDF</button>
     <button type="button" class="secondary" onclick="resetForm()">Reset Fields</button>
   </div>
   <script src="forms-nav.js"></script>
+  <script src="form-record.js"></script>
 
   <form id="contractForm">
     <section class="page">
@@ -1022,6 +1023,18 @@
       // back to the application or authorization form behind it.
       data.seededFrom = (linkedRecord && linkedRecord.source) || '';
       data.sourceReference = (linkedRecord && linkedRecord.reference) || '';
+
+      // The schedule as printed, so reopening this contract shows the same
+      // rows rather than deriving them a second time.
+      data.schedule = JSON.stringify(Array.from(document.querySelectorAll('#scheduleBody tr')).map((tr, i) => {
+        const c = tr.children;
+        return {
+          n: (c[0] && c[0].textContent) || String(i + 1),
+          date: (c[1] && c[1].textContent) || '',
+          amount: (c[2] && c[2].textContent) || '',
+          balance: (c[3] && c[3].textContent) || ''
+        };
+      }));
       return data;
     }
 
@@ -1155,6 +1168,50 @@
       if (v) $(id).value = v;
     }
 
+    // Puts a saved contract back exactly as it was saved. The stored keys are
+    // the form's own field ids, so filling it is a straight id lookup.
+    function restoreSavedContract(existing, rec) {
+      const f = existing.fields || {};
+      Object.keys(f).forEach(id => {
+        const el = $(id);
+        if (el && 'value' in el) el.value = f[id];
+      });
+      if (f.trn) formatTrnInput(trnEl);
+      if (f.parish) setParish(f.parish);
+      instalmentOverridden = String(instalmentAmountEl.value || '').trim() !== '';
+      if (f.pricing === 'carried from source record' && parseMoney(f.totalRepayable) > 0) {
+        carriedTotal = parseMoney(f.totalRepayable);
+        carriedTotalSource = (rec.sourceLabel || 'linked record').toLowerCase();
+      }
+      carriedSchedule = Array.isArray(existing.schedule) && existing.schedule.length ? existing.schedule : null;
+      linkedRecord = { source: rec.source, reference: rec.reference || '', product: rec.product || '' };
+
+      const note = $('linkedNote');
+      note.style.display = 'block';
+      note.textContent = 'Opened the contract already saved for ' + (f.borrowerName || 'this borrower') +
+        (existing.savedAt ? ' on ' + new Date(existing.savedAt).toLocaleString() : '') +
+        (existing.autosaved ? ' (autosaved draft)' : ' (printed)') +
+        '. Check every field before printing.';
+      updateContract();
+    }
+
+    // form-record.js opens a saved contract with ?record=<id> and fills the
+    // plain fields; this puts back the parts that are not plain fields.
+    window.__onRecordLoaded = function (record) {
+      instalmentOverridden = String(instalmentAmountEl.value || '').trim() !== '';
+      if (record.pricing === 'carried from source record' && parseMoney(record.totalRepayable) > 0) {
+        carriedTotal = parseMoney(record.totalRepayable);
+        carriedTotalSource = 'saved contract';
+      }
+      try {
+        const parsed = JSON.parse(record.schedule || '[]');
+        carriedSchedule = Array.isArray(parsed) && parsed.length ? parsed : null;
+      } catch (e) { carriedSchedule = null; }
+      if (record.trn) formatTrnInput(trnEl);
+      if (record.parish) setParish(record.parish);
+      updateContract();
+    };
+
     async function prefillFromRecord(token) {
       const rec = await loadContractSource(token);
       const note = $('linkedNote');
@@ -1164,6 +1221,10 @@
         note.textContent = 'This contract link is not valid or has expired. Fill the agreement in manually.';
         return;
       }
+
+      // A contract already saved for this borrower is reopened as it stands;
+      // the authorization form only fills a contract that does not exist yet.
+      if (rec.existing) { restoreSavedContract(rec.existing, rec); return; }
 
       const b = rec.borrower || {};
       const loan = rec.loan || {};

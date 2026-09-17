@@ -76,6 +76,9 @@
       if (typeof activeTermInput !== 'undefined') activeTermInput = 'total';
     } catch (e) {}
     if (typeof updateSchedule === 'function') updateSchedule();
+    if (typeof updateContract === 'function') updateContract();
+    // A page can restore anything of its own that is not a plain form field.
+    if (typeof window.__onRecordLoaded === 'function') window.__onRecordLoaded(record);
     return filled;
   }
 

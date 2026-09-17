@@ -147,8 +147,7 @@
       } catch (e) { status.textContent = 'Request failed'; }
     }
 
-    // One delegated handler, so rows re-render freely. A saved contract has no
-    // edit-in-form route yet, so the menu is the details view plus the id.
+    // One delegated handler, so rows re-render freely.
     document.querySelector('#tbl tbody').addEventListener('click', (e) => {
       const btn = e.target.closest('.row-menu-btn');
       if (!btn) return;
@@ -162,6 +161,8 @@
               titleOf: r => r.borrowerName || 'Contract',
               subtitleOf: r => (r.autosaved ? 'Autosaved draft' : 'Printed contract') + ' · ' + fmtWhen(r.submittedAt)
             }) },
+          { label: 'Open in form', icon: 'fa-pen-to-square', system: true,
+            href: 'loan-contract.html?record=' + encodeURIComponent(record.id) },
           { label: 'Copy record id', icon: 'fa-copy', onClick: () => navigator.clipboard && navigator.clipboard.writeText(record.id) }
         ]
       });

@@ -672,6 +672,51 @@ function contractFromForm(d, source) {
   };
 }
 
+// The fields a saved contract holds, so reopening one restores what was
+// entered rather than working it out again.
+const CONTRACT_FIELDS = ['principal', 'borrowerName', 'trn', 'contactNo', 'email',
+  'addressLine1', 'addressLine2', 'town', 'parish', 'agreementDate', 'processingFee',
+  'dailyRate', 'lateFee', 'firstPaymentDate', 'frequency', 'instalments', 'maturityDate',
+  'instalmentAmount', 'totalRepayable', 'pricing', 'seededFrom', 'sourceReference'];
+
+// A contract already drawn up for this borrower beats rebuilding one from the
+// authorization form, because its charges, dates and instalment were settled
+// at the time. TRN is the only identifier the two kinds of record share.
+async function latestContractFor(trn) {
+  const digits = String(trn || '').replace(/\D/g, '');
+  if (digits.length !== 9) return null;
+
+  let docs = (await db.collection('contracts').where('trn', '==', trn).get()).docs;
+  if (!docs.length) {
+    // Same TRN, punctuated differently. Bounded, and the collection is small.
+    const all = await db.collection('contracts').limit(500).get();
+    docs = all.docs.filter(d => String(d.data().trn || '').replace(/\D/g, '') === digits);
+  }
+  if (!docs.length) return null;
+
+  const when = rec => { const t = rec.updatedAt || rec.submittedAt; return t && t.toMillis ? t.toMillis() : 0; };
+  docs.sort((a, b) => when(b.data()) - when(a.data()));
+  const doc = docs[0];
+  const d = doc.data();
+
+  const fields = {};
+  CONTRACT_FIELDS.forEach(k => { if (d[k] != null && d[k] !== '') fields[k] = String(d[k]); });
+
+  let schedule = [];
+  try {
+    const parsed = JSON.parse(d.schedule || '[]');
+    if (Array.isArray(parsed)) schedule = parsed.slice(0, 500);
+  } catch (e) { /* the page works its own out */ }
+
+  return {
+    id: doc.id,
+    autosaved: d.autosaved === true,
+    savedAt: when(d) ? new Date(when(d)).toISOString() : null,
+    fields,
+    schedule
+  };
+}
+
 app.get('/api/contract/:token', async (req, res) => {
   const token = String(req.params.token || '');
   if (token.length < 20) return res.status(404).json({ error: 'Unknown contract link' });
@@ -680,7 +725,10 @@ app.get('/api/contract/:token', async (req, res) => {
     if (snap.empty) continue;
     const d = snap.docs[0].data();
     const body = source === 'application' ? contractFromApplication(d) : contractFromForm(d, source);
-    return res.json({ source, sourceLabel: label, ...body });
+    // Only for the authorization forms: an application is the start of a loan,
+    // so a contract opened from one is meant to be drawn up fresh.
+    const existing = source === 'application' ? null : await latestContractFor(body.borrower.trn);
+    return res.json({ source, sourceLabel: label, existing, ...body });
   }
   res.status(404).json({ error: 'Unknown contract link' });
 });
