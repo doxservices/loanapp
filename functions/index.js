@@ -53,11 +53,50 @@ const BUSINESS_ADMIN_EMAILS = new Set(
     .split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
 );
 
-function roleFor(email) {
+// Who this email is. The users collection is the register; the two
+// environment variables stay only as a bootstrap, so an empty or broken users
+// table can never lock everyone out of the admin.
+async function identify(email) {
   if (!email) return null;
-  if (SYSTEM_ADMIN_EMAIL && email === SYSTEM_ADMIN_EMAIL) return 'system';
-  if (BUSINESS_ADMIN_EMAILS.has(email)) return 'business';
+  if (SYSTEM_ADMIN_EMAIL && email === SYSTEM_ADMIN_EMAIL) {
+    return { role: 'superAdmin', businessId: null, userId: null, profileComplete: true };
+  }
+
+  const snap = await db.collection('users').where('email', '==', email).limit(1).get();
+  if (!snap.empty) {
+    const u = snap.docs[0].data();
+    // 'pending' is someone who has not set their profile up yet, so they still
+    // sign in — the profile step is what greets them. Only a deliberately
+    // closed account is refused.
+    if (u.status === 'inactive' || u.status === 'suspended') return null;
+    if (u.role) {
+      return {
+        role: u.role,
+        businessId: u.businessId || null,
+        userId: snap.docs[0].id,
+        profileComplete: !!u.profileCompletedAt
+      };
+    }
+  }
+
+  if (BUSINESS_ADMIN_EMAILS.has(email)) {
+    return { role: 'businessAdmin', businessId: null, userId: null, profileComplete: false };
+  }
   return null;
+}
+
+// Signing in is the only reliable record of when someone was last here.
+// Written at most every ten minutes, so a page load does not cost a write.
+async function touchLastLogin(userId) {
+  if (!userId) return;
+  try {
+    const ref = db.collection('users').doc(userId);
+    const doc = await ref.get();
+    const last = doc.exists && doc.data().lastLoginAt;
+    const ms = last && last.toMillis ? last.toMillis() : 0;
+    if (Date.now() - ms < 10 * 60 * 1000) return;
+    await ref.update({ lastLoginAt: FieldValue.serverTimestamp() });
+  } catch (e) { console.error('[auth] lastLoginAt update failed:', e.message); }
 }
 
 // Every guarded route names the roles it accepts, so a route added later
@@ -70,15 +109,18 @@ function requireRole(...roles) {
     try {
       const decoded = await firebaseAuth.verifyIdToken(token);
       const email = (decoded.email || '').toLowerCase();
-      const role = decoded.email_verified ? roleFor(email) : null;
-      if (!role) {
+      const who = decoded.email_verified ? await identify(email) : null;
+      if (!who) {
         return res.status(403).json({ ok: false, error: 'This Google account is not authorized for admin access.' });
       }
-      if (!roles.includes(role)) {
-        return res.status(403).json({ ok: false, error: 'This account has view-only access and cannot use this feature.' });
+      if (!roles.includes(who.role)) {
+        return res.status(403).json({ ok: false, error: 'This account is not allowed to use this feature.' });
       }
       req.adminEmail = email;
-      req.adminRole = role;
+      req.adminRole = who.role;
+      req.adminBusinessId = who.businessId;
+      req.adminUserId = who.userId;
+      req.adminProfileComplete = who.profileComplete;
       next();
     } catch (e) {
       console.error('[auth] verifyIdToken failed:', e.message);
@@ -87,13 +129,48 @@ function requireRole(...roles) {
   };
 }
 
-const requireGoogleAuth = requireRole('system');            // full access
-const requireAdminRead = requireRole('system', 'business'); // reading form records
+const requireGoogleAuth = requireRole('superAdmin');                 // full access
+const requireAdminRead = requireRole('superAdmin', 'businessAdmin'); // reading form records
 
 // Lets the client confirm which account it is signed in as, and what that
 // account is allowed to do, before rendering admin UI.
-app.get('/auth/verify', requireAdminRead, (req, res) =>
-  res.json({ ok: true, email: req.adminEmail, role: req.adminRole }));
+app.get('/auth/verify', requireAdminRead, (req, res) => {
+  touchLastLogin(req.adminUserId);
+  res.json({
+    ok: true,
+    email: req.adminEmail,
+    role: req.adminRole,
+    businessId: req.adminBusinessId,
+    profileComplete: req.adminProfileComplete
+  });
+});
+
+// ---- Businesses: the directory the super admin browses, and the one
+// business everybody else belongs to. ----
+function businessToApi(doc) {
+  const d = doc.data();
+  return {
+    id: doc.id, pid: d.pid || null,
+    tradingName: d.tradingName || '', legalName: d.legalName || '', trn: d.trn || '',
+    regulator: d.regulator || '', regulatoryAct: d.regulatoryAct || '',
+    licenceNumber: d.licenceNumber || '', licenceVerified: d.licenceVerified === true,
+    addressLine1: d.addressLine1 || '', town: d.town || '', parish: d.parish || '',
+    country: d.country || '', phone: d.phone || '', email: d.email || '',
+    status: d.status || 'active',
+    createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : null
+  };
+}
+
+app.get('/api/businesses', requireRole('superAdmin'), async (req, res) => {
+  const snap = await db.collection('businesses').orderBy('tradingName').get();
+  res.json({ ok: true, businesses: snap.docs.map(businessToApi) });
+});
+
+app.get('/api/businesses/mine', requireAdminRead, async (req, res) => {
+  if (!req.adminBusinessId) return res.json({ ok: true, business: null });
+  const doc = await db.collection('businesses').doc(req.adminBusinessId).get();
+  res.json({ ok: true, business: doc.exists ? businessToApi(doc) : null });
+});
 
 // =========================================================================
 // Form submissions (standingOrders / salaryDeductions / contracts).

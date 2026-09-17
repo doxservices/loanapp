@@ -73,7 +73,7 @@ let pruneQueued = false;
 
 function pruneForBusiness() {
   pruneQueued = false;
-  if (currentRole !== 'business') return;
+  if (currentRole !== 'businessAdmin') return;
   // Links out to anything this account cannot open, including the blank
   // forms — it may read what was filled in, not fill one in.
   document.querySelectorAll('a[href]').forEach(a => {
@@ -98,8 +98,8 @@ function pruneForBusiness() {
 
 function applyRole(role) {
   currentRole = role || 'system';
-  if (currentRole !== 'business') return true;
-  document.body && document.body.setAttribute('data-admin-role', 'business');
+  if (currentRole !== 'businessAdmin') return true;
+  document.body && document.body.setAttribute('data-admin-role', 'businessAdmin');
   if (!BUSINESS_PAGES.has(location.pathname.split('/').pop() || 'index.html')) {
     location.replace(BUSINESS_HOME);
     return false;
@@ -148,7 +148,7 @@ onAuthStateChanged(auth, async (user) => {
 window.adminAuth = {
   ready: () => readyPromise,
   get role() { return currentRole; },
-  get viewOnly() { return currentRole === 'business'; },
+  get viewOnly() { return currentRole === 'businessAdmin'; },
   fetch: async (path, opts = {}) => {
     const user = auth.currentUser;
     const idToken = user ? await user.getIdToken() : currentToken;
