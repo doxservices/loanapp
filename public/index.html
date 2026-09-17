@@ -9,165 +9,190 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>LoanApp</title>
-  <meta name="description" content="LoanApp runs the loan book for lenders — each one with its own site, its own staff and its own customers." />
+  <meta name="description" content="LoanApp by DoxServices — multi-tenant lending software. Each lender with its own site, its own staff and its own customers." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@400;500;600&display=swap">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* The platform, not a lender. A lender's page is theirs to brand; this one
-       is the substrate underneath, so it is kept to graphite and white and the
-       only colour on it belongs to the lenders it lists. */
+    /* LoanApp is a DoxServices product, so this page is built in the parent's
+       own language: its navy and cyan, Montserrat over Open Sans, translucent
+       panels on a dark technical ground. A lender's own page stays light and
+       branded as theirs — that difference is the point. */
     :root {
-      --paper: #ffffff;
-      --ground: #f7f8fa;
-      --ground-deep: #eef0f4;
-      --ink: #14171d;
-      --ink-soft: #444c59;
-      --muted: #767e8c;
-      --line: #e4e7ec;
-      --line-strong: #cfd4dd;
-      --accent: #24457f;
-      --accent-soft: #eef2f9;
+      --primary: #0a2240;
+      --secondary: #1e4788;
+      --navy-deep: #061528;
+      --accent: #00b4d8;
+      --accent-bright: #00e0ff;
+      --accent-deep: #0095b4;
+      --text: rgba(255, 255, 255, .85);
+      --text-strong: #ffffff;
+      --text-dim: rgba(255, 255, 255, .55);
+      --panel: rgba(6, 21, 40, .55);
+      --panel-line: rgba(255, 255, 255, .10);
+      --panel-line-lit: rgba(0, 180, 216, .45);
       --radius: 12px;
-      --shadow-sm: 0 1px 2px rgba(20, 23, 29, .05);
-      --shadow: 0 10px 30px rgba(20, 23, 29, .08);
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; }
     body {
-      background: var(--ground);
-      color: var(--ink);
-      font-family: 'Public Sans', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      font-size: 15px; line-height: 1.6; -webkit-font-smoothing: antialiased;
+      font-family: 'Open Sans', 'Segoe UI', sans-serif;
+      font-size: 16px; line-height: 1.7; color: var(--text);
+      background: linear-gradient(rgba(6, 21, 40, .74), rgba(6, 21, 40, .92)),
+                  url('assets/banking-background.jpg') center top / cover no-repeat fixed;
+      background-color: var(--navy-deep);
+      min-height: 100vh; -webkit-font-smoothing: antialiased;
     }
+    h1, h2, h3, .logo { font-family: Montserrat, 'Segoe UI', sans-serif; }
     a { color: var(--accent); }
-    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-    .shell { max-width: 1020px; margin: 0 auto; padding: 0 20px; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+    .shell { max-width: 1140px; margin: 0 auto; padding: 0 22px; }
 
-    /* ---- masthead ---- */
-    .masthead { background: var(--paper); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 20; }
-    .masthead .shell { display: flex; align-items: center; gap: 16px; min-height: 66px; flex-wrap: wrap; }
-    .mark { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; font-size: 17.5px; letter-spacing: -.02em; }
-    .mark .glyph {
-      width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center;
-      background: var(--ink); color: #fff; font-size: 12px;
+    /* ---- header, in the parent's lockup: name split by the accent, with a
+           letter-spaced line underneath ---- */
+    .masthead {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(6, 21, 40, .82); backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(255, 255, 255, .06);
     }
-    .mark .light { font-weight: 500; color: var(--muted); }
-    .masthead .right { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 14px; }
-    .masthead .right .name { color: var(--ink-soft); font-weight: 600; }
+    .masthead .shell { display: flex; align-items: center; gap: 22px; min-height: 84px; flex-wrap: wrap; }
+    .logo { line-height: 1.1; }
+    .logo .name { font-size: 26px; font-weight: 700; color: var(--text-strong); letter-spacing: -.01em; }
+    .logo .name span { color: var(--accent); }
+    .logo .tag {
+      display: block; margin-top: 3px; font-family: 'Open Sans', sans-serif;
+      font-size: 10.5px; font-weight: 600; letter-spacing: .18em; color: var(--text-dim);
+    }
+    .masthead nav { margin-left: auto; display: flex; align-items: center; gap: 24px; flex-wrap: wrap; }
+    .masthead nav a.link { color: var(--text); text-decoration: none; font-size: 15px; font-weight: 500; }
+    .masthead nav a.link:hover { color: var(--accent); }
+    .masthead nav .who { display: flex; align-items: center; gap: 14px; font-size: 14.5px; }
+    .masthead nav .who .name { color: var(--text); }
 
     /* ---- buttons ---- */
     .btn {
       display: inline-flex; align-items: center; justify-content: center; gap: 9px;
-      font: inherit; font-weight: 600; text-decoration: none; cursor: pointer; white-space: nowrap;
-      padding: 11px 18px; border-radius: 9px; border: 1px solid var(--ink);
-      background: var(--ink); color: #fff; transition: background .15s ease, border-color .15s ease, color .15s ease;
+      font-family: 'Open Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer;
+      text-decoration: none; white-space: nowrap; padding: 13px 26px; border-radius: 6px;
+      background: var(--accent); color: #04222c; border: 1px solid var(--accent);
+      transition: background .25s ease, border-color .25s ease, color .25s ease, transform .25s ease;
     }
-    .btn:hover { background: #2a303b; border-color: #2a303b; }
-    .btn.secondary { background: var(--paper); color: var(--ink); border-color: var(--line-strong); }
-    .btn.secondary:hover { background: var(--ground-deep); border-color: var(--line-strong); }
-    .btn.small { padding: 7px 12px; font-size: 13.5px; }
+    .btn:hover { background: var(--accent-bright); border-color: var(--accent-bright); transform: translateY(-1px); }
+    .btn.outline { background: transparent; color: var(--text-strong); border-color: rgba(255, 255, 255, .45); }
+    .btn.outline:hover { background: rgba(255, 255, 255, .08); border-color: var(--text-strong); transform: translateY(-1px); }
+    .btn.small { padding: 8px 16px; font-size: 13.5px; }
 
     /* ---- hero ---- */
-    .hero { background: var(--paper); border-bottom: 1px solid var(--line); }
-    .hero .shell {
-      display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
-      gap: 44px; align-items: start; padding-block: 56px 50px;
-    }
-    .eyebrow {
-      display: inline-flex; align-items: center; gap: 9px; margin-bottom: 14px;
-      font-size: 11.5px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase; color: var(--muted);
-    }
-    .eyebrow::before { content: ""; width: 20px; height: 2px; background: var(--line-strong); }
+    .hero { padding-block: 92px 78px; }
+    .hero .shell { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 52px; align-items: center; }
     .hero h1 {
-      margin: 0 0 14px; font-size: clamp(30px, 4.4vw, 42px); line-height: 1.12;
-      font-weight: 800; letter-spacing: -.03em; text-wrap: balance;
+      margin: 0 0 20px; font-size: clamp(34px, 5vw, 54px); line-height: 1.16; font-weight: 700;
+      color: var(--text-strong); text-wrap: balance;
     }
-    .hero .lede { margin: 0; font-size: 16.5px; color: var(--ink-soft); max-width: 48ch; }
-    .hero .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 26px; }
+    .hero h1 em { font-style: normal; color: var(--accent); }
+    .hero .lede { margin: 0; font-size: 17px; color: var(--text); max-width: 50ch; }
+    .hero .cta { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 32px; }
 
     /* ---- panels ---- */
     .panel {
-      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
-      padding: 22px; box-shadow: var(--shadow);
+      background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius);
+      padding: 28px; backdrop-filter: blur(6px); box-shadow: 0 20px 48px rgba(0, 0, 0, .28);
     }
-    .panel h2 { margin: 0 0 5px; font-size: 16.5px; font-weight: 700; letter-spacing: -.01em; }
-    .panel p { margin: 0; font-size: 13.5px; color: var(--muted); }
-    .panel .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 18px; }
-    .panel .row .btn { flex: 1 1 auto; }
+    .panel h2 { margin: 0 0 7px; font-size: 20px; font-weight: 600; color: var(--text-strong); }
+    .panel p { margin: 0; font-size: 14.5px; color: var(--text-dim); line-height: 1.65; }
+    .panel .row { display: flex; flex-direction: column; gap: 11px; margin-top: 22px; }
     .role-pill {
-      display: inline-block; margin-left: 7px; padding: 3px 9px; border-radius: 999px;
-      font-size: 11.5px; font-weight: 700; background: var(--accent-soft); color: var(--accent);
+      display: inline-block; margin-left: 8px; padding: 3px 11px; border-radius: 999px;
+      font-size: 11.5px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+      background: rgba(0, 180, 216, .14); color: var(--accent);
     }
-    .note { margin-top: 14px; font-size: 12.5px; color: var(--muted); }
-    .note.bad { color: #a0231d; }
+    .note { margin-top: 16px; font-size: 13px; color: var(--text-dim); }
+    .note.bad { color: #ff9a9a; }
 
-    /* ---- sections ---- */
-    section { padding-block: 46px; }
-    section + section { padding-top: 0; }
-    .section-head { display: flex; align-items: baseline; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
-    .section-head h2 { margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
-    .section-head p { margin: 0; font-size: 14px; color: var(--muted); }
-
-    /* ---- lenders ---- */
-    .lenders { display: grid; grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); gap: 14px; }
-    .lender {
-      display: block; text-decoration: none; color: inherit; padding: 20px 20px 18px;
-      background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius);
-      border-top: 3px solid var(--lender-colour, var(--accent));
-      transition: border-color .14s ease, box-shadow .14s ease;
+    /* ---- sections, centred like the parent's ---- */
+    section { padding-block: 74px; border-top: 1px solid rgba(255, 255, 255, .05); }
+    .section-head { text-align: center; max-width: 720px; margin: 0 auto 42px; }
+    .eyebrow {
+      display: inline-block; padding: 6px 17px; border-radius: 999px; margin-bottom: 18px;
+      font-size: 11.5px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+      color: var(--accent); background: rgba(0, 180, 216, .12); border: 1px solid rgba(0, 180, 216, .22);
     }
-    .lender:hover { box-shadow: var(--shadow-sm); border-color: var(--line-strong); border-top-color: var(--lender-colour, var(--accent)); }
-    .lender .name { display: block; font-weight: 700; font-size: 16.5px; letter-spacing: -.01em; }
-    .lender .tag { display: block; margin-top: 3px; font-size: 13.5px; color: var(--muted); }
-    .lender .foot {
-      display: flex; flex-direction: column; align-items: flex-start; gap: 3px;
-      margin-top: 16px; padding-top: 13px; border-top: 1px solid var(--line); font-size: 13px;
-    }
-    .lender .path { color: var(--accent); font-weight: 600; white-space: nowrap; }
-    .lender .where { color: var(--muted); }
+    .section-head h2 { margin: 0 0 12px; font-size: clamp(26px, 3.6vw, 38px); font-weight: 700; color: var(--text-strong); }
+    .section-head p { margin: 0; font-size: 16px; color: var(--text-dim); }
 
-    /* ---- what runs on it ---- */
-    .modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(290px, 1fr)); gap: 0 34px; }
-    .module { display: flex; gap: 13px; padding: 15px 0; border-bottom: 1px solid var(--line); }
-    .module i { color: var(--accent); font-size: 14px; width: 18px; text-align: center; margin-top: 4px; }
-    .module b { display: block; font-weight: 600; }
-    .module span { font-size: 13.5px; color: var(--muted); }
+    /* ---- cards ---- */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px; }
+    .card {
+      background: var(--panel); border: 1px solid var(--panel-line); border-radius: var(--radius);
+      padding: 32px 26px; text-align: center; text-decoration: none; color: inherit; display: block;
+      transition: border-color .25s ease, transform .25s ease, background .25s ease;
+    }
+    a.card:hover { border-color: var(--panel-line-lit); transform: translateY(-4px); background: rgba(6, 21, 40, .72); }
+    .card .circle {
+      width: 62px; height: 62px; margin: 0 auto 18px; border-radius: 50%; display: grid; place-items: center;
+      background: rgba(0, 180, 216, .12); color: var(--accent); font-size: 22px;
+    }
+    .card h3 { margin: 0 0 9px; font-size: 19px; font-weight: 600; color: var(--text-strong); }
+    .card p { margin: 0; font-size: 14.5px; color: var(--text-dim); line-height: 1.65; }
+
+    /* a lender's card carries its own address and where it trades */
+    .card .meta {
+      margin-top: 20px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, .08);
+      display: flex; flex-direction: column; gap: 4px; font-size: 13.5px;
+    }
+    .card .path { color: var(--accent); font-weight: 600; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .card .where { color: var(--text-dim); }
 
     /* ---- tenancy ---- */
-    .structure { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 30px 40px; }
-    .structure h3 { margin: 0 0 5px; font-size: 15px; font-weight: 700; }
-    .structure p { margin: 0; font-size: 14px; color: var(--ink-soft); }
-    .structure .n {
-      display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 6px;
-      background: var(--ground-deep); color: var(--ink-soft); font-size: 12px; margin-bottom: 10px;
+    .tenancy { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 34px 44px; }
+    .tenancy .n {
+      display: grid; place-items: center; width: 40px; height: 40px; border-radius: 10px; margin-bottom: 14px;
+      background: rgba(0, 180, 216, .12); color: var(--accent); font-size: 15px;
     }
-    .roles { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 14px; }
+    .tenancy h3 { margin: 0 0 7px; font-size: 18px; font-weight: 600; color: var(--text-strong); }
+    .tenancy p { margin: 0; font-size: 15px; color: var(--text-dim); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--accent); }
+    .roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
     .role {
-      font-size: 12.5px; font-weight: 600; padding: 5px 11px; border-radius: 999px;
-      background: var(--paper); border: 1px solid var(--line-strong); color: var(--ink-soft);
+      font-size: 13px; font-weight: 500; padding: 6px 13px; border-radius: 999px;
+      background: rgba(255, 255, 255, .06); border: 1px solid rgba(255, 255, 255, .12); color: var(--text);
     }
 
-    footer { border-top: 1px solid var(--line); background: var(--paper); margin-top: 46px; }
-    footer .shell { padding-block: 26px 34px; display: flex; flex-wrap: wrap; gap: 8px 24px; font-size: 13.5px; color: var(--muted); }
-    footer .credit { margin-left: auto; }
-    footer a { color: var(--muted); font-weight: 600; text-decoration: none; }
-    footer a:hover { color: var(--accent); }
-    .skeleton { color: var(--muted); font-size: 14px; }
+    /* ---- footer ---- */
+    footer { border-top: 1px solid rgba(255, 255, 255, .07); background: rgba(6, 21, 40, .55); }
+    footer .shell { padding-block: 34px 40px; display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; font-size: 14px; }
+    footer .parent { color: var(--text-dim); }
+    footer .parent b { color: var(--text); font-weight: 600; }
+    footer .parent a { color: var(--accent); text-decoration: none; font-weight: 600; }
+    footer .parent a:hover { color: var(--accent-bright); }
+    footer .right { margin-left: auto; color: var(--text-dim); }
+    .skeleton { color: var(--text-dim); text-align: center; }
 
-    @media (max-width: 860px) {
-      .hero .shell { grid-template-columns: 1fr; gap: 30px; padding-block: 38px 34px; }
-      footer .credit { margin-left: 0; flex-basis: 100%; }
+    @media (max-width: 900px) {
+      .hero { padding-block: 54px 48px; }
+      .hero .shell { grid-template-columns: 1fr; gap: 34px; }
+      .masthead .shell { min-height: 72px; gap: 14px; }
+      .masthead nav { gap: 16px; }
+      .masthead nav a.link { display: none; }
+      section { padding-block: 54px; }
+      footer .right { margin-left: 0; flex-basis: 100%; }
     }
   </style>
 </head>
 <body>
   <header class="masthead">
     <div class="shell">
-      <span class="mark"><span class="glyph"><i class="fas fa-layer-group"></i></span><span>Loan<span class="light">App</span></span></span>
-      <div class="right" id="who"></div>
+      <a class="logo" href="/" style="text-decoration:none;">
+        <span class="name">Loan<span>App</span></span>
+        <span class="tag">LENDING PLATFORM</span>
+      </a>
+      <nav>
+        <a class="link" href="#lenders">Lenders</a>
+        <a class="link" href="#platform">Platform</a>
+        <a class="link" href="https://www.doxservices.com" target="_blank" rel="noopener noreferrer">DoxServices</a>
+        <span class="who" id="who"></span>
+      </nav>
     </div>
   </header>
 
@@ -175,14 +200,13 @@
     <div class="hero">
       <div class="shell">
         <div>
-          <span class="eyebrow">Multi-tenant lending software</span>
-          <h1>One platform, and every lender its own front door.</h1>
+          <h1>One platform, and every lender <em>its own front door</em>.</h1>
           <p class="lede">LoanApp runs the loan book — campaigns and applications, contracts, standing orders and
              salary deductions, support tickets and repayments. Each lender on it has its own address, its own staff
              and roles, and its own customers, kept apart from every other lender's.</p>
-          <div class="actions">
+          <div class="cta">
             <a class="btn" href="#signin" id="hero-signin"><i class="fas fa-user-shield"></i> Administrator sign-in</a>
-            <a class="btn secondary" href="#lenders"><i class="fas fa-building-columns"></i> Lenders on LoanApp</a>
+            <a class="btn outline" href="#lenders"><i class="fas fa-building-columns"></i> Lenders on LoanApp</a>
           </div>
         </div>
 
@@ -196,41 +220,67 @@
       </div>
     </div>
 
-    <div class="shell">
-      <section id="lenders">
+    <section id="lenders">
+      <div class="shell">
         <div class="section-head">
+          <span class="eyebrow">Who is on it</span>
           <h2>Lenders on LoanApp</h2>
-          <p>Each one at its own address.</p>
+          <p>Each one at its own address, with its own site, its own people and its own records.</p>
         </div>
-        <div class="lenders" id="lender-list"><p class="skeleton">Loading…</p></div>
-      </section>
+        <div class="grid" id="lender-list"><p class="skeleton">Loading…</p></div>
+      </div>
+    </section>
 
-      <section>
+    <section id="platform">
+      <div class="shell">
         <div class="section-head">
-          <h2>What runs on it</h2>
+          <span class="eyebrow">What we run</span>
+          <h2>The whole loan book</h2>
           <p>One system from the first enquiry to the last repayment.</p>
         </div>
-        <div class="modules">
-          <div class="module"><i class="fas fa-bullhorn"></i><span><b>Campaigns and cohorts</b>
-            <span>Published, unpublished or kept to staff, and offered only to the people who qualify.</span></span></div>
-          <div class="module"><i class="fas fa-file-lines"></i><span><b>Applications</b>
-            <span>Submitted by the customer, reviewed by an underwriter, decided by a loan officer.</span></span></div>
-          <div class="module"><i class="fas fa-file-signature"></i><span><b>Contracts</b>
-            <span>A print-ready agreement, filled from the record and shared on a link that gives nothing away.</span></span></div>
-          <div class="module"><i class="fas fa-building-columns"></i><span><b>Standing orders and salary deductions</b>
-            <span>The repayment authority the bank or the employer needs, with its full schedule.</span></span></div>
-          <div class="module"><i class="fas fa-life-ring"></i><span><b>Support tickets</b>
-            <span>A customer's question, held against the record it is about.</span></span></div>
-          <div class="module"><i class="fas fa-money-check-dollar"></i><span><b>Repayments and statements</b>
-            <span>What is owed, what has been paid, and every payment on a loan.</span></span></div>
+        <div class="grid">
+          <div class="card">
+            <div class="circle"><i class="fas fa-bullhorn"></i></div>
+            <h3>Campaigns and cohorts</h3>
+            <p>Published, unpublished or kept to staff, and offered only to the people who qualify for them.</p>
+          </div>
+          <div class="card">
+            <div class="circle"><i class="fas fa-file-lines"></i></div>
+            <h3>Applications</h3>
+            <p>Submitted by the customer, reviewed by an underwriter, decided by a loan officer.</p>
+          </div>
+          <div class="card">
+            <div class="circle"><i class="fas fa-file-signature"></i></div>
+            <h3>Contracts</h3>
+            <p>A print-ready agreement, filled from the record and shared on a link that gives nothing away.</p>
+          </div>
+          <div class="card">
+            <div class="circle"><i class="fas fa-building-columns"></i></div>
+            <h3>Standing orders and salary deductions</h3>
+            <p>The repayment authority the bank or the employer needs, carrying its full schedule.</p>
+          </div>
+          <div class="card">
+            <div class="circle"><i class="fas fa-life-ring"></i></div>
+            <h3>Support tickets</h3>
+            <p>A customer's question, held against the record it is about and answered by the right person.</p>
+          </div>
+          <div class="card">
+            <div class="circle"><i class="fas fa-money-check-dollar"></i></div>
+            <h3>Repayments and statements</h3>
+            <p>What is owed, what has been paid, and every payment made on a loan.</p>
+          </div>
         </div>
-      </section>
+      </div>
+    </section>
 
-      <section>
+    <section>
+      <div class="shell">
         <div class="section-head">
+          <span class="eyebrow">Multi-tenant by design</span>
           <h2>How a tenant is put together</h2>
+          <p>A lender is a tenant of the platform, not a copy of it.</p>
         </div>
-        <div class="structure">
+        <div class="tenancy">
           <div>
             <span class="n"><i class="fas fa-link"></i></span>
             <h3>Its own address</h3>
@@ -260,15 +310,16 @@
                against the business that created them.</p>
           </div>
         </div>
-      </section>
-    </div>
+      </div>
+    </section>
   </main>
 
   <footer>
     <div class="shell">
-      <span>LoanApp &middot; multi-tenant lending software</span>
-      <span class="credit">Technology by
-        <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a></span>
+      <span class="parent"><b>LoanApp</b> is a
+        <a href="https://www.doxservices.com" target="_blank" rel="noopener noreferrer">DoxServices</a> product
+        &middot; Intelligent Digital Solutions</span>
+      <span class="right">Multi-tenant lending software</span>
     </div>
   </footer>
 
@@ -284,22 +335,14 @@
     // their own lender's page.
     const landing = me => me.staff ? 'admin-home.html' : window.Tenant.home(me.tenant && me.tenant.slug);
 
-    // A lender brands its own pages; here it gets one stripe of its colour, so
-    // the list reads as several businesses rather than one product's cards.
-    const COLOURS = ['#0b5ea8', '#1d6b4f', '#8a4b1f', '#5a3b8a', '#0f6a73'];
-    const colourFor = slug => {
-      let n = 0;
-      for (const ch of String(slug)) n = (n * 31 + ch.charCodeAt(0)) % 997;
-      return COLOURS[n % COLOURS.length];
-    };
-
     window.Tenant.lenders().then(list => {
       $('lender-list').innerHTML = list.length ? list.map(t => `
-        <a class="lender" href="/${esc(t.slug)}" style="--lender-colour:${colourFor(t.slug)};">
-          <span class="name">${esc(t.tradingName)}</span>
-          <span class="tag">${esc(t.tagline || t.legalName || '')}</span>
-          <span class="foot">
-            <span class="path mono">/${esc(t.slug)}</span>
+        <a class="card" href="/${esc(t.slug)}">
+          <div class="circle"><i class="fas fa-building-columns"></i></div>
+          <h3>${esc(t.tradingName)}</h3>
+          <p>${esc(t.tagline || t.legalName || '')}</p>
+          <span class="meta">
+            <span class="path">/${esc(t.slug)}</span>
             <span class="where">${esc([t.town, t.parish].filter(Boolean).join(', ') || t.country || '')}</span>
           </span>
         </a>`).join('')
@@ -325,7 +368,7 @@
 
     function paint(me) {
       if (!me) {
-        $('who').innerHTML = '<button class="btn small secondary" id="top-signin"><i class="fas fa-right-to-bracket"></i> Sign in</button>';
+        $('who').innerHTML = '<button class="btn small outline" id="top-signin"><i class="fas fa-right-to-bracket"></i> Sign in</button>';
         $('top-signin').addEventListener('click', startSignIn);
         $('panel-title').textContent = 'Sign in to your lender';
         $('panel-sub').textContent = 'Signing in takes you into the business your account belongs to. Staff land in '
@@ -343,14 +386,14 @@
 
       const lender = me.tenant ? me.tenant.tradingName : (me.staff ? 'the platform' : 'no lender yet');
       $('who').innerHTML = `<span class="name">${esc(me.name || me.email)}</span>
-        <button class="btn small secondary" id="out-btn"><i class="fas fa-right-from-bracket"></i> Sign out</button>`;
+        <button class="btn small outline" id="out-btn"><i class="fas fa-right-from-bracket"></i> Sign out</button>`;
       $('out-btn').addEventListener('click', () => window.userAuth.signOut());
 
       $('panel-title').textContent = 'Continue as ' + (me.name || me.email);
-      $('panel-sub').innerHTML = `Signed in to <b>${esc(lender)}</b><span class="role-pill">${esc(ROLE_NAMES[me.role] || me.role)}</span>`;
+      $('panel-sub').innerHTML = `Signed in to <b style="color:var(--text-strong);">${esc(lender)}</b><span class="role-pill">${esc(ROLE_NAMES[me.role] || me.role)}</span>`;
       $('panel-actions').innerHTML = me.staff
         ? `<a class="btn" href="admin-home.html"><i class="fas fa-user-shield"></i> Enter the admin area</a>`
-          + (me.tenant ? `<a class="btn secondary" href="${esc(window.Tenant.home(me.tenant.slug))}"><i class="fas fa-house"></i> ${esc(me.tenant.tradingName)}</a>` : '')
+          + (me.tenant ? `<a class="btn outline" href="${esc(window.Tenant.home(me.tenant.slug))}"><i class="fas fa-house"></i> ${esc(me.tenant.tradingName)}</a>` : '')
         : `<a class="btn" href="${esc(where)}"><i class="fas fa-house"></i> Go to ${esc(me.tenant ? me.tenant.tradingName : 'your lender')}</a>`;
       $('panel-note').textContent = me.staff ? '' : 'This account does not have staff access.';
 
