@@ -35,9 +35,9 @@
           <label for="limit">Limit</label>
           <select id="limit"><option>25</option><option selected>100</option><option>200</option><option>500</option></select>
           <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
-          <span data-scope-filter></span>
           <span id="status" class="status"></span>
         </div>
+        <div data-scope-filter></div>
         <div class="table-wrap">
           <table id="tbl">
             <thead><tr>
@@ -142,6 +142,7 @@ function esc(s) { return (s ?? '').toString().replaceAll('&', '&amp;').replaceAl
 });
 
 document.getElementById('refresh').addEventListener('click', fetchRows);
+    window.DataScope.mount(fetchRows);
     window.adminAuth.ready().then(fetchRows);
     document.getElementById('signout').addEventListener('click', () => window.adminAuth.signOut());
   </script>
