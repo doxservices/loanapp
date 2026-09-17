@@ -10,6 +10,7 @@
   <link rel="stylesheet" href="admin-theme.css">
   <link rel="stylesheet" href="record-actions.css">
   <script src="record-actions.js" defer></script>
+  <script src="data-scope.js"></script>
   <script src="theme.js"></script>
   <script src="admin-shell.js" defer></script>
 </head>
@@ -33,6 +34,7 @@
           <label for="limit">Limit</label>
           <select id="limit"><option>25</option><option selected>100</option><option>200</option><option>500</option></select>
           <button id="refresh" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
+          <span data-scope-filter></span>
           <span id="status" class="status"></span>
         </div>
         <div class="table-wrap">
@@ -71,9 +73,12 @@ async function fetchRows() {
     const json = await res.json();
     if (!json.ok) throw new Error(json.error || 'Query failed');
     lastRows = json.rows;
+    // lastRows keeps everything so the row menu can still find a record;
+    // only what is drawn follows the scope switch.
+    const rows = window.DataScope.keep(json.rows, r => r.is_dummy);
     tbody.innerHTML = '';
-    if (!json.rows.length) tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding: 20px;">No applications yet.</td></tr>';
-    for (const r of json.rows) {
+    if (!rows.length) tbody.innerHTML = '<tr><td colspan="6" class="muted" style="text-align:center; padding: 20px;">No applications match this filter.</td></tr>';
+    for (const r of rows) {
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td class="nowrap mono">${esc(r.application_id)}</td>

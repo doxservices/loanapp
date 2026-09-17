@@ -238,6 +238,23 @@ app.get('/api/nav-items', requireGoogleAuth, async (req, res) => {
   }
 });
 
+app.post('/api/nav-items/reorder', requireGoogleAuth, async (req, res) => {
+  try {
+    const order = Array.isArray((req.body || {}).order) ? req.body.order : null;
+    if (!order || !order.length) return res.status(400).json({ ok: false, error: 'Nothing to reorder.' });
+    await navItems();   // make sure the registry exists
+    const batch = db.batch();
+    order.slice(0, 100).forEach((id, index) => {
+      batch.update(db.collection('navItems').doc(String(id)), { order: (index + 1) * 10 });
+    });
+    await batch.commit();
+    res.json({ ok: true, items: await navItems() });
+  } catch (e) {
+    console.error('[nav] reorder failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not save the new order.' });
+  }
+});
+
 app.put('/api/nav-items/:id', requireGoogleAuth, async (req, res) => {
   try {
     await navItems();   // make sure the registry exists before editing it
@@ -522,6 +539,7 @@ function toFlatRow(doc, promoNames) {
 
   return {
     application_id: d.applicationCode || doc.id,
+    is_dummy: d.isDummy === true,
     // Admin-only table (this route is behind requireGoogleAuth); it is what
     // builds the contract link for a row.
     contract_token: d.contractToken || null,
@@ -589,7 +607,7 @@ function userToApi(doc) {
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : d.createdAt || null
   };
 }
-app.get('/api/users', async (req, res) => {
+app.get('/api/users', requireGoogleAuth, async (req, res) => {
   const snap = await db.collection('users').orderBy('createdAt', 'desc').get();
   res.json(snap.docs.map(userToApi));
 });
@@ -875,7 +893,7 @@ function newContractToken() {
 function appToApi(doc, opts) {
   const d = doc.data();
   return {
-    id: doc.id, applicationCode: d.applicationCode || null,
+    id: doc.id, applicationCode: d.applicationCode || null, isDummy: d.isDummy === true,
     // Admin-authenticated responses only — the token is what opens the
     // contract, so it never rides along on a publicly reachable route.
     ...((opts && opts.includeContractToken) ? { contractToken: d.contractToken || null } : {}),

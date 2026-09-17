@@ -16,7 +16,11 @@
       width: 100%; padding: 7px 9px; border-radius: 6px; font: inherit;
       border: 1px solid rgba(15,111,190,.28); background: rgba(255,255,255,.7); color: inherit;
     }
-    .nav-row input[type="number"] { width: 82px; }
+    .drag-cell { cursor: grab; text-align: center; opacity: .55; }
+    .drag-cell:active { cursor: grabbing; }
+    .nav-row.dragging { opacity: .4; }
+    .nav-row.drop-above td { box-shadow: inset 0 2px 0 var(--accent, #0f6fbe); }
+    .nav-row.drop-below td { box-shadow: inset 0 -2px 0 var(--accent, #0f6fbe); }
     .who-sees { font-size: 12px; opacity: .8; }
     .who-sees b { font-weight: 700; }
     .dirty td { background: rgba(211,166,59,.14); }
@@ -46,7 +50,7 @@
         <div class="table-wrap">
           <table id="tbl">
             <thead><tr>
-              <th style="width:70px;">Order</th><th>Label</th><th>Page</th>
+              <th style="width:44px;" aria-label="Reorder"></th><th>Label</th><th>Page</th>
               <th style="width:190px;">Permission</th><th style="width:150px;">Who sees it</th>
               <th style="width:90px;">Shown</th><th style="width:90px;"></th>
             </tr></thead>
@@ -89,8 +93,8 @@
       tbody.innerHTML = items.map(it => {
         const who = holders(it.permission);
         return `
-        <tr class="nav-row" data-id="${esc(it.id)}">
-          <td><input type="number" data-f="order" value="${esc(it.order ?? 0)}"></td>
+        <tr class="nav-row" draggable="true" data-id="${esc(it.id)}">
+          <td class="drag-cell" title="Drag to reorder"><i class="fas fa-grip-vertical"></i></td>
           <td><input type="text" data-f="label" value="${esc(it.label)}"></td>
           <td class="mono">${esc(it.href)}</td>
           <td>
@@ -139,7 +143,6 @@
       const body = {
         label: row.querySelector('[data-f="label"]').value,
         permission: row.querySelector('[data-f="permission"]').value,
-        order: Number(row.querySelector('[data-f="order"]').value),
         enabled: row.querySelector('[data-f="enabled"]').checked
       };
       btn.disabled = true;
@@ -157,6 +160,73 @@
         $('status').textContent = err.message;
       } finally { btn.disabled = false; }
     });
+
+    // Order is a property of the list, not a number to type into a row, so the
+    // rows are dragged and the whole order is saved in one request.
+    const tbody = document.querySelector('#tbl tbody');
+    let dragId = null;
+
+    function clearMarks() {
+      tbody.querySelectorAll('.dragging, .drop-above, .drop-below')
+        .forEach(r => r.classList.remove('dragging', 'drop-above', 'drop-below'));
+    }
+
+    tbody.addEventListener('dragstart', e => {
+      const row = e.target.closest('.nav-row');
+      if (!row) return;
+      dragId = row.dataset.id;
+      row.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      // Firefox will not begin a drag unless some data is set.
+      e.dataTransfer.setData('text/plain', dragId);
+    });
+
+    tbody.addEventListener('dragover', e => {
+      if (!dragId) return;
+      e.preventDefault();
+      const row = e.target.closest('.nav-row');
+      tbody.querySelectorAll('.drop-above, .drop-below')
+        .forEach(r => r.classList.remove('drop-above', 'drop-below'));
+      if (!row || row.dataset.id === dragId) return;
+      const box = row.getBoundingClientRect();
+      row.classList.add(e.clientY < box.top + box.height / 2 ? 'drop-above' : 'drop-below');
+    });
+
+    tbody.addEventListener('drop', async e => {
+      if (!dragId) return;
+      e.preventDefault();
+      const row = e.target.closest('.nav-row');
+      const above = row && row.classList.contains('drop-above');
+      const moved = dragId;
+      dragId = null;
+      clearMarks();
+      const from = items.findIndex(i => i.id === moved);
+      if (from < 0 || !row || row.dataset.id === moved) return;
+
+      const [item] = items.splice(from, 1);
+      let to = items.findIndex(i => i.id === row.dataset.id);
+      if (!above) to += 1;
+      items.splice(to, 0, item);
+      render();   // move it on screen straight away
+
+      $('status').textContent = 'Saving the new order…';
+      try {
+        const res = await window.adminAuth.fetch('/api/nav-items/reorder', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ order: items.map(i => i.id) })
+        });
+        const json = await res.json();
+        if (!json.ok) throw new Error(json.error || 'Could not save the order.');
+        items = json.items;
+        render();
+        $('status').textContent = 'Order saved. It applies on the next page load.';
+      } catch (err) {
+        $('status').textContent = err.message;
+        await load();   // put the list back to whatever the server holds
+      }
+    });
+
+    tbody.addEventListener('dragend', () => { dragId = null; clearMarks(); });
 
     $('refresh').addEventListener('click', load);
     window.adminAuth.ready().then(load);

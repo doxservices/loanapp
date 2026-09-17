@@ -236,6 +236,7 @@
   </style>
   <link rel="stylesheet" href="admin-light.css">
   <script src="theme.js"></script>
+  <script src="data-scope.js"></script>
 </head>
 <body>
   <button class="sidebar-toggle" id="sidebarToggle" aria-label="Open menu"><i class="fas fa-bars"></i></button>
@@ -284,8 +285,9 @@
 
       <div class="management-section">
         <div class="section-header">
-          <div class="section-title"><i class="fas fa-table"></i> User List <span class="dummy-badge">Dummy Data</span></div>
+          <div class="section-title"><i class="fas fa-table"></i> User List</div>
           <div class="controls">
+            <span data-scope-filter></span>
             <div class="search-bar"><i class="fas fa-search"></i><input type="text" placeholder="Search users..."></div>
             <button class="btn btn-primary" id="add-user-btn"><i class="fas fa-plus"></i> Add User</button>
             <button class="btn" id="export-btn"><i class="fas fa-download"></i> Export</button>
@@ -587,17 +589,25 @@
       const tbody = document.getElementById('user-table-body');
       tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:var(--text-soft);">Loading…</td></tr>';
       try {
-        const res = await fetch(window.LOANIT_API_BASE + '/api/users');
+        const res = await window.adminAuth.fetch('/api/users');
         allUsers = await res.json();
-        renderUsers(allUsers);
-        document.getElementById('stat-total').textContent = allUsers.length;
-        document.getElementById('stat-active').textContent = allUsers.filter(u => u.status === 'active').length;
-        document.getElementById('stat-pending').textContent = allUsers.filter(u => u.status === 'pending').length;
-        document.getElementById('stat-inactive').textContent = allUsers.filter(u => u.status === 'inactive').length;
+        showUsers();
       } catch (err) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:20px;color:#ff9a9a;">Failed to load users.</td></tr>';
       }
     }
+
+    // The scope switch decides whether the seeded demo accounts are shown,
+    // and the counts follow whatever is on screen rather than the whole file.
+    function showUsers() {
+      const shown = window.DataScope.keep(allUsers, u => u.isDummy);
+      renderUsers(shown);
+      document.getElementById('stat-total').textContent = shown.length;
+      document.getElementById('stat-active').textContent = shown.filter(u => u.status === 'active').length;
+      document.getElementById('stat-pending').textContent = shown.filter(u => u.status === 'pending').length;
+      document.getElementById('stat-inactive').textContent = shown.filter(u => u.status === 'inactive').length;
+    }
+    window.DataScope.mount(showUsers);
 
     const PAGE_SIZE = 5;
     let currentUsers = [];
@@ -656,7 +666,7 @@
     const searchInput = document.querySelector('.search-bar input');
     searchInput.addEventListener('input', function() {
       const searchTerm = this.value.toLowerCase();
-      renderUsers(allUsers.filter(u =>
+      renderUsers(window.DataScope.keep(allUsers, u => u.isDummy).filter(u =>
         `${u.firstName} ${u.lastName}`.toLowerCase().includes(searchTerm) || u.email.toLowerCase().includes(searchTerm)
       ));
     });

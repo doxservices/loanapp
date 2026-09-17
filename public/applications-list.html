@@ -236,6 +236,7 @@
   <link rel="stylesheet" href="admin-light.css">
   <link rel="stylesheet" href="record-actions.css">
   <script src="record-actions.js" defer></script>
+  <script src="data-scope.js"></script>
   <script src="theme.js"></script>
 </head>
 <body>
@@ -289,6 +290,7 @@
           <div class="controls">
             <div class="search-bar"><i class="fas fa-search"></i><input type="text" id="search" placeholder="Search applications..."></div>
             <select id="status-filter"><option value="all">All Statuses</option><option value="submitted">Submitted</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select>
+            <span data-scope-filter></span>
             <button id="refresh-btn" class="btn btn-primary"><i class="fas fa-sync-alt"></i> Refresh</button>
           </div>
         </div>
@@ -425,6 +427,7 @@
       const ap = a.applicant || {};
       return {
         id: a.id,
+        isDummy: a.isDummy === true,
         code: a.applicationCode || a.id,
         contractToken: a.contractToken || '',
         firstName: ap.firstName || '', lastName: ap.lastName || '',
@@ -466,7 +469,13 @@
       const tableElement = document.getElementById('applications-table');
       const emptyStateElement = document.getElementById('empty-state');
 
-      let rows = apiApps.map(rowOf);
+      // The scope switch is applied first, so the counts describe what is
+      // actually on screen rather than the whole file.
+      let rows = window.DataScope.keep(apiApps.map(rowOf), r => r.isDummy);
+      document.getElementById('stat-total').textContent = rows.length;
+      document.getElementById('stat-pending').textContent = rows.filter(r => ['pending', 'submitted'].includes(r.status.toLowerCase())).length;
+      document.getElementById('stat-approved').textContent = rows.filter(r => r.status.toLowerCase() === 'approved').length;
+      document.getElementById('stat-rejected').textContent = rows.filter(r => r.status.toLowerCase() === 'rejected').length;
       if (statusFilter !== 'all') rows = rows.filter(r => r.status.toLowerCase() === statusFilter);
       if (searchTerm) {
         rows = rows.filter(r =>
@@ -646,6 +655,7 @@
         });
       });
 
+      window.DataScope.mount(renderApplications);
       document.getElementById('refresh-btn').addEventListener('click', loadApplications);
       document.getElementById('limit').addEventListener('change', renderApplications);
       document.getElementById('status-filter').addEventListener('change', renderApplications);
