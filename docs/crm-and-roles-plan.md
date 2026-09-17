@@ -93,12 +93,18 @@ Email in and out of a thread, attachments, and canned replies.
 ## Caveat on the licence details
 
 TAJ does not license or list lenders; the Bank of Jamaica does, under the
-Microcredit Act 2021. BOJ's register lists ten licensed microcredit
-institutions and **no Loan It entity appears on it**, and the register
-carries no licence numbers, so `MCA-016-2025` — printed on the loan
-agreement — cannot be verified against it.
+Microcredit Act 2021.
 
-The business record is therefore seeded with the details the app already
-uses (trading name, address, phone, email) and `licenceVerified: false`.
-The licence number and legal name need confirming from the actual licence
-document before they are treated as established fact anywhere.
+BOJ's published list cannot settle the question either way. Pulling the
+page's full stored content through the WordPress API returns ten
+institutions, nothing hidden behind pagination, no "Loan It" — and a
+`modified` date of **12 September 2023**. The page has not been touched in
+three years; JIS reported thirteen licensed institutions as far back as May
+2023, so the list was already incomplete then, and a licence numbered
+`MCA-016-2025` would postdate the page entirely. Absence from that list is
+therefore not evidence of anything.
+
+The business record is seeded with the details the app already uses
+(trading name, address, phone, email) and `licenceVerified: false`, which
+means "not yet confirmed" — not "not licensed". The licence number and
+legal name should be set from the licence document itself.
