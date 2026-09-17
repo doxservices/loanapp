@@ -248,7 +248,7 @@ function renderGate() {
         Sign in with Google
       </button>
       <div id="admin-auth-msg" style="color:#ff9a9a;font-size:13px;margin-top:14px;min-height:16px;font-weight:600;"></div>
-      <p style="margin:18px 0 0;font-size:12px;color:rgba(228,237,255,.78);"><a href="index.html" style="color:#efc352;text-decoration:none;font-weight:600;">&larr; Back to Loan It Financing</a></p>
+      <p style="margin:18px 0 0;font-size:12px;color:rgba(228,237,255,.78);"><a href="tenant-home.html" style="color:#efc352;text-decoration:none;font-weight:600;">&larr; Back to your lender</a></p>
     </div>`;
   document.body.appendChild(overlay);
   const msg = overlay.querySelector('#admin-auth-msg');

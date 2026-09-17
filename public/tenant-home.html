@@ -3,6 +3,7 @@
 <head>
   <script src="analytics.js"></script>
   <script src="api-base.js"></script>
+  <script src="tenant.js"></script>
   <script src="firebase-config.js"></script>
   <script type="module" src="user-auth.js"></script>
   <meta charset="utf-8" />
@@ -28,8 +29,9 @@
       display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
       padding: 14px 22px; background: rgba(255,255,255,.96); border-bottom: 1px solid var(--line);
     }
-    .bar .logo { width: 132px; height: 40px; }
-    .bar .logo img { width: 100%; height: 100%; object-fit: contain; }
+    .bar .logo { display: flex; align-items: center; min-height: 40px; }
+    .bar .logo img { width: 132px; height: 40px; object-fit: contain; }
+    .bar .logo .wordmark { font-weight: 800; font-size: 17px; color: var(--blue-dark); letter-spacing: -.01em; }
     .bar .who { margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--muted); }
     .wrap { max-width: 980px; margin: 0 auto; padding: 34px 20px 70px; }
     .hero { color: #fff; text-align: center; margin-bottom: 30px; text-shadow: 0 1px 3px rgba(0,0,0,.28); }
@@ -68,6 +70,7 @@
     .pill.waiting { background: var(--wait-bg); color: var(--wait); }
     .pill.rejected { background: var(--bad-bg); color: var(--bad); }
     .muted { color: var(--muted); }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
     .staff-note { background: #fdf6e3; border: 1px solid #e3cd92; color: #6b5a2a; }
     footer { text-align: center; color: rgba(228,237,255,.8); font-size: 12.5px; padding-bottom: 10px; }
     footer a { color: var(--gold); }
@@ -75,14 +78,21 @@
 </head>
 <body>
   <div class="bar">
-    <div class="logo"><img src="assets/logo.png" alt="Loan It Financing" /></div>
+    <div class="logo" id="brand"></div>
     <div class="who" id="who"></div>
   </div>
 
   <div class="wrap">
     <div class="hero">
-      <h1>Loan It Financing</h1>
+      <h1 id="hero-name">&nbsp;</h1>
       <p id="hero-sub">Apply for a loan, follow where it has got to, and reach us if you need help.</p>
+    </div>
+
+    <div class="card" id="unknown-card" hidden>
+      <h2>We could not find that lender</h2>
+      <p class="sub">The address <span id="unknown-slug" class="mono"></span> does not belong to any lender on LoanApp.
+         Check the link you followed, or start from the platform page.</p>
+      <a class="btn ghost" href="/"><i class="fas fa-layer-group"></i> LoanApp</a>
     </div>
 
     <div class="card" id="signin-card" hidden>
@@ -95,7 +105,7 @@
     <div class="card staff-note" id="staff-note" hidden>
       <h2 style="color:#6b5a2a;">You work here</h2>
       <p class="sub" style="color:#6b5a2a;">This account has staff access, so the admin area is open to you as well.</p>
-      <a class="btn ghost" href="index.html"><i class="fas fa-user-shield"></i> Go to the admin area</a>
+      <a class="btn ghost" href="admin-home.html"><i class="fas fa-user-shield"></i> Go to the admin area</a>
     </div>
 
     <div class="card" id="apps-card" hidden>
@@ -104,15 +114,16 @@
       <div id="apps"></div>
     </div>
 
-    <div class="card">
+    <div class="card" id="tiles-card">
       <h2>What would you like to do?</h2>
       <p class="sub" id="tiles-sub">Everything below is yours to use once you are signed in.</p>
       <div class="tiles" id="tiles"></div>
     </div>
 
     <footer>
-      <p>Loan It Limited, trading as Loan It Financing &middot; Lot 537, 2 East 56 Place, Greater Portmore &middot; 876-456-2833</p>
-      <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+      <p id="lender-line"></p>
+      <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>
+         &middot; <a href="/">LoanApp</a>.</p>
     </footer>
   </div>
 
@@ -121,6 +132,38 @@
     const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
     const money = (c, n) => ((c || 'JMD') === 'JMD' ? 'J$' : (c + ' ')) + Number(n || 0).toLocaleString();
     const when = v => { try { return new Date(v).toLocaleDateString(); } catch (e) { return ''; } };
+
+    // This page is one lender's front door. Which lender it is comes from the
+    // path it was opened at (/loanit-financing), so the same page serves every
+    // tenant and none of their details are written into the markup.
+    function brand(t) {
+      const name = t.tradingName || 'Loan It Financing';
+      document.title = name;
+      $('hero-name').textContent = name;
+      $('brand').innerHTML = t.logoUrl
+        ? `<img src="${esc(t.logoUrl)}" alt="${esc(name)}" />`
+        : `<span class="wordmark">${esc(name)}</span>`;
+      const where = [t.addressLine1, t.town, t.parish].filter(Boolean).join(', ');
+      const legal = t.legalName && t.legalName !== name ? `${t.legalName}, trading as ${name}` : name;
+      $('lender-line').textContent = [legal, where, t.phone].filter(Boolean).join(' · ');
+    }
+
+    function noSuchLender(slug) {
+      document.title = 'Lender not found';
+      $('hero-name').textContent = 'LoanApp';
+      $('hero-sub').textContent = '';
+      $('unknown-slug').textContent = '/' + slug;
+      $('unknown-card').hidden = false;
+      $('tiles-card').hidden = true;
+      $('signin-card').hidden = true;
+      $('brand').innerHTML = '<span class="wordmark">LoanApp</span>';
+      $('lender-line').textContent = '';
+    }
+
+    const tenantReady = window.Tenant.ready().then(t => {
+      if (t) brand(t); else noSuchLender(window.Tenant.slug || '');
+      return t;
+    });
 
     const TILES = [
       { href: 'apply.html', icon: 'fa-file-signature', t: 'Apply for a loan', d: 'Choose from the campaigns open to you' },
@@ -164,6 +207,7 @@
     });
 
     function paint(me) {
+      if (!$('unknown-card').hidden) return;   // no lender, nothing to offer
       $('signin-card').hidden = !!me;
       $('staff-note').hidden = !(me && me.staff);
       $('who').innerHTML = me
@@ -184,8 +228,10 @@
       if (me) loadApplications(); else $('apps-card').hidden = true;
     }
 
-    window.addEventListener('user-auth', e => paint(e.detail));
-    window.userAuth.ready().then(paint);
+    // Nothing is painted until we know whose page this is: the sign-in card
+    // would otherwise flash up on a lender that does not exist.
+    window.addEventListener('user-auth', e => tenantReady.then(() => paint(e.detail)));
+    window.userAuth.ready().then(me => tenantReady.then(() => paint(me)));
   </script>
 </body>
 </html>

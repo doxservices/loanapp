@@ -3,7 +3,7 @@
 // updates every page at once. The current page is marked active by filename.
 (function () {
   var links = [
-    { href: 'index.html', label: 'Home' },
+    { href: 'admin-home.html', label: 'Home' },
     { href: 'standing-order.html', label: 'Standing Order' },
     { href: 'salary-deduction.html', label: 'Salary Deduction' }
   ];

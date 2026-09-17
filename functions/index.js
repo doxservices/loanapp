@@ -224,6 +224,14 @@ app.get('/auth/verify', requireAdminRead, async (req, res) => {
   // API call is still verified on its own, so this only sets how quickly a
   // change of access shows up in the menus.
   const SESSION_HOURS = 24;
+  let tenant = null;
+  try {
+    if (req.adminBusinessId) {
+      const b = await db.collection('businesses').doc(req.adminBusinessId).get();
+      if (b.exists) tenant = tenantToApi(b);
+    }
+  } catch (e) { console.error('[auth] tenant lookup failed:', e.message); }
+
   res.json({
     ok: true,
     email: req.adminEmail,
@@ -231,6 +239,7 @@ app.get('/auth/verify', requireAdminRead, async (req, res) => {
     permissions,
     nav,
     gatedPages,
+    tenant,
     sessionExpiresAt: new Date(Date.now() + SESSION_HOURS * 3600 * 1000).toISOString(),
     businessId: req.adminBusinessId,
     profileComplete: req.adminProfileComplete
@@ -292,10 +301,45 @@ app.put('/api/nav-items/:id', requireGoogleAuth, async (req, res) => {
 
 // ---- Businesses: the directory the super admin browses, and the one
 // business everybody else belongs to. ----
+// A lending business is a tenant of the platform, and its slug is the path
+// it lives at: /loanit-financing. Slugs are how the public side finds a
+// tenant without exposing a document id.
+function slugify(name) {
+  return String(name || '').toLowerCase().trim()
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60);
+}
+
+// What anyone may know about a tenant: enough to brand its own pages and to
+// contact it. Never its licence state, its people, or its records.
+function tenantToApi(doc) {
+  const d = doc.data();
+  return {
+    slug: d.slug || slugify(d.tradingName),
+    tradingName: d.tradingName || '',
+    legalName: d.legalName || '',
+    tagline: d.tagline || '',
+    logoUrl: d.logoUrl || '',
+    phone: d.phone || '', email: d.email || '',
+    addressLine1: d.addressLine1 || '', town: d.town || '', parish: d.parish || '',
+    country: d.country || 'Jamaica',
+    status: d.status || 'active'
+  };
+}
+
+async function businessBySlug(slug) {
+  const wanted = slugify(slug);
+  if (!wanted) return null;
+  const direct = await db.collection('businesses').where('slug', '==', wanted).limit(1).get();
+  if (!direct.empty) return direct.docs[0];
+  // Slugs were added after the first business; fall back to deriving one.
+  const all = await db.collection('businesses').limit(200).get();
+  return all.docs.find(d => slugify(d.data().slug || d.data().tradingName) === wanted) || null;
+}
+
 function businessToApi(doc) {
   const d = doc.data();
   return {
-    id: doc.id, pid: d.pid || null,
+    id: doc.id, pid: d.pid || null, slug: d.slug || slugify(d.tradingName),
     tradingName: d.tradingName || '', legalName: d.legalName || '', trn: d.trn || '',
     regulator: d.regulator || '', regulatoryAct: d.regulatoryAct || '',
     licenceNumber: d.licenceNumber || '', licenceVerified: d.licenceVerified === true,
@@ -305,6 +349,34 @@ function businessToApi(doc) {
     createdAt: d.createdAt && d.createdAt.toDate ? d.createdAt.toDate().toISOString() : null
   };
 }
+
+// Public: the tenant whose pages are being viewed. A page at /loanit-financing
+// asks for its own tenant so it can brand itself and say who it belongs to.
+app.get('/api/tenants/:slug', async (req, res) => {
+  try {
+    const doc = await businessBySlug(req.params.slug);
+    if (!doc) return res.status(404).json({ ok: false, error: 'No such lender' });
+    const tenant = tenantToApi(doc);
+    if (tenant.status !== 'active') return res.status(404).json({ ok: false, error: 'No such lender' });
+    res.json({ ok: true, tenant });
+  } catch (e) {
+    console.error('[tenants] lookup failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load that lender.' });
+  }
+});
+
+// Public: the tenants this platform hosts, for the front page.
+app.get('/api/tenants', async (req, res) => {
+  try {
+    const snap = await db.collection('businesses').get();
+    const tenants = snap.docs.map(tenantToApi).filter(t => t.status === 'active' && t.slug);
+    tenants.sort((a, b) => a.tradingName.localeCompare(b.tradingName));
+    res.json({ ok: true, tenants });
+  } catch (e) {
+    console.error('[tenants] list failed:', e.message);
+    res.status(500).json({ ok: false, error: 'Could not load the lenders.' });
+  }
+});
 
 app.get('/api/businesses', requireRole('superAdmin'), async (req, res) => {
   const snap = await db.collection('businesses').orderBy('tradingName').get();
@@ -1529,9 +1601,17 @@ app.put('/api/me/profile', requireSignedIn, async (req, res) => {
 });
 
 // Who am I, for the customer-facing pages.
-app.get('/api/me', requireSignedIn, (req, res) => {
+app.get('/api/me', requireSignedIn, async (req, res) => {
   touchLastLogin(req.user.userId);
-  res.json({ ok: true, ...req.user, staff: isStaff(req.user), permissions: permissionsFor(req.user.role) });
+  let tenant = null;
+  try {
+    if (req.user.businessId) {
+      const b = await db.collection('businesses').doc(req.user.businessId).get();
+      if (b.exists) tenant = tenantToApi(b);
+    }
+  } catch (e) { console.error('[me] tenant lookup failed:', e.message); }
+  res.json({ ok: true, ...req.user, staff: isStaff(req.user), tenant,
+    permissions: permissionsFor(req.user.role) });
 });
 
 exports.api = onRequest({ region: 'us-central1' }, app);

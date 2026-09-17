@@ -13,7 +13,9 @@
       { "source": "/contracts", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/contracts/**", "function": { "functionId": "api", "region": "us-central1" } },
       { "source": "/applications", "function": { "functionId": "api", "region": "us-central1" } },
-      { "source": "/health", "function": { "functionId": "api", "region": "us-central1" } }
+      { "source": "/health", "function": { "functionId": "api", "region": "us-central1" } },
+      { "//": "A lender is a tenant of the platform and lives at its own single-segment path (/loanit-financing). This is the last rewrite on purpose: static files and the API routes above are matched first, so only an unclaimed one-segment path reaches the tenant page, which then looks the slug up and says so when there is no such lender.",
+        "source": "/:tenant", "destination": "/tenant-home.html" }
     ],
     "headers": [
       {

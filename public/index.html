@@ -1,188 +1,246 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <script src="analytics.js"></script>
   <script src="api-base.js"></script>
+  <script src="tenant.js"></script>
   <script src="firebase-config.js"></script>
   <script type="module" src="user-auth.js"></script>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Loan It Financing</title>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LoanApp</title>
+  <meta name="description" content="LoanApp runs the loan book for lenders — each one with its own site, its own staff and its own customers." />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
+    /* The platform page deliberately looks nothing like a lender's own site:
+       a lender brands its pages, this one brands the thing underneath them. */
     :root {
-      --text-main: rgba(255,255,255,0.97);
-      --text-soft: rgba(239,245,255,0.92);
-      --text-muted: rgba(228,237,255,0.78);
-      --gold: #efc352;
-      --gold-deep: #d9a230;
-      --panel-strong-1: rgba(13, 62, 164, 0.70);
-      --panel-strong-2: rgba(7, 50, 145, 0.82);
-      --font: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      --ink: #0a1120; --ink-2: #111c2e; --line: rgba(160,190,235,.16);
+      --text: #e8effb; --muted: #9db0ca; --dim: #74879f;
+      --accent: #5aa9f8; --accent-dark: #2f7fd0; --gold: #d3a63b;
     }
     * { box-sizing: border-box; }
-    html, body { min-height: 100%; }
+    html, body { margin: 0; }
     body {
-      margin: 0; font-family: var(--font); color: var(--text-main);
-      background: url('assets/banking-background.jpg') center center / cover no-repeat fixed;
-      text-shadow: 0 1px 2px rgba(0,0,0,0.14); position: relative; overflow-x: hidden;
+      color: var(--text); line-height: 1.55; background: var(--ink);
+      font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      background-image:
+        radial-gradient(900px 420px at 12% -6%, rgba(90,169,248,.20), transparent 62%),
+        radial-gradient(760px 380px at 92% 4%, rgba(211,166,59,.12), transparent 60%);
+      background-repeat: no-repeat;
+      min-height: 100vh;
     }
-    .page { min-height: 100vh; padding: 18px; position: relative; z-index: 1; }
-    .container {
-      max-width: 1120px; margin: 32px auto 0;
-      background: linear-gradient(135deg, rgba(5, 48, 132, 0.78) 0%, rgba(31, 91, 190, 0.48) 45%, rgba(105, 151, 226, 0.26) 100%);
-      border: 1px solid rgba(255,255,255,0.26); border-radius: 24px; padding: 26px 28px 28px;
-      backdrop-filter: blur(10px) saturate(115%); -webkit-backdrop-filter: blur(10px) saturate(115%);
-      box-shadow: 0 22px 50px rgba(3, 25, 89, 0.20); position: relative; overflow: hidden;
+    a { color: var(--accent); }
+    .bar {
+      display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+      padding: 16px 22px; border-bottom: 1px solid var(--line);
+      background: rgba(10,17,32,.72); backdrop-filter: blur(6px);
+      position: sticky; top: 0; z-index: 10;
     }
-    .container::before { content: ''; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 1px 0 rgba(255,255,255,0.20); pointer-events: none; }
+    .mark { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: -.01em; font-size: 17px; }
+    .mark i { color: var(--accent); }
+    .mark b { color: var(--accent); font-weight: 800; }
+    .bar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; font-size: 13px; color: var(--muted); }
+    .wrap { max-width: 1020px; margin: 0 auto; padding: 46px 20px 64px; }
 
-    .top-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; margin-bottom: 26px; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.14); position: relative; z-index: 2; }
-    .brand { display: flex; align-items: center; gap: 16px; }
-    .brand-logo {
-      width: 64px; height: 64px; border-radius: 16px; background: #fff; padding: 8px;
-      display: flex; align-items: center; justify-content: center; box-shadow: 0 10px 24px rgba(3, 25, 89, 0.25);
+    .hero { max-width: 720px; }
+    .eyebrow {
+      display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .12em;
+      text-transform: uppercase; color: var(--accent); margin-bottom: 12px;
     }
-    .brand-logo img { width: 100%; height: 100%; object-fit: contain; }
-    .brand h1 { margin: 0 0 4px; font-size: 26px; font-weight: 700; letter-spacing: -0.01em; }
-    .brand p { margin: 0; color: var(--text-soft); font-size: 13px; }
-    .brand p i { color: var(--gold); margin-right: 5px; }
-    .user-info { display: flex; gap: 12px; flex-wrap: wrap; }
-    .nav-btn {
-      border: 1px solid rgba(205, 226, 255, 0.20); border-radius: 12px; text-decoration: none; cursor: pointer;
-      transition: all .18s ease; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
-      padding: 12px 18px; background: rgba(13, 62, 164, 0.70); color: var(--text-main); font-size: 13px; font-weight: 600;
-      backdrop-filter: blur(4px); line-height: 1; font-family: inherit;
-    }
-    .nav-btn.primary { background: linear-gradient(180deg, #f1c75a, #dfa938); color: #172033; border-color: rgba(255,255,255,0.18); box-shadow: 0 8px 18px rgba(96, 65, 8, 0.18); }
-    .nav-btn:hover { transform: translateY(-1px); }
+    .hero h1 { margin: 0 0 12px; font-size: clamp(28px, 5vw, 44px); line-height: 1.15; text-wrap: balance; letter-spacing: -.02em; }
+    .hero p { margin: 0; font-size: clamp(15px, 2vw, 17px); color: var(--muted); max-width: 62ch; }
+    .hero .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
 
-    .hero { position: relative; z-index: 2; margin-bottom: 26px; max-width: 720px; }
-    .hero h2 { margin: 0 0 8px; font-size: 30px; font-weight: 700; line-height: 1.2; }
-    .hero h2 span { color: var(--gold); }
-    .hero p { margin: 0; color: var(--text-soft); font-size: 15px; line-height: 1.6; }
-
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; position: relative; z-index: 2; }
-    .card {
-      background: linear-gradient(180deg, var(--panel-strong-1), var(--panel-strong-2));
-      border: 1px solid rgba(255,255,255,0.12); border-radius: 18px; padding: 20px; position: relative; overflow: hidden;
+    .btn {
+      border: 1px solid var(--accent-dark); background: var(--accent-dark); color: #fff; font: inherit;
+      font-weight: 600; padding: 11px 18px; border-radius: 9px; cursor: pointer; text-decoration: none;
+      display: inline-flex; align-items: center; gap: 9px; transition: filter .14s ease, transform .14s ease;
     }
-    .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--gold-deep), var(--gold)); }
-    .card-title { display: flex; align-items: center; gap: 10px; font-size: 16px; font-weight: 600; margin: 4px 0 6px; }
-    .card-title i { color: var(--gold); width: 22px; text-align: center; }
-    .card-desc { margin: 0 0 14px; color: var(--text-muted); font-size: 13px; line-height: 1.5; }
-    .card-links { list-style: none; margin: 0; padding: 0; }
-    .card-links li { margin-bottom: 2px; }
-    .card-links a {
-      color: var(--text-soft); text-decoration: none; display: flex; align-items: center; gap: 10px;
-      padding: 9px 8px; border-radius: 8px; transition: all 0.2s ease; font-size: 14px;
-    }
-    .card-links a:hover { background: rgba(255,255,255,0.10); padding-left: 14px; color: #fff; }
-    .card-links a i { width: 18px; text-align: center; color: var(--gold); font-size: 13px; }
-    .card.featured { grid-column: 1 / -1; display: grid; grid-template-columns: 1.1fr 1fr; gap: 22px; align-items: center; }
-    .featured-actions { display: flex; gap: 12px; flex-wrap: wrap; }
-    .featured-actions .nav-btn { padding: 14px 20px; font-size: 14px; }
+    .btn:hover { filter: brightness(1.12); }
+    .btn.ghost { background: transparent; color: var(--text); border-color: var(--line); }
+    .btn.ghost:hover { border-color: rgba(160,190,235,.4); }
+    .btn.small { padding: 7px 12px; font-size: 13px; }
 
-    footer { text-align: center; padding-top: 20px; margin-top: 26px; border-top: 1px solid rgba(255,255,255,0.10); color: rgba(234,243,255,0.84); font-size: 13px; position: relative; z-index: 2; }
-    footer a { color: var(--gold); text-decoration: none; font-weight: 600; }
-    footer p { margin: 6px 0; }
+    section { margin-top: 44px; }
+    h2.section-title { font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--dim); margin: 0 0 16px; font-weight: 700; }
 
-    @media (max-width: 768px) {
-      .top-bar { flex-direction: column; align-items: center; text-align: center; }
-      .brand { flex-direction: column; }
-      .user-info { justify-content: center; }
-      .card.featured { grid-template-columns: 1fr; }
-      .hero h2 { font-size: 24px; }
+    .lenders { display: grid; grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); gap: 14px; }
+    .lender {
+      display: block; text-decoration: none; color: inherit; padding: 20px;
+      background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px;
+      transition: transform .14s ease, border-color .14s ease;
     }
+    .lender:hover { transform: translateY(-2px); border-color: rgba(90,169,248,.45); }
+    .lender .name { font-weight: 700; font-size: 16px; display: block; }
+    .lender .tag { color: var(--muted); font-size: 13px; margin-top: 4px; display: block; }
+    .lender .path { margin-top: 14px; font-size: 12.5px; color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .lender .where { margin-top: 3px; font-size: 12px; color: var(--dim); }
+
+    .panel { background: var(--ink-2); border: 1px solid var(--line); border-radius: 14px; padding: 22px; }
+    .panel h3 { margin: 0 0 6px; font-size: 16px; }
+    .panel p { margin: 0; color: var(--muted); font-size: 13.5px; }
+    .panel .row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+    .who-line { font-size: 13.5px; }
+    .role-pill {
+      display: inline-block; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px;
+      background: rgba(90,169,248,.16); color: var(--accent); margin-left: 6px;
+    }
+    .note { color: var(--dim); font-size: 12.5px; margin-top: 12px; }
+    .note.bad { color: #ffb4ab; }
+
+    .structure { display: grid; grid-template-columns: repeat(auto-fit, minmax(232px, 1fr)); gap: 22px 28px; }
+    .structure h4 { margin: 0 0 5px; font-size: 14.5px; }
+    .structure h4 i { color: var(--accent); margin-right: 7px; }
+    .structure p { margin: 0; color: var(--muted); font-size: 13.5px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+
+    footer { margin-top: 52px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--dim); font-size: 12.5px; }
+    footer a { color: var(--gold); text-decoration: none; }
+    .skeleton { color: var(--dim); font-size: 13.5px; }
   </style>
 </head>
 <body>
-  <!-- This is the staff home. Anyone who is not signed in as staff is sent to
-       the customer home instead, so the page is not shown and then withdrawn. -->
-  <div id="staff-check" style="position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:#0a1a3c;color:rgba(255,255,255,.9);font-family:'Segoe UI',Tahoma,sans-serif;font-size:14px;">Checking your access…</div>
-  <div class="page">
-    <div class="container">
-      <div class="top-bar">
-        <div class="brand">
-          <div class="brand-logo"><img src="assets/logo.png" alt="Loan It Financing" /></div>
-          <div>
-            <h1>Loan It Financing</h1>
-            <p><i class="fas fa-map-marker-alt"></i>Lot 537, 2 East 56 Place, Greater Portmore, Jamaica &nbsp;·&nbsp; <i class="fas fa-phone"></i>876-456-2833</p>
-          </div>
-        </div>
-        <div class="user-info">
-          <a href="user-profile.html" class="nav-btn"><i class="fas fa-id-card"></i> My Profile</a>
-          <a href="support.html" class="nav-btn"><i class="fas fa-life-ring"></i> Support</a>
-          <a href="apply.html" class="nav-btn primary"><i class="fas fa-file-alt"></i> Apply for a Loan</a>
-        </div>
-      </div>
-
-      <div class="hero">
-        <h2>Fast, transparent financing — <span>managed in one place</span></h2>
-        <p>Apply for a loan, track your application, manage repayments, and complete the authorization forms your bank or employer needs to set up repayments to Loan It Financing.</p>
-      </div>
-
-      <div class="grid">
-        <div class="card featured">
-          <div>
-            <div class="card-title"><i class="fas fa-file-signature"></i> Repayment Authorization Forms</div>
-            <p class="card-desc">Generate a print-ready authorization letter with a full payment schedule. Choose a bank standing order or a salary deduction through your employer.</p>
-          </div>
-          <div class="featured-actions">
-            <a href="standing-order.html" class="nav-btn primary"><i class="fas fa-university"></i> Standing Order</a>
-            <a href="salary-deduction.html" class="nav-btn"><i class="fas fa-briefcase"></i> Salary Deduction</a>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="fas fa-user"></i> Loan Applicants</div>
-          <p class="card-desc">Start a new application or follow up on one you've already submitted.</p>
-          <ul class="card-links">
-            <li><a href="user-apply.html"><i class="fas fa-file-alt"></i> Apply for a Loan</a></li>
-            <li><a href="status.html"><i class="fas fa-info-circle"></i> Check Application Status</a></li>
-            <li><a href="applicant-edit.html"><i class="fas fa-edit"></i> Edit an Application</a></li>
-            <li><a href="user-profile.html"><i class="fas fa-id-card"></i> My Profile</a></li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="fas fa-hand-holding-usd"></i> Loan Management</div>
-          <p class="card-desc">Plan a loan, track balances, and stay on top of repayments.</p>
-          <ul class="card-links">
-            <li><a href="loan-calculator.html"><i class="fas fa-chart-line"></i> Loan Calculator</a></li>
-            <li><a href="my-active-loans.html"><i class="fas fa-list"></i> My Active Loans</a></li>
-            <li><a href="loan-statement.html"><i class="fas fa-file-invoice-dollar"></i> Loan Statements</a></li>
-            <li><a href="make-a-payment.html"><i class="fas fa-money-check-alt"></i> Make a Payment</a></li>
-          </ul>
-        </div>
-
-        <div class="card">
-          <div class="card-title"><i class="fas fa-user-cog"></i> Administration</div>
-          <p class="card-desc">Staff tools for promotions, applications, and user accounts.</p>
-          <ul class="card-links">
-            <li><a href="admin-dashboard.html"><i class="fas fa-tachometer-alt"></i> Admin Dashboard</a></li>
-            <li><a href="applications-list.html"><i class="fas fa-list-alt"></i> Applications List</a></li>
-            <li><a href="admin-promotions.html"><i class="fas fa-tags"></i> Manage Promotions</a></li>
-            <li><a href="user-management.html"><i class="fas fa-users"></i> User Management</a></li>
-          </ul>
-        </div>
-      </div>
-
-      <footer>
-        <p>Technology by <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
-        <p><i class="fas fa-lock"></i> Your data is protected with bank-level security</p>
-      </footer>
-    </div>
+  <div class="bar">
+    <div class="mark"><i class="fas fa-layer-group"></i> <span>Loan<b>App</b></span></div>
+    <div class="right" id="who"></div>
   </div>
+
+  <div class="wrap">
+    <div class="hero">
+      <span class="eyebrow">Lending platform</span>
+      <h1>One platform, and every lender its own front door.</h1>
+      <p>LoanApp runs the loan book — campaigns and applications, contracts, standing orders and salary deductions,
+         support tickets and repayments. Each lender on it has its own address, its own staff and roles, and its own
+         customers, kept apart from every other lender's.</p>
+      <div class="cta">
+        <a class="btn" href="#signin" id="hero-signin"><i class="fas fa-user-shield"></i> Administrator sign-in</a>
+        <a class="btn ghost" href="#lenders"><i class="fas fa-building-columns"></i> Lenders on LoanApp</a>
+      </div>
+    </div>
+
+    <section id="signin">
+      <h2 class="section-title">Sign in</h2>
+      <div class="panel">
+        <h3 id="panel-title">Sign in to your lender</h3>
+        <p id="panel-sub">Signing in takes you into the business your account belongs to. Staff land in the admin
+           area; everyone else lands on their lender's own page.</p>
+        <div class="row" id="panel-actions"></div>
+        <p class="note" id="panel-note"></p>
+      </div>
+    </section>
+
+    <section id="lenders">
+      <h2 class="section-title">Lenders on LoanApp</h2>
+      <div class="lenders" id="lender-list"><p class="skeleton">Loading…</p></div>
+    </section>
+
+    <section>
+      <h2 class="section-title">How a tenant is put together</h2>
+      <div class="structure">
+        <div>
+          <h4><i class="fas fa-link"></i> Its own address</h4>
+          <p>A lender lives at its own path — <span class="mono">/loanit-financing</span> — and that is where its
+             customers apply, follow a loan and open a ticket.</p>
+        </div>
+        <div>
+          <h4><i class="fas fa-id-badge"></i> Its own people</h4>
+          <p>Business admins, loan officers, underwriters and support staff belong to one business, and see only
+             that business's customers and records.</p>
+        </div>
+        <div>
+          <h4><i class="fas fa-key"></i> Permissions, not pages</h4>
+          <p>What a person can open is decided by the permissions on their role, and the menu is built from those
+             permissions before the page is drawn.</p>
+        </div>
+        <div>
+          <h4><i class="fas fa-box-archive"></i> Its own records</h4>
+          <p>Campaigns, applications, contracts, standing orders, salary deductions and tickets are all held against
+             the business that created them.</p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <p>LoanApp &middot; multi-tenant lending software. Technology by
+         <a href="https://doxservices.com" target="_blank" rel="noopener noreferrer">Doxservices</a>.</p>
+    </footer>
+  </div>
+
   <script type="module">
-    // Staff land here; everyone else belongs on the customer home. The server
-    // decides who is staff — this only avoids showing a page that is not theirs.
-    function settle(me) {
-      if (me && me.staff) { const g = document.getElementById('staff-check'); if (g) g.remove(); return; }
-      location.replace('home.html');
+    const $ = id => document.getElementById(id);
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const ROLE_NAMES = {
+      superAdmin: 'platform admin', businessAdmin: 'business admin', loanOfficer: 'loan officer',
+      underwriter: 'underwriter', support: 'support', applicant: 'customer'
+    };
+
+    // Where an account belongs: staff go to the admin area, a customer goes to
+    // their own lender's page.
+    const landing = me => me.staff ? 'admin-home.html' : window.Tenant.home(me.tenant && me.tenant.slug);
+
+    window.Tenant.lenders().then(list => {
+      $('lender-list').innerHTML = list.length ? list.map(t => `
+        <a class="lender" href="/${esc(t.slug)}">
+          <span class="name">${esc(t.tradingName)}</span>
+          <span class="tag">${esc(t.tagline || t.legalName || '')}</span>
+          <div class="path">/${esc(t.slug)}</div>
+          <div class="where">${esc([t.town, t.parish].filter(Boolean).join(', ') || t.country || '')}</div>
+        </a>`).join('')
+        : '<p class="skeleton">No lenders are live on this platform yet.</p>';
+    });
+
+    // A fresh sign-in carries straight through to the destination; an account
+    // already signed in is offered the way in, so this page stays reachable.
+    let signingIn = false;
+
+    async function startSignIn() {
+      const note = $('panel-note');
+      note.textContent = '';
+      note.classList.remove('bad');
+      signingIn = true;
+      try { await window.userAuth.signIn(); }
+      catch (err) {
+        signingIn = false;
+        note.classList.add('bad');
+        note.textContent = (err && err.message) ? err.message : 'Sign-in failed.';
+      }
     }
-    window.addEventListener('user-auth', e => settle(e.detail));
-    window.userAuth.ready().then(settle);
+
+    function paint(me) {
+      if (!me) {
+        $('who').innerHTML = '<button class="btn small ghost" id="top-signin"><i class="fas fa-right-to-bracket"></i> Sign in</button>';
+        $('top-signin').addEventListener('click', startSignIn);
+        $('panel-title').textContent = 'Sign in to your lender';
+        $('panel-sub').textContent = 'Signing in takes you into the business your account belongs to. Staff land in '
+          + 'the admin area; everyone else lands on their lender’s own page.';
+        $('panel-actions').innerHTML = '<button class="btn" id="signin-btn"><i class="fab fa-google"></i> Sign in with Google</button>';
+        $('signin-btn').addEventListener('click', startSignIn);
+        $('panel-note').textContent = '';
+        return;
+      }
+
+      const where = landing(me);
+      if (signingIn) { location.replace(where); return; }
+
+      const lender = me.tenant ? me.tenant.tradingName : (me.staff ? 'the platform' : 'no lender yet');
+      $('who').innerHTML = `<span class="who-line">${esc(me.name || me.email)}</span>
+        <button class="btn small ghost" id="out-btn"><i class="fas fa-right-from-bracket"></i> Sign out</button>`;
+      $('out-btn').addEventListener('click', () => window.userAuth.signOut());
+
+      $('panel-title').textContent = 'Continue as ' + (me.name || me.email);
+      $('panel-sub').innerHTML = `Signed in to <b>${esc(lender)}</b><span class="role-pill">${esc(ROLE_NAMES[me.role] || me.role)}</span>`;
+      $('panel-actions').innerHTML = me.staff
+        ? `<a class="btn" href="admin-home.html"><i class="fas fa-user-shield"></i> Enter the admin area</a>`
+          + (me.tenant ? `<a class="btn ghost" href="${esc(window.Tenant.home(me.tenant.slug))}"><i class="fas fa-house"></i> ${esc(me.tenant.tradingName)}</a>` : '')
+        : `<a class="btn" href="${esc(where)}"><i class="fas fa-house"></i> Go to ${esc(me.tenant ? me.tenant.tradingName : 'your lender')}</a>`;
+      $('panel-note').textContent = me.staff ? '' : 'This account does not have staff access.';
+    }
+
+    $('hero-signin').addEventListener('click', () => { if (!window.userAuth.me) startSignIn(); });
+
+    window.addEventListener('user-auth', e => paint(e.detail));
+    window.userAuth.ready().then(paint);
   </script>
 </body>
 </html>
