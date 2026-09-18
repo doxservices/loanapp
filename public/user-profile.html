@@ -77,6 +77,21 @@
     .identity span { font-size: 13.5px; color: var(--muted); }
     .identity .google { margin-left: auto; font-size: 12.5px; color: var(--muted); display: flex; align-items: center; gap: 7px; }
 
+    .business { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+    .business .mark {
+      flex: none; width: 150px; height: 52px; display: flex; align-items: center;
+      padding: 8px 12px; background: var(--ground); border: 1px solid var(--line); border-radius: 10px;
+    }
+    .business .mark img { width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+    .business .mark .wordmark { font-weight: 800; font-size: 15px; color: var(--brand-deep); }
+    .business .who b { display: block; font-size: 16px; }
+    .business .who span { font-size: 13.5px; color: var(--muted); }
+    .business .role {
+      margin-left: auto; font-size: 11.5px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
+      background: var(--brand-soft); color: var(--brand-deep); text-transform: uppercase; letter-spacing: .05em;
+    }
+    @media (max-width: 560px) { .business .role { margin-left: 0; } }
+
     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .f.wide { grid-column: 1 / -1; }
     label { display: block; font-size: 12.5px; font-weight: 600; margin-bottom: 5px; }
@@ -117,6 +132,12 @@
       <h1>My profile</h1>
       <p class="page-sub" id="page-sub">These are the details we put on your loan agreement and your repayment
          forms, so they need to match your documents. <span id="state-pill"></span></p>
+
+      <div class="card" id="business-card" hidden>
+        <h2 id="business-heading">Your lender</h2>
+        <p class="sub" id="business-sub"></p>
+        <div class="business" id="business"></div>
+      </div>
 
       <div class="card">
         <h2>Your account</h2>
@@ -199,15 +220,49 @@
         : 'Your employer and monthly income decide which loan campaigns you qualify for.';
     }
 
-    // The lender whose customer this is, for the masthead and the footer.
-    window.Tenant.ready().then(t => {
-      if (!t) return;
-      $('brand').innerHTML = t.logoUrl
+    // The lender this page belongs to. The signed-in person's own record says
+    // which business they are in, so that is used first; resolving it from the
+    // path or from what this browser last saw is only a fallback, and the
+    // masthead is never left blank.
+    const ROLE_NAMES = {
+      superAdmin: 'Platform admin', businessAdmin: 'Business admin', loanOfficer: 'Loan officer',
+      underwriter: 'Underwriter', support: 'Support', applicant: 'Customer'
+    };
+
+    function markFor(t) {
+      return t && t.logoUrl
         ? `<img src="${esc(t.logoUrl)}" alt="${esc(t.tradingName)}" />`
-        : `<span class="wordmark">${esc(t.tradingName)}</span>`;
+        : `<span class="wordmark">${esc((t && t.tradingName) || 'LoanApp')}</span>`;
+    }
+
+    function brandFrom(t, me) {
+      if (!t) {
+        $('brand').innerHTML = '<span class="wordmark">LoanApp</span>';
+        return;
+      }
+      $('brand').innerHTML = markFor(t);
       $('home-link').setAttribute('href', window.Tenant.home(t.slug));
       $('lender-line').textContent = [t.tradingName, t.phone, t.email].filter(Boolean).join(' · ');
-    });
+
+      const where = [t.addressLine1, t.town, t.parish].filter(Boolean).join(', ');
+      const staff = !!(me && me.staff);
+      $('business-heading').textContent = staff ? 'Where you work' : 'Your lender';
+      $('business-sub').textContent = staff
+        ? 'Your account belongs to this business, and you see only its customers and records.'
+        : 'The lender you hold your loan with.';
+      $('business').innerHTML = `
+        <span class="mark">${markFor(t)}</span>
+        <span class="who">
+          <b>${esc(t.tradingName)}</b>
+          <span>${esc([where, t.phone].filter(Boolean).join(' · '))}</span>
+        </span>
+        ${me ? `<span class="role">${esc(ROLE_NAMES[me.role] || me.role)}</span>` : ''}`;
+      $('business-card').hidden = false;
+    }
+
+    // Draw whatever the page can resolve on its own, so the masthead is never
+    // empty while the account is still loading.
+    window.Tenant.ready().then(t => { if (t && !window.userAuth.me) brandFrom(t, null); });
 
     function paintIdentity(me) {
       const g = window.userAuth.google || {};
@@ -228,6 +283,8 @@
         const el = $('f-' + f.k);
         if (!el) return;
         let v = p[f.k] || '';
+        // a date input only accepts yyyy-mm-dd, whatever was typed into it
+        if (f.type === 'date' && v) v = String(v).slice(0, 10);
         // Nothing on the record yet: start from what Google told us.
         if (!v && f.k === 'firstName' && full) v = full.split(' ')[0];
         if (!v && f.k === 'lastName' && full.indexOf(' ') > -1) v = full.split(' ').slice(1).join(' ');
@@ -250,6 +307,7 @@
         return;
       }
       $('profile-form').hidden = false;
+      brandFrom(me.tenant || window.Tenant.tenant, me);
       buildForm(me);
       paintIdentity(me);
       fill(me);

@@ -1386,9 +1386,12 @@ async function ensureUser(email, decoded) {
   const found = await findUserByEmail(email);
   if (found) {
     const d = found.data();
+    // Read back the same fields this person is asked for, rather than a list
+    // written out again here: a field added to one and not the other is saved
+    // and then never returned, which looks exactly like a save that failed.
     const profile = {};
-    ['firstName', 'lastName', 'phone', 'trn', 'addressLine1', 'addressLine2',
-      'town', 'parish', 'employer', 'monthlyIncome'].forEach(k => { profile[k] = d[k] || ''; });
+    const fields = STAFF_ROLES.includes(d.role) ? STAFF_PROFILE_FIELDS : PROFILE_FIELDS;
+    fields.forEach(k => { profile[k] = d[k] || ''; });
     return {
       userId: found.id, email,
       role: d.role || 'applicant',
